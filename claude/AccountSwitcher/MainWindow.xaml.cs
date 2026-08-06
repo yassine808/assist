@@ -12,6 +12,8 @@ public partial class MainWindow : Window
 {
     private readonly AccountStore _store = new();
     private readonly RiotClientService _riot = new();
+    private readonly RiotLocalApiService _localApi = new();
+    private readonly RiotRemoteApiService _remoteApi = new();
     private readonly ObservableCollection<Account> _accounts = new();
 
     public MainWindow()
@@ -86,4 +88,72 @@ public partial class MainWindow : Window
     }
 
     private void Persist() => _store.Save(_accounts.ToList());
+
+    private async void RefreshStore_Click(object sender, RoutedEventArgs e)
+    {
+        StoreList.Items.Clear();
+        var session = await GetLocalSessionOrShowErrorAsync(StoreList);
+        if (session == null) return;
+
+        try
+        {
+            var shard = await _remoteApi.GetShardAsync(session.AccessToken);
+            var clientVersion = await _remoteApi.GetClientVersionAsync();
+            var offers = await _remoteApi.GetStorefrontAsync(
+                shard, session.Puuid, session.AccessToken, session.EntitlementsToken, clientVersion);
+
+            foreach (var offer in offers)
+                StoreList.Items.Add(offer.DisplayName);
+
+            if (offers.Count == 0)
+                StoreList.Items.Add("No offers returned.");
+        }
+        catch (Exception ex)
+        {
+            StoreList.Items.Add($"Couldn't load store: {ex.Message}");
+        }
+    }
+
+    private async void RefreshLiveGame_Click(object sender, RoutedEventArgs e)
+    {
+        LiveGameList.Items.Clear();
+        var session = await GetLocalSessionOrShowErrorAsync(LiveGameList);
+        if (session == null) return;
+
+        try
+        {
+            var shard = await _remoteApi.GetShardAsync(session.AccessToken);
+            var clientVersion = await _remoteApi.GetClientVersionAsync();
+            var players = await _remoteApi.GetLiveMatchAsync(
+                shard, shard, session.Puuid, session.AccessToken, session.EntitlementsToken, clientVersion);
+
+            if (players.Count == 0)
+            {
+                LiveGameList.Items.Add("Not currently in agent select or a match.");
+                return;
+            }
+
+            foreach (var p in players)
+                LiveGameList.Items.Add($"{p.AgentName} (Team {p.TeamId})");
+        }
+        catch (Exception ex)
+        {
+            LiveGameList.Items.Add($"Couldn't load live game: {ex.Message}");
+        }
+    }
+
+    private async System.Threading.Tasks.Task<RiotLocalApiService.LocalSession?> GetLocalSessionOrShowErrorAsync(ListBox target)
+    {
+        if (!_localApi.IsRiotClientRunning)
+        {
+            target.Items.Add("Riot Client isn't running. Launch and sign in first.");
+            return null;
+        }
+
+        var session = await _localApi.GetSessionAsync();
+        if (session == null)
+            target.Items.Add("Couldn't read the local Riot session. Make sure you're signed in.");
+
+        return session;
+    }
 }

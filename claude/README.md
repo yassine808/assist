@@ -37,14 +37,33 @@ dotnet build
 dotnet run --project AccountSwitcher
 ```
 
+## Store & Live Game tabs
+
+These read data for whichever account is **currently signed in** to the
+running Riot Client (switch first if you want a different account's data):
+
+- **Store** — pulls today's shop via Riot's regional store endpoint.
+- **Live Game** — checks agent-select (pregame), then an in-progress match,
+  and lists agents/teams. Read-only: no overlays, memory reading, or
+  gameplay changes.
+
+Both work by reading the local Riot Client API's tokens (never your
+password) and calling Riot's own regional servers directly — no external
+server involved. These are unofficial, community-documented endpoints, so
+Riot can change them without notice. If a tab errors after a game patch,
+check https://valapidocs.techchrism.me for the current endpoint shape and
+adjust `Services/RiotRemoteApiService.cs`.
+
 ## Project layout
 
 ```
 AccountSwitcher.sln
 AccountSwitcher/
   App.xaml(.cs)
-  MainWindow.xaml(.cs)      # UI: list, add, switch, remove
-  Models/Account.cs         # account record
-  Services/AccountStore.cs  # encrypted local persistence
-  Services/RiotClientService.cs  # close/patch/relaunch Riot Client
+  MainWindow.xaml(.cs)         # UI: accounts, store, live game tabs
+  Models/Account.cs            # account record
+  Services/AccountStore.cs     # encrypted local persistence
+  Services/RiotClientService.cs      # close/patch/relaunch Riot Client
+  Services/RiotLocalApiService.cs    # reads lockfile, local session tokens
+  Services/RiotRemoteApiService.cs   # store/live game calls to Riot's servers
 ```
