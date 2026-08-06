@@ -22,11 +22,8 @@ jobs:
             7.0.x
             8.0.x
 
-      - name: Build AccountSwitcher
-        run: dotnet build claude/AccountSwitcher.sln -c Release --nologo
-
       - name: Build Assist + Assist.Shared
-        run: dotnet build original/Assist/Assist.sln -c Release --nologo
+        run: dotnet build Assist/Assist.sln -c Release --nologo
 
   checks:
     name: Static checks
@@ -44,10 +41,10 @@ jobs:
             8.0.x
 
       - name: Restore
-        run: dotnet restore original/Assist/Assist.sln
+        run: dotnet restore Assist/Assist.sln
 
       - name: Code formatting
-        run: dotnet format original/Assist/Assist.sln --verify-no-changes --no-restore
+        run: dotnet format Assist/Assist.sln --verify-no-changes --no-restore
 
       - name: Vulnerable package scan
-        run: dotnet list original/Assist/Assist.sln package --vulnerable --include-transitive
+        run: dotnet list Assist/Assist.sln package --vulnerable --include-transitive
