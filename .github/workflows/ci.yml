@@ -8,19 +8,8 @@ on:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        include:
-          - os: windows-latest
-            windows: true
-          - os: ubuntu-latest
-            windows: false
-          - os: macos-latest
-            windows: false
+    name: Build
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -33,15 +22,11 @@ jobs:
             7.0.x
             8.0.x
 
-      - name: Build AccountSwitcher (${{ matrix.os }})
+      - name: Build AccountSwitcher
         run: dotnet build claude/AccountSwitcher.sln -c Release --nologo
-        env:
-          EnableWindowsTargeting: ${{ !matrix.windows }}
 
-      - name: Build Assist + Assist.Shared (${{ matrix.os }})
+      - name: Build Assist + Assist.Shared
         run: dotnet build original/Assist/Assist.sln -c Release --nologo
-        env:
-          EnableWindowsTargeting: ${{ !matrix.windows }}
 
   checks:
     name: Static checks
