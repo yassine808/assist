@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Projects\\Assist\\claude\\AccountSwitcher\\AccountSwitcher.csproj": {}
+    "D:\\Projects\\Assist\\claude\\accountswitcher\\AccountSwitcher.csproj": {}
   },
   "projects": {
-    "D:\\Projects\\Assist\\claude\\AccountSwitcher\\AccountSwitcher.csproj": {
+    "D:\\Projects\\Assist\\claude\\accountswitcher\\AccountSwitcher.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Projects\\Assist\\claude\\AccountSwitcher\\AccountSwitcher.csproj",
+        "projectUniqueName": "D:\\Projects\\Assist\\claude\\accountswitcher\\AccountSwitcher.csproj",
         "projectName": "AccountSwitcher",
-        "projectPath": "D:\\Projects\\Assist\\claude\\AccountSwitcher\\AccountSwitcher.csproj",
+        "projectPath": "D:\\Projects\\Assist\\claude\\accountswitcher\\AccountSwitcher.csproj",
         "packagesPath": "C:\\Users\\ysmag\\.nuget\\packages\\",
-        "outputPath": "D:\\Projects\\Assist\\claude\\AccountSwitcher\\obj\\",
+        "outputPath": "D:\\Projects\\Assist\\claude\\accountswitcher\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ysmag\\AppData\\Roaming\\NuGet\\NuGet.Config"

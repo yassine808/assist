@@ -25,6 +25,31 @@ public partial class MainWindow : Window
             _accounts.Add(acc);
     }
 
+    private void TitleBar_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void NavAccounts_Click(object sender, RoutedEventArgs e) => ShowPanel(AccountsPanel, NavAccounts);
+    private void NavStore_Click(object sender, RoutedEventArgs e) => ShowPanel(StorePanel, NavStore);
+    private void NavLive_Click(object sender, RoutedEventArgs e) => ShowPanel(LivePanel, NavLive);
+
+    private void ShowPanel(UIElement panel, Button activeButton)
+    {
+        AccountsPanel.Visibility = Visibility.Collapsed;
+        StorePanel.Visibility = Visibility.Collapsed;
+        LivePanel.Visibility = Visibility.Collapsed;
+        panel.Visibility = Visibility.Visible;
+
+        foreach (var btn in new[] { NavAccounts, NavStore, NavLive })
+            btn.Style = (Style)FindResource("NavButton");
+        activeButton.Style = (Style)FindResource("NavButtonActive");
+    }
+
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
         var name = DisplayNameBox.Text.Trim();

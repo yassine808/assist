@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            windows: true
+          - os: ubuntu-latest
+            windows: false
+          - os: macos-latest
+            windows: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            7.0.x
+            8.0.x
+
+      - name: Build AccountSwitcher (${{ matrix.os }})
+        run: dotnet build claude/AccountSwitcher.sln -c Release --nologo
+        env:
+          EnableWindowsTargeting: ${{ !matrix.windows }}
+
+      - name: Build Assist + Assist.Shared (${{ matrix.os }})
+        run: dotnet build original/Assist/Assist.sln -c Release --nologo
+        env:
+          EnableWindowsTargeting: ${{ !matrix.windows }}
+
+  checks:
+    name: Static checks
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            7.0.x
+            8.0.x
+
+      - name: Restore
+        run: dotnet restore original/Assist/Assist.sln
+
+      - name: Code formatting
+        run: dotnet format original/Assist/Assist.sln --verify-no-changes --no-restore
+
+      - name: Vulnerable package scan
+        run: dotnet list original/Assist/Assist.sln package --vulnerable --include-transitive
