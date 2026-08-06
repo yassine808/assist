@@ -259,9 +259,21 @@ public class ValorantHelper
             {"/game/maps/juliett/juliett",Properties.Resources.VALORANT_Sunset},
             {"/game/maps/hurm/hurm_helix/hurm_helix",Properties.Resources.VALORANT_Drift},
             {"/game/maps/infinity/infinity" , Properties.Resources.VALORANT_Abyss}
-            
+
         };
-        
+
+        /// <summary>
+        /// Safe lookup for map paths. Riot ships new maps and modes (Team Deathmatch arenas,
+        /// new competitive maps) before Assist knows about them, so an unknown path must not throw.
+        /// </summary>
+        public static string GetMapNameByPath(string? mapPath)
+        {
+            if (string.IsNullOrEmpty(mapPath))
+                return string.Empty;
+
+            return MapsByPath.TryGetValue(mapPath.ToLower(), out var mapName) ? mapName : string.Empty;
+        }
+
         public static Dictionary<string, string> AgentIdToNames = new Dictionary<string, string> 
         {
             {"eb93336a-449b-9c1b-0a54-a891f7921d69", Properties.Resources.VALORANT_Phoenix},

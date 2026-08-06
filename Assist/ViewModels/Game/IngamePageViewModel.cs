@@ -273,11 +273,12 @@ public partial class IngamePageViewModel : ViewModelBase
             
             
             Log.Information("Getting map data for ID of: " + Match.MapID.ToLower());
-            MapName = ValorantHelper.MapsByPath?[Match.MapID.ToLower()].ToUpper();
+            var mapName = ValorantHelper.GetMapNameByPath(Match.MapID);
+            MapName = mapName.ToUpper();
             if (Match.MapID.Contains("poveglia", StringComparison.OrdinalIgnoreCase))
                 IsRange = true;
-            else
-                MapImage = $"https://cdn.assistval.com/maps/{ValorantHelper.MapsByPath?[Match.MapID.ToLower()]}_Featured.png";
+            else if (!string.IsNullOrEmpty(mapName))
+                MapImage = $"https://cdn.assistval.com/maps/{mapName}_Featured.png";
             
             
             

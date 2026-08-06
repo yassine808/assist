@@ -235,9 +235,10 @@ public partial class PregamePageViewModel : ViewModelBase
             if (Match.MapID != null)
             {
                 Log.Information("Getting map data for ID of: " +  Match.MapID.ToLower());
-                MapName = ValorantHelper.MapsByPath?[Match.MapID.ToLower()].ToUpper();
-                MapImage =
-                    $"https://cdn.assistval.com/maps/{ValorantHelper.MapsByPath?[Match.MapID.ToLower()]}_Featured.png";
+                var mapName = ValorantHelper.GetMapNameByPath(Match.MapID);
+                MapName = mapName.ToUpper();
+                if (!string.IsNullOrEmpty(mapName))
+                    MapImage = $"https://cdn.assistval.com/maps/{mapName}_Featured.png";
                 try
                 {
                     ServerName = ValorantHelper.Servers[Match.GamePodID];

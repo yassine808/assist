@@ -47,8 +47,9 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
         if (RecentMatchData is null)
             return;
 
-        if (!string.IsNullOrEmpty(RecentMatchData.MapId))
-            MapImage = $"https://cdn.assistval.com/maps/{ValorantHelper.MapsByPath[RecentMatchData.MapId.ToLower()]}_BWlistview.png";
+        var mapName = ValorantHelper.GetMapNameByPath(RecentMatchData.MapId);
+        if (!string.IsNullOrEmpty(mapName))
+            MapImage = $"https://cdn.assistval.com/maps/{mapName}_BWlistview.png";
         
         
         // Determine Match State
