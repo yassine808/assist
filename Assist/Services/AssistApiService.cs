@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -32,8 +32,29 @@ namespace Assist.Services
             //_logger = Log.ForContext<AssistApiService>();
             _client = new HttpClient()
             {
-              BaseAddress   = new Uri(BaseUrl)
+              BaseAddress   = new Uri(BaseUrl),
+              // The Assist backend is offline; without a short timeout every call blocks the UI for
+              // the full default 100 seconds before failing.
+              Timeout = TimeSpan.FromSeconds(5)
             };
+        }
+
+        /// <summary>
+        /// The Assist backend no longer exists, so every call here throws on connect. Callers run
+        /// from async void UI handlers where an exception reaches the dispatcher and kills the app,
+        /// so failures are swallowed to null and each caller falls back to its own default.
+        /// </summary>
+        private async Task<HttpResponseMessage?> TryGetAsync(string path)
+        {
+            try
+            {
+                return await _client.GetAsync(path);
+            }
+            catch (Exception e)
+            {
+                Log.Error($"AssistApi: request to {path} failed - {e.Message}");
+                return null;
+            }
         }
 
         // todo: handle unsuccessful response
@@ -41,8 +62,8 @@ namespace Assist.Services
         {
             
             
-            var response = await _client.GetAsync($"/api/valorant/skins/{uuid}/");
-            if (response.IsSuccessStatusCode)
+            var response = await TryGetAsync($"/api/valorant/skins/{uuid}/");
+            if (response is { IsSuccessStatusCode: true })
             {
                 var data = await response.Content.ReadAsStringAsync();
                 return JsonSerializer.Deserialize<WeaponSkin>(data);
@@ -54,8 +75,8 @@ namespace Assist.Services
         public async Task<string> GetWeaponSkinPriceAsync(string uuid)
         {
             
-            var response = await _client.GetAsync($"/api/valorant/offers/{uuid}/");
-            if (response.IsSuccessStatusCode)
+            var response = await TryGetAsync($"/api/valorant/offers/{uuid}/");
+            if (response is { IsSuccessStatusCode: true })
             {
                 var data = await response.Content.ReadAsStringAsync();
                 var obj =  JsonSerializer.Deserialize<StoreOffer>(data);
@@ -81,8 +102,8 @@ namespace Assist.Services
 
         public async Task<Bundle> GetBundleAsync(string id)
         {
-            var response = await _client.GetAsync($"/api/valorant/bundles/{id}/");
-            if (!response.IsSuccessStatusCode)
+            var response = await TryGetAsync($"/api/valorant/bundles/{id}/");
+            if (response is not { IsSuccessStatusCode: true })
                 return CreateFailedBundle();
             
             var data = await response.Content.ReadAsStringAsync();
@@ -91,9 +112,9 @@ namespace Assist.Services
 
         public async Task<List<Mission>> GetAllMissions()
         {
-            var response = await _client.GetAsync($"/api/valorant/missions");
+            var response = await TryGetAsync($"/api/valorant/missions");
             
-            if (!response.IsSuccessStatusCode)
+            if (response is not { IsSuccessStatusCode: true })
                 return new List<Mission>()
                 {
                     new Mission

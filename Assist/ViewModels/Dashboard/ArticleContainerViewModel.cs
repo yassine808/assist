@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Serilog;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
@@ -56,13 +58,22 @@ public partial class ArticleContainerViewModel : ViewModelBase
 
     private async Task GetArticles()
     {
-        var resp = await AssistApplication.AssistUser.Config.GetAllNewsNodes();
+        // Setup() is async void, so anything thrown here reaches the dispatcher unhandled and kills
+        // the app. The Assist news backend is frequently unreachable; news is decoration, not a
+        // reason to lose the dashboard.
+        try
+        {
+            var resp = await AssistApplication.AssistUser.Config.GetAllNewsNodes();
 
-        if (resp.Code != 200)
-            return;
+            if (resp.Code != 200)
+                return;
 
-        _articles = JsonSerializer.Deserialize<List<AssistArticleNewsNode>>(resp.Data.ToString());
-        
+            _articles = JsonSerializer.Deserialize<List<AssistArticleNewsNode>>(resp.Data.ToString());
+        }
+        catch (Exception e)
+        {
+            Log.Error("Failed to load news articles: " + e.Message);
+        }
     }
     
     

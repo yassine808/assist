@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Assist.Models.Riot;
@@ -13,6 +15,10 @@ using AssistUser.Lib.V2;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
+using ValNet;
+using ValNet.Enums;
+using ValNet.Objects;
+using Assist.Shared.Services.Utils;
 using YamlDotNet.Serialization.NamingConventions;
 
 namespace Assist.ViewModels.RAccount;
@@ -182,20 +188,38 @@ public partial class RAccountSecondaryClientLoginViewModel : ViewModelBase
                 await RiotClientService.CloseRiotRelatedPrograms();
                 
                 Log.Information("Locating Account Settings");
-                var subOfClient = await GetSub(settings);
                 var ssidOfClient = await GetSSID(settings);
+
+                // The Riot Client never writes a "sub" cookie, so the account id has to come from
+                // authenticating with the client's cookie jar. This also makes the client flow able to
+                // ADD an account rather than only re-authenticate one that already exists.
+                var usr = await AuthenticateWithClientCookies(settings);
+
+                if (usr is null)
+                {
+                    ErrorMessage = "Failed to authenticate with the Riot Client session. Please try again.";
+                    ErrorMessageVisible = true;
+                    IsProcessing = false;
+                    return;
+                }
+
+                var subOfClient = usr.UserData.sub;
                 var accountProfile = AccountSettings.Default.Accounts.Find(x => x.Id == subOfClient);
 
                 if (accountProfile is null)
                 {
-                    Log.Error("Player Logged into an account which is NOT apart of the assist account line.");
-                    
-                    ErrorMessage = "Account you logged into, is not the valid account. Please try again.";
-                    ErrorMessageVisible = true;
-                    return;
+                    Log.Information("Account is new to Assist, creating a profile for it.");
+                    accountProfile = await BuildProfileFromRiotUser(usr);
                 }
-                
-                Log.Information("Profile exists, continuing process.");
+                else
+                {
+                    Log.Information("Profile exists, refreshing its stored session.");
+                    accountProfile.ConvertCookiesTo64(usr.GetAuthClient().ClientCookies);
+                    accountProfile.IsExpired = false;
+                    accountProfile.CanAssistBoot = true;
+                }
+
+                AssistApplication.ActiveUser = usr;
                 
                 Log.Information("Attempting to Zip up Data Folder");
 
@@ -329,6 +353,74 @@ public partial class RAccountSecondaryClientLoginViewModel : ViewModelBase
             return string.Empty;
         }
         
+        /// <summary>
+        /// Turns the Riot Client's saved cookie jar into an authenticated RiotUser.
+        /// The whole jar is sent, not just ssid, because that is what the client itself presents.
+        /// </summary>
+        private async Task<RiotUser?> AuthenticateWithClientCookies(ClientPrivateModel config)
+        {
+            var clientCookies = config.RiotLogin?.Persist?.Session?.Cookies;
+
+            if (clientCookies is null || clientCookies.Count == 0)
+            {
+                Log.Error("Riot Client settings contained no cookies to authenticate with.");
+                return null;
+            }
+
+            // ValNet's cookie authentication can no longer read Riot's redirect, so the token
+            // exchange is done in RiotCookieAuthService and the tokens are set on the RiotUser.
+            return await RiotCookieAuthService.AuthenticateAsync(
+                clientCookies,
+                config.RiotLogin?.Persist?.Region);
+        }
+
+        private async Task<AccountProfile> BuildProfileFromRiotUser(RiotUser usr)
+        {
+            var profile = new AccountProfile
+            {
+                Id = usr.UserData.sub,
+                Region = usr.GetRegion(),
+                LastLoginTime = DateTime.UtcNow,
+                CanAssistBoot = true,
+                CanLauncherBoot = true,
+                IsExpired = false,
+                Personalization = new AccountProfile.AccountProfilePersonalization()
+                {
+                    GameName = usr.UserData.acct.game_name,
+                    TagLine = usr.UserData.acct.tag_line
+                }
+            };
+
+            // Cosmetic only - a failure here must not stop the account being added.
+            try
+            {
+                var inventory = await usr.Inventory.GetPlayerInventory();
+                profile.Personalization.PlayerCardId = inventory.PlayerData.PlayerCardID;
+                profile.Personalization.PlayerLevel = inventory.PlayerData.AccountLevel;
+            }
+            catch (Exception)
+            {
+                Log.Error("Failed to Get Inventory Data when setting up profile");
+            }
+
+            try
+            {
+                var pMmr = await usr.Player.GetPlayerMmr();
+                profile.Personalization.ValRankTier = pMmr.LatestCompetitiveUpdate.TierAfterUpdate;
+            }
+            catch (Exception)
+            {
+                Log.Error("Failed to Get MMR Data when setting up profile");
+            }
+
+            profile.ConvertCookiesTo64(usr.GetAuthClient().ClientCookies);
+
+            if (string.IsNullOrEmpty(AccountSettings.Default.DefaultAccount))
+                AccountSettings.Default.DefaultAccount = profile.Id;
+
+            return profile;
+        }
+
         private async Task<string> GetSub(ClientPrivateModel config)
         {
             try

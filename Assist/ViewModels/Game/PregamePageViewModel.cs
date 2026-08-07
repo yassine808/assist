@@ -1,4 +1,5 @@
 ﻿using System;
+using Assist.Helpers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -237,8 +238,7 @@ public partial class PregamePageViewModel : ViewModelBase
                 Log.Information("Getting map data for ID of: " +  Match.MapID.ToLower());
                 var mapName = ValorantHelper.GetMapNameByPath(Match.MapID);
                 MapName = mapName.ToUpper();
-                if (!string.IsNullOrEmpty(mapName))
-                    MapImage = $"https://cdn.assistval.com/maps/{mapName}_Featured.png";
+                MapImage = AssistCdn.MapFeatured(Match.MapID);
                 try
                 {
                     ServerName = ValorantHelper.Servers[Match.GamePodID];

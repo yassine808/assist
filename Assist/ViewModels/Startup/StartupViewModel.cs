@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,6 +14,7 @@ using Assist.Controls.Startup;
 using Assist.Core.Helpers;
 using Assist.Core.Settings.Options;
 using Assist.Services.Navigation;
+using Assist.Services.Riot;
 using Assist.Shared.Services.Utils;
 using Assist.Shared.Settings;
 using Assist.Shared.Settings.Accounts;
@@ -40,6 +41,7 @@ using ValNet.Enums;
 using ValNet.Objects;
 using ValNet.Objects.Authentication;
 using Velopack;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.Startup;
 
@@ -274,7 +276,7 @@ public partial class StartupViewModel : ViewModelBase
         
         CurrentContent = new AccountPreviewStartupControl()
         {
-            Icon = $"https://cdn.assistval.com/playercards/{defaultAccount.Personalization.PlayerCardId}_DisplayIcon.png",
+            Icon = AssistCdn.PlayerCardIcon(defaultAccount.Personalization.PlayerCardId),
             AccountName = !string.IsNullOrEmpty(defaultAccount.Personalization.AccountNickName)
                 ? defaultAccount.Personalization.AccountNickName
                 : defaultAccount.Personalization.RiotId,
@@ -286,31 +288,22 @@ public partial class StartupViewModel : ViewModelBase
     private async Task AuthenticateProfile(AccountProfile profile)
     {
         Log.Information($"Attempting to login to AccountProfile Riot Account with Code | ID: {profile.Personalization.GameName}//{profile.Id}");
-        string curlPath = Path.Exists(Path.Combine(DependencyUtils.CurlDependencyFolder, "curl.exe")) ? Path.Combine(DependencyUtils.CurlDependencyFolder, "curl.exe") : "curl";
-        RiotUser usr = new RiotUserBuilder().WithCustomCurl(curlPath).WithRegion(profile.Region).WithSettings(new RiotUserSettings() { AuthenticationMethod = AuthenticationMethod.CURL }).Build();
 
-        try
-        {
-            var cookies = profile.Convert64ToCookies();
-            var v = new Dictionary<string, Cookie>();
-            
-            usr.GetAuthClient().SaveCookies(cookies);
+        // ValNet's ReAuthWithCookies can no longer read Riot's redirect, so the stored jar is
+        // exchanged for tokens by RiotCookieAuthService instead. Using the broken call here marked
+        // every freshly added account as expired on the next launch.
+        RiotUser usr = await RiotCookieAuthService.AuthenticateAsync(profile.Convert64ToCookies(), profile.Region);
 
-            await usr.Authentication.ReAuthWithCookies();
-        }
-        catch (Exception e)
+        if (usr is null)
         {
             Log.Error("Failed to Authenticate with Cookies");
-            Log.Error("Message: " + e.Message);
-            Log.Error("Source: " + e.Source);
-            Log.Error("Stack: " + e.StackTrace);
 
             profile.CanAssistBoot = false;
             profile.IsExpired = true;
             await AccountSettings.Default.UpdateAccount(profile);
             throw new Exception("Failed to Authenticate");
         }
-        
+
         Log.Information("Account Successfully Logged in!");
         await HandleSuccessfulLogin(usr: usr);
         

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows.Input;
 using Assist.Controls.Infobars;
@@ -12,6 +12,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.ProfileSwap;
 
@@ -34,7 +35,7 @@ public partial class ProfileManagementViewModel : ViewModelBase
         var profile = AccountSettings.Default.Accounts.FirstOrDefault(x => x.Id == ProfileId);
 
         ProfileRiotName = profile.Personalization.RiotId;
-        ProfilePlayercard =  $"https://cdn.assistval.com/playercards/{profile.Personalization.PlayerCardId}_DisplayIcon.png";
+        ProfilePlayercard =  AssistCdn.PlayerCardIcon(profile.Personalization.PlayerCardId);
         
         GameLaunchEnabled = profile.CanLauncherBoot;
         AssistEnabled = profile.CanAssistBoot;

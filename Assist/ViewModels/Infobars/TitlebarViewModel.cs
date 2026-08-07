@@ -1,4 +1,4 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 using Assist.Controls.Navigation;
 using Assist.Core.Helpers;
 using Assist.Models.Enums;
@@ -9,6 +9,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.Infobars;
 
@@ -25,7 +26,7 @@ public partial class TitlebarViewModel : ViewModelBase
     {
         AccountName = _profile.Personalization.RiotId;
         AccountProfilePic =
-            $"https://cdn.assistval.com/playercards/{_profile.Personalization.PlayerCardId}_DisplayIcon.png";
+            AssistCdn.PlayerCardIcon(_profile.Personalization.PlayerCardId);
     }
     
     [RelayCommand]

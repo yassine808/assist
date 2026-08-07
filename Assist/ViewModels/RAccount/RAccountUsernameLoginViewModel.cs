@@ -91,7 +91,12 @@ public partial class RAccountUsernameLoginViewModel : ViewModelBase
             Log.Error(e.Source);
             Log.Error(e.StackTrace);
 
-            ChangeErrorMessage(e.Message);
+            // Riot requires a captcha on the direct authorization endpoint, which ValNet cannot solve.
+            // That rejection comes back as the same auth_failure Riot sends for a genuinely wrong
+            // password, so point people at the Riot Client login rather than let them retry forever.
+            ChangeErrorMessage(e.Message.Contains("Incorrect", StringComparison.OrdinalIgnoreCase)
+                ? e.Message + " If it is correct, go back and use the Riot Client login instead."
+                : e.Message);
             return;
         }
         

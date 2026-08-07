@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -13,6 +13,7 @@ using Assist.Shared.Settings;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.Game;
 
@@ -47,9 +48,7 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
         if (RecentMatchData is null)
             return;
 
-        var mapName = ValorantHelper.GetMapNameByPath(RecentMatchData.MapId);
-        if (!string.IsNullOrEmpty(mapName))
-            MapImage = $"https://cdn.assistval.com/maps/{mapName}_BWlistview.png";
+        MapImage = AssistCdn.MapListIcon(RecentMatchData.MapId);
         
         
         // Determine Match State
@@ -106,7 +105,7 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
 
         if (localUserData != null)
         {
-            LocalPlayerAgentIcon = $"https://cdn.assistval.com/agents/{localUserData.PlayerAgentId.ToLower()}_displayicon.png";
+            LocalPlayerAgentIcon = AssistCdn.AgentIcon(localUserData.PlayerAgentId);
             StatsVisible = localUserData.Statistics is not null;
             LocalPlayerStats = localUserData.Statistics is not null
                 ? $"{localUserData.Statistics.Kills} / {localUserData.Statistics.Deaths} / {localUserData.Statistics.Assists}"
@@ -150,15 +149,15 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
                     var teamMateObj = new MatchTrackTeammateDisplayControl()
                     {
                         AgentIcon =
-                            $"https://cdn.assistval.com/agents/{player.PlayerAgentId}_displayicon.png",
+                            AssistCdn.AgentIcon(player.PlayerAgentId),
                         TeammateName = name,
                         RankIcon =
-                            $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{player.CompetitiveTier}.png",
+                            AssistCdn.RankIcon(player.CompetitiveTier),
                         Statline = player.Statistics is not null ? $"{player.Statistics.Kills} // {player.Statistics.Deaths} // {player.Statistics.Assists}" : ""
                     };
 
                     if (string.IsNullOrEmpty(player.PlayerAgentId))
-                        teamMateObj.AgentIcon = $"https://cdn.assistval.com/agents/unknown_displayicon.png";
+                        teamMateObj.AgentIcon = string.Empty;
                    
                     teamObj.TeammateControls.Add(teamMateObj);
                 });
@@ -201,10 +200,10 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
                     var teamMateObj = new MatchTrackTeammateDisplayControl()
                     {
                         AgentIcon =
-                            $"https://cdn.assistval.com/agents/{player.PlayerAgentId}_displayicon.png",
+                            AssistCdn.AgentIcon(player.PlayerAgentId),
                         TeammateName = name,
                         RankIcon =
-                            $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{player.CompetitiveTier}.png",
+                            AssistCdn.RankIcon(player.CompetitiveTier),
                         Statline =
                             player.Statistics is not null ? $"{player.Statistics.Kills} // {player.Statistics.Deaths} // {player.Statistics.Assists}" : ""
                     };
@@ -247,10 +246,10 @@ public partial class MatchTrackMatchViewModel : ViewModelBase
                     var teamMateObj = new MatchTrackTeammateDisplayControl()
                     {
                         AgentIcon =
-                            $"https://cdn.assistval.com/agents/{player.PlayerAgentId}_displayicon.png",
+                            AssistCdn.AgentIcon(player.PlayerAgentId),
                         TeammateName = name,
                         RankIcon =
-                            $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{player.CompetitiveTier}.png",
+                            AssistCdn.RankIcon(player.CompetitiveTier),
                         Statline =
                             player.Statistics is not null ? $"{player.Statistics.Kills} // {player.Statistics.Deaths} // {player.Statistics.Assists}" : ""
                     };

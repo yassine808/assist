@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,6 +16,7 @@ using ValNet.Objects.Exceptions;
 using ValNet.Objects.Local;
 using ValNet.Objects.Parties;
 using JsonSerializer = System.Text.Json.JsonSerializer;
+using Assist.Helpers;
 
 
 namespace Assist.ViewModels.Game;
@@ -85,8 +86,8 @@ public partial class MenusPageViewModel : ViewModelBase
                                     PlayerId = obj.MessageData.Presences[0].puuid,
                                     PlayerName = string.IsNullOrEmpty(profileData.DisplayName) ? obj.MessageData.Presences[0].game_name : profileData.DisplayName ,
                                     PlayerTitle = !string.IsNullOrEmpty(profileData.DisplayName) ?  $"{obj.MessageData.Presences[0].game_name}#{obj.MessageData.Presences[0].game_tag}" : "", 
-                                    PlayercardImage = $"https://cdn.assistval.com/playercards/{data.playerCardId}_LargeArt.png",
-                                    PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{data.competitiveTier}.png"
+                                    PlayercardImage = AssistCdn.PlayerCardLargeArt(data.playerCardId),
+                                    PlayerRankIcon = AssistCdn.RankIcon(data.competitiveTier)
                                 }
                             );
                         }
@@ -99,8 +100,8 @@ public partial class MenusPageViewModel : ViewModelBase
                                     PlayerId = obj.MessageData.Presences[0].puuid,
                                     PlayerName = obj.MessageData.Presences[0].game_name ,
                                     PlayerTitle = obj.MessageData.Presences[0].game_tag, 
-                                    PlayercardImage = $"https://cdn.assistval.com/playercards/{data.playerCardId}_LargeArt.png",
-                                    PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{data.competitiveTier}.png"
+                                    PlayercardImage = AssistCdn.PlayerCardLargeArt(data.playerCardId),
+                                    PlayerRankIcon = AssistCdn.RankIcon(data.competitiveTier)
                                 }
                             );    
                         //}
@@ -157,8 +158,8 @@ public partial class MenusPageViewModel : ViewModelBase
                                         PlayerId = pData.puuid,
                                         PlayerName = pData.game_name ,
                                         PlayerTitle = pData.game_tag, 
-                                        PlayercardImage = $"https://cdn.assistval.com/playercards/{privatePres.playerCardId}_LargeArt.png",
-                                        PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{privatePres.competitiveTier}.png"
+                                        PlayercardImage = AssistCdn.PlayerCardLargeArt(privatePres.playerCardId),
+                                        PlayerRankIcon = AssistCdn.RankIcon(privatePres.competitiveTier)
                                     }
                                 );
                             });
@@ -210,8 +211,8 @@ public partial class MenusPageViewModel : ViewModelBase
                             PlayerId = member.Subject,
                             PlayerName = possiblePlayerData.GameName ,
                             PlayerTitle = possiblePlayerData.Tagline, 
-                            PlayercardImage = $"https://cdn.assistval.com/playercards/{member.PlayerCardID}_LargeArt.png",
-                            PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{possiblePlayerData.CompetitiveTier}.png"
+                            PlayercardImage = AssistCdn.PlayerCardLargeArt(member.PlayerCardID),
+                            PlayerRankIcon = AssistCdn.RankIcon(possiblePlayerData.CompetitiveTier)
                         }
                     ); 
 
@@ -236,8 +237,8 @@ public partial class MenusPageViewModel : ViewModelBase
                         PlayerId = member.Subject,
                         PlayerName = possiblePlayerData.GameName ,
                         PlayerTitle = possiblePlayerData.Tagline, 
-                        PlayercardImage = $"https://cdn.assistval.com/playercards/{member.PlayerCardID}_LargeArt.png",
-                        PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{possiblePlayerData.CompetitiveTier}.png"
+                        PlayercardImage = AssistCdn.PlayerCardLargeArt(member.PlayerCardID),
+                        PlayerRankIcon = AssistCdn.RankIcon(possiblePlayerData.CompetitiveTier)
                     }
                 ); 
             });
@@ -275,7 +276,7 @@ public partial class MenusPageViewModel : ViewModelBase
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    currentUserBtn.PlayercardImage = $"https://cdn.assistval.com/playercards/{data.playerCardId}_LargeArt.png";
+                    currentUserBtn.PlayercardImage = AssistCdn.PlayerCardLargeArt(data.playerCardId);
                     
                 });
             }
@@ -308,8 +309,8 @@ public partial class MenusPageViewModel : ViewModelBase
                                 PlayerId = obj.puuid,
                                 PlayerName = obj.game_name ,
                                 PlayerTitle = obj.game_tag, 
-                                PlayercardImage = $"https://cdn.assistval.com/playercards/{data.playerCardId}_LargeArt.png",
-                                PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{data.competitiveTier}.png"
+                                PlayercardImage = AssistCdn.PlayerCardLargeArt(data.playerCardId),
+                                PlayerRankIcon = AssistCdn.RankIcon(data.competitiveTier)
                             });    
                     }
 

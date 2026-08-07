@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Serilog;
 using ValNet.Objects.Contracts;
 using ValNet.Objects.Exceptions;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.Dashboard;
 
@@ -123,7 +124,7 @@ public partial class ProgressionPreviewViewModel : ViewModelBase
 
             if (currentRankTier >= 24) PlayerRR = $"{currentRR}RR";
             else PlayerRR = $"{currentRR}/100 RR";
-            PlayerRankIcon = $"https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_{currentRankTier}.png";
+            PlayerRankIcon = AssistCdn.RankIcon(currentRankTier);
             var t = AccountSettings.Default.Accounts.Find(pfp => pfp.Id == AssistApplication.ActiveAccountProfile.Id);
 
             t.Personalization.ValRankTier = currentRankTier;

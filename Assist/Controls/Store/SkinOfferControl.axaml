@@ -1,4 +1,4 @@
-﻿<Styles xmlns="https://github.com/avaloniaui"
+<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:Assist.Controls.Store"
         xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia">
@@ -6,7 +6,7 @@
         <controls:SkinOfferControl Width="365"
                                    Height="144"
                                    TierGradient="{DynamicResource ExclusiveGrad}"
-                                   SkinImage="https://cdn.assistval.com/valorant/skin/abef8114-4495-6da7-2ade-02bd0f014fd3_DisplayIcon.png"
+                                   SkinImage="https://media.valorant-api.com/weaponskins/abef8114-4495-6da7-2ade-02bd0f014fd3/displayicon.png"
                                    
                                    />
     </Design.PreviewWith>

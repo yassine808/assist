@@ -263,6 +263,48 @@ public class ValorantHelper
         };
 
         /// <summary>
+        /// Map path to valorant-api UUID, used to build artwork URLs now that Assist's own CDN is
+        /// gone. Kept separate from MapsByPath because that one holds localized display names.
+        /// </summary>
+        public static Dictionary<string, string> MapUuidsByPath = new Dictionary<string, string>
+        {
+            {"/game/maps/ascent/ascent", "7eaecc1b-4337-bbf6-6ab9-04b8f06b3319"},
+            {"/game/maps/bonsai/bonsai", "d960549e-485c-e861-8d71-aa9d1aed12a2"},
+            {"/game/maps/canyon/canyon", "b529448b-4d60-346e-e89e-00a4c527a405"},
+            {"/game/maps/duality/duality", "2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba"},
+            {"/game/maps/foxtrot/foxtrot", "2fb9a4fd-47b8-4e7d-a969-74b4046ebd53"},
+            {"/game/maps/infinity/infinity", "224b0a95-48b9-f703-1bd8-67aca101a61f"},
+            {"/game/maps/jam/jam", "2fe4ed3a-450a-948b-6d6b-e89a78e680a9"},
+            {"/game/maps/juliett/juliett", "92584fbe-486a-b1b2-9faa-39b0f486b498"},
+            {"/game/maps/npev2/npev2", "1f10dab3-4294-3827-fa35-c2aa00213cf3"},
+            {"/game/maps/pitt/pitt", "fd267378-4d1d-484f-ff52-77821ed10dc2"},
+            {"/game/maps/plummet/plummet", "756da597-416b-c0f2-f47b-afbdf28670bc"},
+            {"/game/maps/port/port", "e2ad5c54-4114-a870-9641-8ea21279579a"},
+            {"/game/maps/poveglia/range", "ee613ee9-28b7-4beb-9666-08db13bb2244"},
+            {"/game/maps/povegliav2/rangev2", "5914d1e0-40c4-cfdd-6b88-eba06347686c"},
+            {"/game/maps/rook/rook", "1c18ab1f-420d-0d8b-71d0-77ad3c439115"},
+            {"/game/maps/triad/triad", "2bee0dc9-4ffe-519b-1cbd-7fbe763a6047"},
+            {"/game/maps/hurm/hurm_alley/hurm_alley", "690b3ed2-4dff-945b-8223-6da834e30d24"},
+            {"/game/maps/hurm/hurm_bowl/hurm_bowl", "12452a9d-48c3-0b02-e7eb-0381c3520404"},
+            {"/game/maps/hurm/hurm_helix/hurm_helix", "2c09d728-42d5-30d8-43dc-96a05cc7ee9d"},
+            {"/game/maps/hurm/hurm_hightide/hurm_hightide", "d6336a5a-428f-c591-98db-c8a291159134"},
+            {"/game/maps/hurm/hurm_yard/hurm_yard", "de28aa9b-4cbe-1003-320e-6cb3ec309557"},
+            {"/game/maps/duel/duel_1/skirmish_a", "a9009649-421f-d5d5-f80c-0cbe02c125bb"},
+            {"/game/maps/duel/duel_2/skirmish_b", "a38a3f9a-4042-844c-8970-a3ac2f7ce93d"},
+            {"/game/maps/duel/duel_3/skirmish_c", "a264de0f-4a04-9c78-c97a-a6b192ce6e86"},
+            {"/game/maps/duel/duel_platform/skirmish_d", "1c7555fc-4bc6-3b98-9674-789d47ef6c50"},
+            {"/game/maps/duel/duel_heady/skirmish_e", "4490f1d6-4818-bf5f-9b3a-9c9a8dbb52ed"}
+        };
+
+        public static string GetMapUuidByPath(string? mapPath)
+        {
+            if (string.IsNullOrEmpty(mapPath))
+                return string.Empty;
+
+            return MapUuidsByPath.TryGetValue(mapPath.ToLower(), out var uuid) ? uuid : string.Empty;
+        }
+
+        /// <summary>
         /// Safe lookup for map paths. Riot ships new maps and modes (Team Deathmatch arenas,
         /// new competitive maps) before Assist knows about them, so an unknown path must not throw.
         /// </summary>

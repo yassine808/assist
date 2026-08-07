@@ -202,19 +202,29 @@ public partial class RAccountCloudViewModel : ViewModelBase
         LoginCompletedCommand?.Execute("");
     }
 
+    private bool _loginHandled;
+
     private async void SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
     {
         var redirectUrl = CurrentContent.View.Source.ToString();
         Log.Information(redirectUrl);
         CurrentContent.View.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
         CurrentContent.View.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-        
-        if (redirectUrl.Contains("https://login.riotgames.com/oauth2-callback?"))
+
+        // Riot moved the account site onto its own OAuth client (accountodactyl-prod), which calls
+        // back to account.riotgames.com/oauth2/log-in instead of login.riotgames.com/oauth2-callback.
+        // The ssid cookie below is the real signal that login succeeded, so treat landing back on the
+        // account site as a completion point too - otherwise the user just sits on Account Management.
+        var landedAfterLogin = redirectUrl.Contains("https://login.riotgames.com/oauth2-callback?")
+                               || redirectUrl.StartsWith("https://account.riotgames.com/", StringComparison.OrdinalIgnoreCase);
+
+        if (landedAfterLogin && !_loginHandled)
         {
             var cookies = await GetCookies(this.CurrentContent.View);
             var valid = cookies.Find(_c => _c.Name == "ssid") != null;
             if (valid)
             {
+                _loginHandled = true; // SourceChanged fires repeatedly; only authenticate once.
                 CurrentContent.IsVisible = false;
 
                 var cc = new Dictionary<string, Cookie>();

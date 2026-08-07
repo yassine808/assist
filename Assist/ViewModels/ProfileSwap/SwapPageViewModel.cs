@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -16,6 +16,7 @@ using Serilog;
 using ValNet;
 using ValNet.Enums;
 using ValNet.Objects;
+using Assist.Helpers;
 
 namespace Assist.ViewModels.ProfileSwap;
 
@@ -69,7 +70,7 @@ public partial class SwapPageViewModel : ViewModelBase
         
         CurrentContent = new AccountPreviewStartupControl()
         {
-            Icon = $"https://cdn.assistval.com/playercards/{account.Personalization.PlayerCardId}_DisplayIcon.png",
+            Icon = AssistCdn.PlayerCardIcon(account.Personalization.PlayerCardId),
             AccountName = !string.IsNullOrEmpty(account.Personalization.AccountNickName)
                 ? account.Personalization.AccountNickName
                 : account.Personalization.RiotId,

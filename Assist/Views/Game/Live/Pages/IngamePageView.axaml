@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -244,7 +244,7 @@
                         HorizontalAlignment="Center"
                         Spacing="10">
                 <asyncImageLoader:AdvancedImage Stretch="UniformToFill"
-                                                Source="https://cdn.assistval.com/valorant/sprays/Outlaw_Spray.png"
+                                                Source="https://media.valorant-api.com/sprays/b9acb0d5-458f-14db-6a7c-829379727fbd/fulltransparenticon.png"
                                                 Width="250"
                                                 Height="250"
                                                 RenderOptions.BitmapInterpolationMode="MediumQuality"/>

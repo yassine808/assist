@@ -1,4 +1,5 @@
 ﻿using System;
+using Assist.Helpers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -277,8 +278,8 @@ public partial class IngamePageViewModel : ViewModelBase
             MapName = mapName.ToUpper();
             if (Match.MapID.Contains("poveglia", StringComparison.OrdinalIgnoreCase))
                 IsRange = true;
-            else if (!string.IsNullOrEmpty(mapName))
-                MapImage = $"https://cdn.assistval.com/maps/{mapName}_Featured.png";
+            else
+                MapImage = AssistCdn.MapFeatured(Match.MapID);
             
             
             

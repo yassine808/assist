@@ -1,4 +1,4 @@
-﻿<Styles xmlns="https://github.com/avaloniaui"
+<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:Assist.Controls.ProfileSwap"
         xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia"
@@ -8,7 +8,7 @@
                                            Height="180"
                                            PlayerName="TestForPlayer"
                                            PlayerIconImage="https://titles.trackercdn.com/valorant-api/playercards/68b0c8c2-4158-7b21-658d-b4ae86f137ce/displayicon.png"
-                                           PlayerRankImage="https://cdn.assistval.com/ranks/TX_CompetitiveTier_Large_0.png"
+                                           PlayerRankImage="https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/0/largeicon.png"
                                            />
     </Design.PreviewWith>
 

@@ -38,18 +38,23 @@ public partial class RAccountAddViewModel : ViewModelBase
         Titlebar.ViewModel.SettingsEnabled = false;
         NavigationContainer.ViewModel.ChangePage(AssistPage.UNKNOWN);
         CreateControls();
-        
-        _sequenceHistory.Add(nameof(RAccountMethodSelectionControl));
-        CurrentContent = _sequenceControls[nameof(RAccountMethodSelectionControl)];
+
+        // Riot Client login is the only method that still works: the username/password endpoint now
+        // requires a captcha ValNet cannot solve, and the web login returns a session scoped to
+        // accountodactyl-prod which Riot will not exchange for a Valorant token. Skip the method
+        // picker entirely and go straight to the client flow.
+        _sequenceHistory.Add(nameof(RAccountSecondaryClientLoginControl));
+        CurrentContent = _sequenceControls[nameof(RAccountSecondaryClientLoginControl)];
     }
     
     public RAccountAddViewModel(string username)
     {
         CreateControls();
         NavigationContainer.ViewModel.ChangePage(AssistPage.UNKNOWN);
-        var ctr = _sequenceControls[nameof(RAccountUsernameLoginFormControl)] as RAccountUsernameLoginFormControl;
-        ctr.UpdateUsernameFieldExternal(username);
-        CurrentContent = ctr;
+        // Username/password is no longer usable (see the default constructor), so a protocol launch
+        // carrying a username still has to go through the Riot Client flow.
+        _sequenceHistory.Add(nameof(RAccountSecondaryClientLoginControl));
+        CurrentContent = _sequenceControls[nameof(RAccountSecondaryClientLoginControl)];
     }
     
     public RAccountAddViewModel(bool skipInital)
