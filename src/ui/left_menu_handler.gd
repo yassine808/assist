@@ -71,9 +71,8 @@ func _ready() -> void:
 	if settings_btn and not settings_btn.pressed.is_connected(_on_settings_button_pressed):
 		settings_btn.pressed.connect(_on_settings_button_pressed)
 
-	var add_btn := _get_button(_add_button_panel)
-	if add_btn and not add_btn.pressed.is_connected(_on_add_profile_button_pressed):
-		add_btn.pressed.connect(_on_add_profile_button_pressed)
+	if _add_button_panel:
+		_add_button_panel.visible = false
 
 	select_home()
 

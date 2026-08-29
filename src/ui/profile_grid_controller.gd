@@ -9,6 +9,7 @@ extends GridContainer
 ## back on the main thread via call_deferred.
 
 signal edit_profile_requested(profile_data: Dictionary)
+signal add_profile_requested
 
 const PROFILE_BUTTON_SCENE: PackedScene = preload("res://scenes/components/profile_button.tscn")
 const DEFAULT_BG_PATH := "res://assets/backgrounds/default_bg.webp"
@@ -202,6 +203,7 @@ func _populate_profile_buttons() -> void:
 		if profile_data.get("profile_name") == _running_profile_name:
 			running_still_exists = true
 		_create_profile_button(profile_data, i)
+	_create_add_account_card(profiles.size())
 
 	# Safety net: the profile backing the running state was removed.
 	if not running_still_exists:
@@ -210,6 +212,30 @@ func _populate_profile_buttons() -> void:
 	if is_visible_in_tree():
 		call_deferred("play_cascade_entrance")
 
+func _create_add_account_card(slot_index: int) -> void:
+	var button := Button.new()
+	button.name = "add_riot_account"
+	button.position = get_slot_position(slot_index)
+	button.custom_minimum_size = card_size
+	button.size = card_size
+	button.tooltip_text = "Sign in to another Riot account"
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.10, 0.12, 0.92)
+	style.border_color = Color(1.0, 0.18, 0.25, 0.60)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	button.add_theme_stylebox_override("normal", style)
+	button.add_theme_font_size_override("font_size", 14)
+	button.text = "+\nAdd Riot account"
+	button.pressed.connect(func(): add_profile_requested.emit())
+	add_child(button)
+
+func launch_profile(profile_name: String) -> void:
+	for card in _cards:
+		if str(card.profile_data.get("profile_name", "")) == profile_name:
+			card.client_toggled.emit(card, true)
+			return
 
 func _create_profile_button(profile_data: Dictionary, slot_index: int) -> void:
 	var button: Control = PROFILE_BUTTON_SCENE.instantiate()
@@ -224,7 +250,8 @@ func _create_profile_button(profile_data: Dictionary, slot_index: int) -> void:
 	var label := button.find_child("profile_name", true, false)
 	if label and label is Label:
 		var has_custom_name: bool = profile_data.get("has_custom_name", true)
-		label.text = profile_data.get("profile_name", "") if has_custom_name else ""
+		var riot_id := str(profile_data.get("valorant_in_game_name", "")).strip_edges()
+		label.text = profile_data.get("profile_name", "") if has_custom_name else riot_id
 
 	var background := button.get_node_or_null("card/Panel/profile_bg")
 	if background:

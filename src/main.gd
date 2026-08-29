@@ -36,7 +36,6 @@ func _ready() -> void:
 	if left_menu_handler:
 		left_menu_handler.home_selected.connect(_show_home_view)
 		left_menu_handler.settings_selected.connect(_show_settings_view)
-		left_menu_handler.add_profile_selected.connect(_show_add_profile_view)
 
 	if add_menu:
 		if add_menu.has_method("set_profile_manager"):
@@ -59,6 +58,7 @@ func _ready() -> void:
 	if profile_grid:
 		profile_grid.set_dependencies(ProfileManager, riot_client_location)
 		profile_grid.edit_profile_requested.connect(_on_edit_profile_requested)
+		profile_grid.add_profile_requested.connect(_show_add_profile_view)
 
 	_show_home_view()
 	_play_startup_entrance()
