@@ -459,10 +459,14 @@ func _apply_valorant_display(p: Dictionary) -> void:
 
 	var data: Dictionary = p.get("valorant_data", {})
 	if data.is_empty():
+		# Never leave the rank area blank: explain whether a HenrikDev lookup is
+		# in progress or this account still needs its first VALORANT sign-in.
 		if _valorant_rank_label:
-			_valorant_rank_label.text = ""
+			_valorant_rank_label.visible = true
+			_valorant_rank_label.text = "Rank loading..." if not str(p.get("valorant_puuid", "")).is_empty() else "Rank unavailable"
 		if _valorant_stats_label:
-			_valorant_stats_label.text = ""
+			_valorant_stats_label.visible = true
+			_valorant_stats_label.text = "Fetching from HenrikDev" if not str(p.get("valorant_puuid", "")).is_empty() else "Launch VALORANT once to connect"
 		if _should_show_skeleton(p):
 			_show_skeleton()
 		else:

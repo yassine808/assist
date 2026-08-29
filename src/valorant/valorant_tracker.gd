@@ -49,6 +49,7 @@ const MIN_REQ_INTERVAL_MS := 2200
 ## renewals go through the same rate limiter, so bursts stay within HenrikDev's
 ## cap and the queue self-paces.
 const RENEW_INTERVAL_SEC := 60.0
+const REGION_PROBE_ORDER: Array[String] = ["na", "eu", "ap", "kr", "latam", "br"]
 
 var _last_request_ms := 0
 var _request_queue: Array[Dictionary] = []
@@ -174,7 +175,10 @@ func _on_tick() -> void:
 		stop()
 		return
 
-	if not _is_valorant_any_process_running():
+	# The Riot Client lockfile is enough to read the authenticated account's
+	# PUUID. Do not wait for VALORANT-Win64-Shipping.exe: that left newly
+	# saved Riot accounts permanently without a rank until a game was launched.
+	if _find_running_lockfile().is_empty():
 		return
 
 	_capture_once()
@@ -220,9 +224,10 @@ func _capture_once() -> void:
 		return
 	if stored_region.is_empty():
 		stored_region = _resolve_shard()
-	if not stored_region.is_empty():
-		_seed_identity(_active_profile, puuid, stored_region)
-		print("[Valorant/Tracker] Identidade semeada: puuid='%s' region='%s'." % [puuid, stored_region])
+	# Persist the PUUID even when the region is learned later; without this,
+	# the account could never be refreshed after the initial Riot sign-in.
+	_seed_identity(_active_profile, puuid, stored_region)
+	print("[Valorant/Tracker] Identidade semeada: puuid='%s' region='%s'." % [puuid, stored_region])
 
 	_capture_with_identity(_active_profile, puuid, stored_region)
 
@@ -235,7 +240,7 @@ func _seed_identity(profile_name: String, puuid: String, region: String) -> void
 		return
 	profile["valorant_puuid"] = puuid
 	profile["valorant_region"] = region
-	ProfileManager.update_valorant_data(profile_name, profile.get("valorant_data", {}), puuid, "")
+	ProfileManager.update_valorant_data(profile_name, profile.get("valorant_data", {}), puuid, "", region)
 
 
 ## Fetches rank/stats from HenrikDev for a known PUUID + region and stores it on
@@ -252,7 +257,8 @@ func _capture_with_identity(profile_name: String, puuid: String, region: String)
 		var profile := ProfileManager.get_profile(profile_name)
 		region = str(profile.get("valorant_region", "")) if not profile.is_empty() else ""
 	if region.is_empty():
-		print("[Valorant/Tracker] '%s': região desconhecida — não foi possível consultar o HenrikDev." % profile_name)
+		for candidate in REGION_PROBE_ORDER:
+			_enqueue_fetch(profile_name, puuid, candidate)
 		return
 
 	print("[Valorant/Tracker] Consultando HenrikDev (fila): region='%s' puuid='%s'." % [region, puuid])
@@ -287,8 +293,13 @@ func _flush_request_queue() -> void:
 	_last_request_ms = int(Time.get_ticks_msec())
 	if mmr.is_empty():
 		print("[Valorant/Tracker] MMR vazio retornado do HenrikDev.")
-	var data := _build_data(mmr)
 	var payload: Variant = mmr.get("data") if mmr.has("data") else {}
+	if not (payload is Dictionary):
+		print("[Valorant/Tracker] No MMR data for region '%s'." % str(job.get("region", "")))
+		if not _request_queue.is_empty():
+			_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
+		return
+	var data := _build_data(mmr)
 	var in_game_name := ""
 	if payload is Dictionary:
 		var account: Variant = (payload as Dictionary).get("account")
@@ -315,7 +326,7 @@ func _apply(profile_name: String, puuid: String, region: String, in_game_name: S
 		profile["valorant_region"] = region
 	profile["valorant_data"] = data
 
-	ProfileManager.update_valorant_data(profile_name, data, puuid, in_game_name)
+	ProfileManager.update_valorant_data(profile_name, data, puuid, in_game_name, region)
 	valorant_data_updated.emit(profile_name)
 	print("[Valorant/Tracker] Rank capturado para '%s': %s (%d RR)." % [profile_name, data.get(ValorantConstants.KEY_RANK_NAME, ""), data.get(ValorantConstants.KEY_RR, 0)])
 

@@ -301,7 +301,7 @@ func get_profile(profile_name: String) -> Dictionary:
 
 ## Stores VALORANT rank/MMR data on a profile (from ValorantTracker) and
 ## persists it. Emits `profiles_updated` on success. Returns true on success.
-func update_valorant_data(profile_name: String, data: Dictionary, puuid: String = "", in_game_name: String = "") -> bool:
+func update_valorant_data(profile_name: String, data: Dictionary, puuid: String = "", in_game_name: String = "", region: String = "") -> bool:
 	_profiles_lock.lock()
 	var profile := _find_profile_unsafe(profile_name)
 	if profile.is_empty():
@@ -316,6 +316,8 @@ func update_valorant_data(profile_name: String, data: Dictionary, puuid: String 
 		profile["valorant_puuid"] = puuid
 	if not in_game_name.is_empty():
 		profile["valorant_in_game_name"] = in_game_name
+	if not region.is_empty():
+		profile["valorant_region"] = region
 
 	if not _save_profiles_file():
 		_profiles_lock.unlock()
