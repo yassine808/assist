@@ -13,7 +13,12 @@ signal edit_profile_requested(profile_data: Dictionary)
 const PROFILE_BUTTON_SCENE: PackedScene = preload("res://scenes/components/profile_button.tscn")
 const DEFAULT_BG_PATH := "res://assets/backgrounds/default_bg.webp"
 const CLIENT_EXE := "RiotClientServices.exe"
-const LAUNCH_ARGS: Array[String] = ["--launch-product=league_of_legends", "--launch-patchline=live"]
+
+# Launch product values (see the "Launch" toggle in settings).
+const LAUNCH_PRODUCT_RIOT := "riot"       # Riot client only, no game auto-launch
+const LAUNCH_PRODUCT_VALORANT := "valorant" # Auto-launch VALORANT after the client
+const CONFIG_KEY_LAUNCH_PRODUCT := "LaunchProduct"
+const LAUNCH_ARGS_BASE: Array[String] = ["--launch-patchline=live"]
 
 @export var card_size: Vector2 = Vector2(181, 110)
 const HYSTERESIS_FACTOR := 0.20 # 15px deadband on 75px pitch to completely prevent jitter
@@ -528,6 +533,16 @@ func _on_profile_edit_requested(button: Control) -> void:
 
 #region Start/stop sequences
 
+## Builds the Riot Client launch arguments based on the saved "Launch" setting:
+## - LAUNCH_PRODUCT_RIOT -> client only (no --launch-product argument).
+## - LAUNCH_PRODUCT_VALORANT -> auto-launch VALORANT.
+func _build_launch_args() -> Array[String]:
+	var args: Array[String] = LAUNCH_ARGS_BASE.duplicate()
+	var product := str(ConfigManager.get_value(CONFIG_KEY_LAUNCH_PRODUCT, LAUNCH_PRODUCT_VALORANT))
+	args.insert(0, "--launch-product=" + product)
+	return args
+
+
 func _begin_start(button: Control) -> void:
 	# Validate everything before touching files or killing processes.
 	if riot_client_location.is_empty():
@@ -594,7 +609,7 @@ func _on_swap_finished(profile_name: String, executable_path: String, success: b
 
 	_update_progress_bar(_active_button, 75, true)
 
-	var launch_args: Array[String] = LAUNCH_ARGS.duplicate()
+	var launch_args: Array[String] = _build_launch_args()
 	if PresenceManager != null and PresenceManager.is_appear_offline_enabled():
 		if PresenceManager.start_proxy():
 			launch_args = PresenceManager.get_launch_args(launch_args)
