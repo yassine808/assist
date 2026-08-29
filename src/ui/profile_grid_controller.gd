@@ -78,6 +78,24 @@ func set_dependencies(pm: Node, client_location: String) -> void:
 	_populate_profile_buttons()
 	if not _running_profile_name.is_empty():
 		_start_settings_watchdog()
+	call_deferred("_refresh_valorant_on_startup")
+
+
+## Fetches the latest VALORANT rank/stats from HenrikDev for every profile that
+## already has a stored PUUID, so cards show current rank as soon as the app
+## opens — even when no VALORANT client is running. Profiles with no PUUID yet
+## simply skip (their rank seeds the first time their game runs).
+func _refresh_valorant_on_startup() -> void:
+	if ValorantTracker == null or not ValorantTracker.is_enabled():
+		return
+	for profile in profile_manager.get_profiles():
+		if not (profile is Dictionary):
+			continue
+		var profile_name := str((profile as Dictionary).get("profile_name", ""))
+		if profile_name.is_empty() or str((profile as Dictionary).get("valorant_puuid", "")).is_empty():
+			continue
+		ValorantTracker.refresh_profile(profile_name)
+	print("[ProfileGridController] Valorant rank refresh agendado para perfis conhecidos.")
 
 
 ## If a client was left running when the app last exited (or crashed) and the

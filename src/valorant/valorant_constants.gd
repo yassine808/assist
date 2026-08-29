@@ -1,17 +1,23 @@
 class_name ValorantConstants
 extends RefCounted
 
-## Constants for the VALORANT official local (in-game client) API integration.
+## Constants for VALORANT rank/stat integration via the public HenrikDev API.
 ##
-## VALORANT's rank/MMR data is served by the *running* VALORANT client over a
-## local HTTPS API on 127.0.0.1, exactly like League's LCU. This is the same
-## "official API" that Tracker.gg and overlay tools use: it needs no external
-## developer key because it authenticates with the game's own lockfile.
+## Unlike Riot's "pd"/RSO server-side endpoints (which require credentials only
+## obtainable from a running client, PLUS a fragile shard/region + client-version
+## dance), the HenrikDev API exposes rank/MMR for a PUUID over the public
+## internet with a single request. This lets the app show rank/stats **as soon
+## as it opens** from a stored PUUID, with no VALORANT client running.
 ##
-## The lockfile lives in the VALORANT *live* folder and is formatted like
-## League's: `riot:{pid}:{port}:{password}` (basic auth = `riot:<password>`).
+## The v3 by-puuid MMR endpoint returns everything in one payload:
+##   account{name,tag} -> in-game name
+##   current{tier,r rr,elo} -> current rank + RR
+##   peak{tier{name}} -> peak rank
+##   seasonal[] -> wins/games per act (for W/L)
+##
+## Auth: API key (HDEV-...) sent as `Authorization: Bearer HDEV-...`.
 
-const PROCESS_VALORANT_NAME := "VALORANT.exe"
+const PROCESS_VALORANT_NAMES: Array[String] = ["VALORANT-Win64-Shipping.exe", "VALORANT.exe"]
 
 ## All the places Riot's installer can register the VALORANT install directory.
 const REG_KEYS: Array[String] = [
@@ -33,35 +39,29 @@ const COMMON_INSTALL_DRIVES: Array[String] = ["D:", "C:", "E:", "F:", "G:"]
 const COMMON_INSTALL_PATH := "/Riot Games/VALORANT"
 
 ## How long to keep polling (and how often) while VALORANT is running.
+## (Used only by the live-capture watchdog path.)
 const POLL_INTERVAL_SEC := 10.0
 const MAX_POLL_ATTEMPTS := 12 # 12 * 10s = 120s of live capture
 
 ## curl connectivity + timing.
 const CURL_TIMEOUT_MS := 8000
 
-## Local API endpoints (hosted by the running client on 127.0.0.1, served with
-## lockfile basic auth `riot:<password>`).
-# Returns { subject (PUUID), accessToken, token (entitlement JWT), expiry }.
+## HenrikDev public API base + MMR v3 by-puuid path.
+const HENRIKDEV_BASE := "https://api.henrikdev.xyz"
+const HENRIKDEV_API_KEY := "HDEV-bf953a99-0510-46cf-92f9-04499e833277"
+# {region}, {platform}, {puuid} -> MMRV3Response
+const PATH_MMR_BY_PUUID := "/valorant/v3/by-puuid/mmr/%s/%s/%s"
+const PLATFORM := "pc"
+
+## Local API endpoint (hosted only by a *running* client on 127.0.0.1, served
+## with lockfile basic auth `riot:<password>`). Returns { subject (PUUID),
+## accessToken, token (entitlement JWT) }. Used only to seed a profile's PUUID
+## the first time the game runs; rank itself is fetched from HenrikDev.
 const PATH_TOKEN := "/entitlements/v1/token"
-# Returns the current clientVersion (e.g. "VALORANT 10.10.0.0").
-const PATH_VERSIONS := "/system/v1/products/valorant/versions"
-
-## Server-side "pd" API host, templated with the account's shard/region.
-## These endpoints require the 4 RSO headers below, NOT lockfile basic auth.
-const PD_PREFIX := "https://pd.%s.a.pvp.net"
-
-## Rank/MMR + display name paths (relative to PD_PREFIX, templated with PUUID).
-# /mmr/v1/players/{puuid}   -> QueueSkills -> SeasonalInfoBySeasonID
-# /name-service/v2/players/{puuid} -> { gameName, tagLine }
-const PATH_MMR := "/mmr/v1/players/%s"
-const PATH_NAME := "/name-service/v2/players/%s"
-
-## X-Riot-ClientPlatform header value. Fixed, well-known base64-encoded JSON that
-## identifies a PC/Windows Riot client (used by every VALORANT tracker/overlay).
-const X_RIOT_CLIENT_PLATFORM := "eyJwbGF0Zm9ybVR5cGUiOiJQQyIsInBsYXRmb3JtT1MiOiJXaW5kb3dzIiwicGxhdGZvcm1PU1ZlcnNpb24iOiIxMC4wLjE5MDQyLjEiLCJwbGF0Zm9ybUNoaXBzZXQiOiJVbmtub3duIn0="
 
 ## Relative path (from %LOCALAPPDATA%) to the ShooterGame log used to detect the
-## account's shard/region via: glz-{SHARD}-1.{region}.a.pvp.net
+## account's shard/region via: glz-{SHARD}-1.{region}.a.pvp.net. The region is
+## persisted on the profile so HenrikDev can be queried later without the game.
 const SHOOTER_LOG_REL := "VALORANT/Saved/Logs/ShooterGame.log"
 const SHARD_REGEX := "glz-([a-z0-9]+)-1\\.[a-z0-9]+\\.a\\.pvp\\.net"
 

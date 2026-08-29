@@ -1,26 +1,23 @@
 extends Node
 
-## VALORANT rank/stat tracker.
+## VALORANT rank/stat tracker backed by the public HenrikDev API.
 ##
-## VALORANT does NOT expose rank/MMR through the local in-client HTTP API. Rank
-## lives on the server-side `pd.{shard}.a.pvp.net` API, which requires RSO
-## credentials (access + entitlement tokens) that are themselves only obtainable
-## from the local client. So the capture is a two-stage flow, same as every
-## VALORANT tracker/overlay:
+## Rank/MMR is fetched over the internet from a PUUID via the HenrikDev v3
+## by-puuid MMR endpoint, which needs NO running client and NO RSO/entitlement
+## credentials. This is what makes "rank as soon as the app opens" possible:
 ##
-##   1. Read the lockfile (basic auth `riot:<password>`) and call the LOCAL
-##      `/entitlements/v1/token` endpoint to get the PUUID, access token and
-##      entitlement JWT.
-##   2. Resolve the account shard from ShooterGame.log and the client version,
-##      then call `pd.{shard}.a.pvp.net` (name-service + mmr) with the four RSO
-##      headers (Authorization, X-Riot-Entitlements-JWT, X-Riot-ClientPlatform,
-##      X-Riot-ClientVersion).
+##   * If a profile already has a stored PUUID (seeded the first time its game
+##     ran), `refresh_profile()` can fetch rank any time — including at boot.
+##   * A profile with no PUUID yet gets one seeded live, the first time its
+##     VALORANT client runs, from the local `/entitlements/v1/token` endpoint
+##     (lockfile basic auth `riot:<password>`), plus its region from the
+##     ShooterGame log.
 ##
-## Results are stored on the active profile so the card can show rank/RR/W-L.
+## So: live capture seeds the identity once; HenrikDev does all rank/stats from
+## then on, online or offline-of-the-game.
 ##
-## Blocking curl calls mirror LcuInjector (they are short, low-frequency, and
-## run inside the poll timer on the main thread), so no worker threads are
-## needed and results are applied synchronously.
+## Blocking curl calls mirror LcuInjector (short, low-frequency, main thread),
+## so no worker threads are needed and results apply synchronously.
 
 signal valorant_data_updated(profile_name: String)
 
@@ -72,6 +69,25 @@ func enable(value: bool) -> void:
 		stop()
 
 
+## Fetches rank/stats for a profile from HenrikDev using its stored PUUID, with
+## no VALORANT client running. No-op (safe) if the profile has no PUUID yet or
+## the feature is disabled. This is the entry point used to satisfy "show rank
+## as soon as the app opens".
+func refresh_profile(profile_name: String) -> void:
+	if not is_enabled():
+		return
+	var profile := ProfileManager.get_profile(profile_name)
+	if profile.is_empty():
+		return
+	var puuid := str(profile.get("valorant_puuid", ""))
+	if puuid.is_empty():
+		print("[Valorant/Tracker] '%s': sem PUUID salvo; rank será obtido na próxima vez que o VALORANT rodar." % profile_name)
+		return
+	var region := str(profile.get("valorant_region", ""))
+	_active_profile = profile_name
+	_capture_with_identity(puuid, region)
+
+
 ## Starts the capture watchdog for the active profile.
 func start() -> void:
 	if _active_profile.is_empty() or not is_enabled():
@@ -103,76 +119,126 @@ func _on_tick() -> void:
 		stop()
 		return
 
-	if not _is_process_running(ValorantConstants.PROCESS_VALORANT_NAME):
+	if not _is_valorant_any_process_running():
 		return
 
 	_capture_once()
 
 
+## Live capture: if we already have a stored PUUID for the active profile we can
+## fetch rank immediately; otherwise we seed the PUUID/name/region from the
+## running client, then fetch.
 func _capture_once() -> void:
+	var profile := ProfileManager.get_profile(_active_profile)
+	var stored_puuid := str(profile.get("valorant_puuid", "")) if not profile.is_empty() else ""
+	var stored_region := str(profile.get("valorant_region", "")) if not profile.is_empty() else ""
+
+	# Fast path: identity already known -> fetch rank straight from HenrikDev.
+	if not stored_puuid.is_empty():
+		_capture_with_identity(stored_puuid, stored_region)
+		return
+
 	var lockfile := _valorant_dir
 	if lockfile.is_empty():
 		lockfile = _find_valorant_dir()
 	if lockfile.is_empty():
+		print("[Valorant/Tracker] Nenhum diretório de instalação do VALORANT encontrado.")
 		return
 	lockfile = lockfile.path_join(ValorantConstants.LIVE_DIR_NAME).path_join(ValorantConstants.LOCKFILE_NAME)
 	if not FileAccess.file_exists(lockfile):
+		print("[Valorant/Tracker] Lockfile não encontrado em: ", lockfile)
 		return
 
 	var parts := FileAccess.get_file_as_string(lockfile).strip_edges().split(":")
 	# Format: riot:{pid}:{port}:{password}
 	if parts.size() < 4 or not parts[0].begins_with("riot"):
+		print("[Valorant/Tracker] Lockfile em formato inesperado: ", parts[0])
 		return
-	var pid := int(parts[1])
 	var port := int(parts[2])
 	var token := parts[3]
-	if pid <= 0 or port <= 0 or token.is_empty():
+	if port <= 0 or token.is_empty():
+		print("[Valorant/Tracker] Lockfile com porta/token inválidos.")
 		return
 
-	# 1) Pull RSO tokens + PUUID from the LOCAL entitlements endpoint. This is
-	#    the only local endpoint that yields the server-side credentials needed
-	#    to query rank/MMR, and it works with lockfile basic auth.
+	# Seed the account's PUUID (and region) from the running client.
 	var session := _fetch_local_session(port, token)
 	if session.is_empty():
+		print("[Valorant/Tracker] Falha ao obter sessão/entitlements local (porta %d)." % port)
 		return
 	var puuid: String = str(session.get("subject", ""))
-	var access_token: String = str(session.get("access_token", ""))
-	var entitlement_token: String = str(session.get("entitlement_token", ""))
-	if puuid.is_empty() or access_token.is_empty() or entitlement_token.is_empty():
+	if puuid.is_empty():
+		print("[Valorant/Tracker] Sessão local sem PUUID completo.")
 		return
+	if stored_region.is_empty():
+		stored_region = _resolve_shard()
+	if not stored_region.is_empty():
+		_seed_identity(_active_profile, puuid, stored_region)
+		print("[Valorant/Tracker] Identidade semeada: puuid='%s' region='%s'." % [puuid, stored_region])
 
-	# 2) Resolve the shard/region and client version required by the "pd" API.
-	var shard := _resolve_shard()
-	var client_version := _fetch_client_version(port, token)
-
-	var name_and_tag := ""
-	var mmr: Dictionary = {}
-	if not shard.is_empty():
-		name_and_tag = _fetch_name_pd(shard, puuid, access_token, entitlement_token, client_version)
-		mmr = _fetch_mmr_pd(shard, puuid, access_token, entitlement_token, client_version)
-
-	var data := _build_data(mmr)
-	_apply(pid, _active_profile, puuid, name_and_tag, data)
+	_capture_with_identity(puuid, stored_region)
 
 
-func _apply(pid: int, profile_name: String, puuid: String, name_and_tag: String, data: Dictionary) -> void:
+## Persists the account identity discovered from a live session, so future
+## fetches (including at app boot) work without the game running.
+func _seed_identity(profile_name: String, puuid: String, region: String) -> void:
 	var profile := ProfileManager.get_profile(profile_name)
 	if profile.is_empty():
 		return
+	profile["valorant_puuid"] = puuid
+	profile["valorant_region"] = region
+	ProfileManager.update_valorant_data(profile_name, profile.get("valorant_data", {}), puuid, "")
+
+
+## Fetches rank/stats from HenrikDev for a known PUUID + region and stores it on
+## the profile (`_active_profile`). The in-game name is recovered from the same
+## payload (`account.name#tag`), so it needs no separate service call. Empty
+## region falls back to the profile's stored value; skipped if still empty.
+func _capture_with_identity(puuid: String, region: String) -> void:
+	if puuid.is_empty():
+		return
+	if region.is_empty():
+		var profile := ProfileManager.get_profile(_active_profile)
+		region = str(profile.get("valorant_region", "")) if not profile.is_empty() else ""
+	if region.is_empty():
+		print("[Valorant/Tracker] '%s': região desconhecida — não foi possível consultar o HenrikDev." % _active_profile)
+		return
+
+	print("[Valorant/Tracker] Consultando HenrikDev: region='%s' puuid='%s'." % [region, puuid])
+	var mmr := _fetch_mmr_henrikdev(region, puuid)
+	if mmr.is_empty():
+		print("[Valorant/Tracker] MMR vazio retornado do HenrikDev.")
+	var data := _build_data(mmr)
+	var payload: Variant = mmr.get("data") if mmr.has("data") else {} 
+	var in_game_name := ""
+	if payload is Dictionary:
+		var account: Variant = (payload as Dictionary).get("account")
+		if account is Dictionary:
+			var game_name := str((account as Dictionary).get("name", ""))
+			var tag := str((account as Dictionary).get("tag", ""))
+			if not game_name.is_empty():
+				in_game_name = game_name + "#" + tag
+	_apply(puuid, region, in_game_name, data)
+
+
+func _apply(puuid: String, region: String, in_game_name: String, data: Dictionary) -> void:
+	var profile := ProfileManager.get_profile(_active_profile)
+	if profile.is_empty():
+		return
+	var profile_name: String = _active_profile
 
 	if not puuid.is_empty():
 		profile["valorant_puuid"] = puuid
-	if not name_and_tag.is_empty():
-		profile["valorant_in_game_name"] = name_and_tag
+	if not region.is_empty():
+		profile["valorant_region"] = region
 	profile["valorant_data"] = data
-	profile["last_valorant_use"] = int(data.get(ValorantConstants.KEY_LAST_PLAYED_MS, 0))
 
-	ProfileManager.update_valorant_data(profile_name, data, puuid, name_and_tag)
+	ProfileManager.update_valorant_data(profile_name, data, puuid, in_game_name)
 	valorant_data_updated.emit(profile_name)
 	print("[Valorant/Tracker] Rank capturado para '%s': %s (%d RR)." % [profile_name, data.get(ValorantConstants.KEY_RANK_NAME, ""), data.get(ValorantConstants.KEY_RR, 0)])
 
 
-## Builds the compact rank/stats dictionary from the raw MMR response.
+## Builds the compact rank/stats dictionary from the HenrikDev v3 MMRV3Response
+## payload (`data` = mmr["data"]). Tolerates missing/partial fields.
 func _build_data(mmr: Dictionary) -> Dictionary:
 	var data := {
 		ValorantConstants.KEY_TIER: 0,
@@ -182,75 +248,53 @@ func _build_data(mmr: Dictionary) -> Dictionary:
 		ValorantConstants.KEY_WINS: 0,
 		ValorantConstants.KEY_LOSSES: 0,
 		ValorantConstants.KEY_GAMES: 0,
-		ValorantConstants.KEY_LAST_PLAYED_MS: 0,
+		# NOTE: KEY_LAST_PLAYED_MS is intentionally omitted — HenrikDev's MMR
+		# payload carries no last-match timestamp, so a 0 here would wipe the
+		# profile's tracked "last used" time. Leave it out; ProfileManager
+		# preserves the prior value.
 		ValorantConstants.KEY_LAST_UPDATED_MS: int(Time.get_unix_time_from_system()) * 1000,
 		ValorantConstants.KEY_ACT_ID: "",
 	}
 
 	var tier := 0
+	var tier_name := ""
 	var rr := 0
 	var wins := 0
-	var losses := 0
 	var games := 0
-	var last_played := 0
+	var peak_name := ""
 	var act_id := ""
 
-	var update: Dictionary = mmr.get("LatestCompetitiveUpdate", {})
-	if update is Dictionary:
-		last_played = int(update.get("MatchStartTime", 0))
+	var payload: Variant = mmr.get("data")
+	if payload is Dictionary:
+		var current: Variant = (payload as Dictionary).get("current")
+		if current is Dictionary:
+			var current_dict: Dictionary = current
+			tier = int(current_dict.get("tier", {}).get("id", 0)) if (current_dict.get("tier") is Dictionary) else 0
+			tier_name = str(current_dict.get("tier", {}).get("name", "")) if (current_dict.get("tier") is Dictionary) else ""
+			rr = int(current_dict.get("rr", 0))
+			wins = int(current_dict.get("wins", 0))
+			games = int(current_dict.get("games_played", 0))
 
-	# Representative current act = the season with the most ranked games.
-	var best := {}
-	var best_games := -1
-	var queue_skills: Dictionary = mmr.get("QueueSkills", {})
-	for queue_key: String in queue_skills.keys():
-		var queue: Dictionary = queue_skills[queue_key]
-		if not (queue is Dictionary):
-			continue
-		var seasonal: Dictionary = queue.get("SeasonalInfoBySeasonID", {})
-		if not (seasonal is Dictionary):
-			continue
-		for season_id: String in seasonal.keys():
-			var info: Dictionary = seasonal[season_id]
-			if not (info is Dictionary):
-				continue
-			var season_games := int(info.get("NumberOfGames", 0))
-			if season_games > best_games:
-				best_games = season_games
-				best = info
-				act_id = season_id
+		var peak: Variant = (payload as Dictionary).get("peak")
+		if peak is Dictionary and (peak as Dictionary).get("tier") is Dictionary:
+			peak_name = str((peak as Dictionary).get("tier", {}).get("name", ""))
 
-	if not best.is_empty():
-		tier = int(best.get("CompetitiveTier", 0))
-		rr = int(best.get("RankedRating", 0))
-		wins = int(best.get("NumberOfWins", 0))
-		losses = maxi(0, best_games - wins)
+		var seasonal: Variant = (payload as Dictionary).get("seasonal")
+		if seasonal is Array and (seasonal as Array).size() > 0 and wins == 0 and games == 0:
+			var latest: Dictionary = (seasonal as Array)[0]
+			wins = int(latest.get("wins", 0))
+			games = int(latest.get("games", 0))
+			act_id = str(latest.get("season", ""))
 
-	# Peak rank = highest tier across all seasons of the competitive queue.
-	var peak_tier := tier
-	for queue_key: String in queue_skills.keys():
-		var queue: Dictionary = queue_skills[queue_key]
-		if not (queue is Dictionary):
-			continue
-		var seasonal: Dictionary = queue.get("SeasonalInfoBySeasonID", {})
-		if not (seasonal is Dictionary):
-			continue
-		for season_id: String in seasonal.keys():
-			var info: Dictionary = seasonal[season_id]
-			if not (info is Dictionary):
-				continue
-			var t := int(info.get("CompetitiveTier", 0))
-			if t > peak_tier:
-				peak_tier = t
-
+	# Rank display: prefer the concrete name the API returned; fall back to the
+	# numeric-tier mapping (covers "Unranked"/empty cases).
 	data[ValorantConstants.KEY_TIER] = tier
-	data[ValorantConstants.KEY_RANK_NAME] = ValorantConstants.rank_name_from_tier(tier)
+	data[ValorantConstants.KEY_RANK_NAME] = tier_name if not tier_name.is_empty() else ValorantConstants.rank_name_from_tier(tier)
 	data[ValorantConstants.KEY_RR] = rr
 	data[ValorantConstants.KEY_WINS] = wins
-	data[ValorantConstants.KEY_LOSSES] = losses
-	data[ValorantConstants.KEY_GAMES] = games
-	data[ValorantConstants.KEY_LAST_PLAYED_MS] = last_played
-	data[ValorantConstants.KEY_PEAK_RANK] = ValorantConstants.rank_name_from_tier(peak_tier)
+	data[ValorantConstants.KEY_LOSSES] = maxi(0, games - wins)
+	data[ValorantConstants.KEY_GAMES] = maxi(0, games)
+	data[ValorantConstants.KEY_PEAK_RANK] = peak_name
 	data[ValorantConstants.KEY_ACT_ID] = act_id
 
 	return data
@@ -298,57 +342,21 @@ func _resolve_shard() -> String:
 	return ""
 
 
-## Fetches the current client version needed by the X-Riot-ClientVersion header
-## from the local `/system/v1/products/valorant/versions` endpoint.
-func _fetch_client_version(port: int, token: String) -> String:
-	var auth := "riot:%s" % token
-	var url := "https://127.0.0.1:%d%s" % [port, ValorantConstants.PATH_VERSIONS]
-	var output: Array = []
-	var exit_code := OS.execute("curl.exe", ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000), "-u", auth, url], output, true, false)
-	if exit_code != 0 or output.is_empty():
-		return ""
-	var json: Variant = JSON.parse_string(str(output[0]))
-	if json is Dictionary:
-		return str((json as Dictionary).get("clientVersion", ""))
-	return ""
-
-
-## Builds the curl argument list for the server-side "pd" API with RSO headers.
-func _pd_curl_args(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String, path: String) -> Array[String]:
-	var url := (ValorantConstants.PD_PREFIX % shard) + (path % puuid)
-	var args: Array[String] = ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000)]
+## Fetches rank/MMR + name/tag for a PUUID from the public HenrikDev API.
+## Returns `mmr` with `{"data": {...}}` (v3 MMRV3Response) or {} on failure.
+func _fetch_mmr_henrikdev(region: String, puuid: String) -> Dictionary:
+	var path := ValorantConstants.PATH_MMR_BY_PUUID % [region, ValorantConstants.PLATFORM, puuid]
+	var url := ValorantConstants.HENRIKDEV_BASE + path
+	var args: Array[String] = ["-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000)]
+	# HenrikDev expects the raw key as the Authorization value (NO "Bearer "
+	# prefix). The prefix causes a 401 — verified live against the real API.
 	args.append("-H")
-	args.append("Authorization: Bearer " + access_token)
+	args.append("Authorization: " + ValorantConstants.HENRIKDEV_API_KEY)
 	args.append("-H")
-	args.append("X-Riot-Entitlements-JWT: " + entitlement_token)
-	args.append("-H")
-	args.append("X-Riot-ClientPlatform: " + ValorantConstants.X_RIOT_CLIENT_PLATFORM)
-	if not client_version.is_empty():
-		args.append("-H")
-		args.append("X-Riot-ClientVersion: " + client_version)
+	args.append("User-Agent: RiotSwitcher/1.0")
 	args.append(url)
-	return args
-
-
-## Fetches the display name + tag for a PUUID from the server-side pd API.
-func _fetch_name_pd(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String) -> String:
 	var output: Array = []
-	var exit_code := OS.execute("curl.exe", _pd_curl_args(shard, puuid, access_token, entitlement_token, client_version, ValorantConstants.PATH_NAME), output, true, false)
-	if exit_code != 0 or output.is_empty():
-		return ""
-	var json: Variant = JSON.parse_string(str(output[0]))
-	if json is Dictionary:
-		var game_name := str((json as Dictionary).get("gameName", ""))
-		var tag := str((json as Dictionary).get("tagLine", ""))
-		if not game_name.is_empty():
-			return game_name + "#" + tag
-	return ""
-
-
-## Fetches the MMR/rank payload for a PUUID from the server-side pd API.
-func _fetch_mmr_pd(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String) -> Dictionary:
-	var output: Array = []
-	var exit_code := OS.execute("curl.exe", _pd_curl_args(shard, puuid, access_token, entitlement_token, client_version, ValorantConstants.PATH_MMR), output, true, false)
+	var exit_code := OS.execute("curl.exe", args, output, true, false)
 	if exit_code != 0 or output.is_empty():
 		return {}
 	var json: Variant = JSON.parse_string(str(output[0]))
@@ -436,6 +444,13 @@ func _valorant_dir_from_metadata_yaml() -> String:
 				if DirAccess.dir_exists_absolute(path):
 					return path
 	return ""
+
+
+func _is_valorant_any_process_running() -> bool:
+	for process_name in ValorantConstants.PROCESS_VALORANT_NAMES:
+		if _is_process_running(process_name):
+			return true
+	return false
 
 
 func _is_process_running(process_name: String) -> bool:

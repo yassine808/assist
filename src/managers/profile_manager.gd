@@ -352,7 +352,8 @@ func update_profile(
 	new_background_path: String = "",
 	rename_directory: bool = true,
 	has_custom_name: Variant = null,
-	description: String = ""
+	description: String = "",
+	valorant_puuid: String = ""
 ) -> bool:
 	var trimmed_new_name := new_name.strip_edges()
 	if trimmed_new_name.is_empty():
@@ -377,6 +378,7 @@ func update_profile(
 	var old_bg_path: String = profile.get("custom_background_image", "")
 	var old_has_custom: Variant = profile.get("has_custom_name", true)
 	var old_description: String = profile.get("description", "")
+	var old_valorant_puuid: String = profile.get("valorant_puuid", "")
 	var dir_renamed := false
 
 	# 1. Rename directory on disk if requested and name changed
@@ -398,6 +400,8 @@ func update_profile(
 	if has_custom_name != null:
 		profile["has_custom_name"] = bool(has_custom_name)
 	profile["description"] = description.strip_edges()
+	if not valorant_puuid.is_empty():
+		profile["valorant_puuid"] = valorant_puuid.strip_edges()
 
 	# 3. Persist profiles_data.json — roll everything back on failure.
 	if not _save_profiles_file():
@@ -406,6 +410,8 @@ func update_profile(
 		profile["custom_background_image"] = old_bg_path
 		profile["has_custom_name"] = old_has_custom
 		profile["description"] = old_description
+		if not valorant_puuid.is_empty():
+			profile["valorant_puuid"] = old_valorant_puuid
 		if dir_renamed:
 			_rename_profile_directory(target_dir_name, old_dir_name)
 		_profiles_lock.unlock()
