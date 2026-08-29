@@ -433,13 +433,17 @@ func _resolve_shard() -> String:
 ## Fetches rank/MMR + name/tag for a PUUID from the public HenrikDev API.
 ## Returns `mmr` with `{"data": {...}}` (v3 MMRV3Response) or {} on failure.
 func _fetch_mmr_henrikdev(region: String, puuid: String) -> Dictionary:
+	var api_key := ValorantConstants.api_key()
+	if api_key.is_empty():
+		print("[Valorant/Tracker] HENRIKDEV_API_KEY não definida em .env — consulta ignorada.")
+		return {}
 	var path := ValorantConstants.PATH_MMR_BY_PUUID % [region, ValorantConstants.PLATFORM, puuid]
 	var url := ValorantConstants.HENRIKDEV_BASE + path
 	var args: Array[String] = ["-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000)]
 	# HenrikDev expects the raw key as the Authorization value (NO "Bearer "
 	# prefix). The prefix causes a 401 — verified live against the real API.
 	args.append("-H")
-	args.append("Authorization: " + ValorantConstants.api_key())
+	args.append("Authorization: " + api_key)
 	args.append("-H")
 	args.append("User-Agent: RiotSwitcher/1.0")
 	args.append(url)

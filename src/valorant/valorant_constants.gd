@@ -48,20 +48,20 @@ const CURL_TIMEOUT_MS := 8000
 
 ## HenrikDev public API base + MMR v3 by-puuid path.
 const HENRIKDEV_BASE := "https://api.henrikdev.xyz"
-const HENRIKDEV_API_KEY_DEFAULT := "HDEV-bf953a99-0510-46cf-92f9-04499e833277"
 # {region}, {platform}, {puuid} -> MMRV3Response
 const PATH_MMR_BY_PUUID := "/valorant/v3/by-puuid/mmr/%s/%s/%s"
 const PLATFORM := "pc"
 
 ## Local `.env` file, looked up next to the executable (project root in the
-## editor, alongside the binary in packaged builds). Lets owners supply their
-## own HenrikDev API key without editing source. Falls back to the default key.
+## editor, alongside the binary in packaged builds). Ownrs supply their own
+## HenrikDev API key here — it is never hardcoded in source.
 const ENV_FILENAME := ".env"
 const ENV_KEY_HENRIKDEV := "HENRIKDEV_API_KEY"
 
 
-## Returns the HenrikDev API key. `res://.env` takes precedence over the built-in
-## default so each deployment can ship its own key without a code change.
+## Returns the HenrikDev API key from `res://.env`. Returns "" if the key is
+## missing so the caller can log and skip the request instead of sending a
+## hardcoded credential.
 static func api_key() -> String:
 	var env_path := ProjectSettings.globalize_path("res://" + ENV_FILENAME)
 	if FileAccess.file_exists(env_path):
@@ -77,7 +77,7 @@ static func api_key() -> String:
 					if not value.is_empty():
 						return value.trim_prefix("\"").trim_suffix("\"").strip_edges()
 			f.close()
-	return HENRIKDEV_API_KEY_DEFAULT
+	return ""
 
 ## Local API endpoint (hosted only by a *running* client on 127.0.0.1, served
 ## with lockfile basic auth `riot:<password>`). Returns { subject (PUUID),
