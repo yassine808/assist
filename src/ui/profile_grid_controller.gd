@@ -215,6 +215,8 @@ func _create_profile_button(profile_data: Dictionary, slot_index: int) -> void:
 	var button: Control = PROFILE_BUTTON_SCENE.instantiate()
 	button.profile_data = profile_data
 	button.name = "profile_" + profile_data.get("directory_name", "unknown")
+	if button.has_method("update_valorant_from_profile"):
+		button.update_valorant_from_profile(profile_data)
 	button.position = get_slot_position(slot_index)
 	button.custom_minimum_size = card_size
 	button.size = card_size
