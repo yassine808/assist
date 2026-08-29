@@ -10,8 +10,9 @@ extends Node
 ##     ran), `refresh_profile()` can fetch rank any time — including at boot.
 ##   * A profile with no PUUID yet gets one seeded live, the first time its
 ##     VALORANT client runs, from the local `/entitlements/v1/token` endpoint
-##     (lockfile basic auth `riot:<password>`), plus its region from the
-##     ShooterGame log.
+##     (basic auth `riot:<password>` from the running Riot Client's lockfile —
+##     located under `%LOCALAPPDATA%\Riot Games\Riot Client\Config\`), plus its
+##     region from the ShooterGame log.
 ##
 ## So: live capture seeds the identity once; HenrikDev does all rank/stats from
 ## then on, online or offline-of-the-game.
@@ -192,21 +193,15 @@ func _capture_once() -> void:
 		_capture_with_identity(_active_profile, stored_puuid, stored_region)
 		return
 
-	var lockfile := _valorant_dir
+	var lockfile := _find_running_lockfile()
 	if lockfile.is_empty():
-		lockfile = _find_valorant_dir()
-	if lockfile.is_empty():
-		print("[Valorant/Tracker] Nenhum diretório de instalação do VALORANT encontrado.")
-		return
-	lockfile = lockfile.path_join(ValorantConstants.LIVE_DIR_NAME).path_join(ValorantConstants.LOCKFILE_NAME)
-	if not FileAccess.file_exists(lockfile):
-		print("[Valorant/Tracker] Lockfile não encontrado em: ", lockfile)
+		print("[Valorant/Tracker] Lockfile do Riot Client não encontrado (client em execução?).")
 		return
 
 	var parts := FileAccess.get_file_as_string(lockfile).strip_edges().split(":")
-	# Format: riot:{pid}:{port}:{password}
-	if parts.size() < 4 or not parts[0].begins_with("riot"):
-		print("[Valorant/Tracker] Lockfile em formato inesperado: ", parts[0])
+	# Format (Riot Client): "Riot Client:{pid}:{port}:{password}:{protocol}"
+	if parts.size() < 5:
+		print("[Valorant/Tracker] Lockfile em formato inesperado.")
 		return
 	var port := int(parts[2])
 	var token := parts[3]
@@ -457,25 +452,71 @@ func _fetch_mmr_henrikdev(region: String, puuid: String) -> Dictionary:
 	return {}
 
 
-func _find_valorant_dir() -> String:
-	var from_registry := _valorant_dir_from_registry()
-	if not from_registry.is_empty():
-		return from_registry
+## Locates the lockfile of the **running Riot Client**, which is the one that
+## serves the local API (`/entitlements/v1/token`) for the VALORANT session.
+##
+## VALORANT does **not** write a usable lockfile under `<install>/live/`; the
+## credentials live in the Riot Client config dir. Locations are checked in
+## order of reliability (first match wins):
+##   1. %LOCALAPPDATA%/Riot Games/Riot Client/Config/lockfile   (verified live)
+##   2. <RiotClientLocation>/lockfile                            (legacy install dir)
+##   3. <VALORANT root>/live/lockfile                            (legacy fallback)
+func _find_running_lockfile() -> String:
+	const REL := "Riot Games/Riot Client/Config/lockfile"
+	var local := OS.get_environment("LOCALAPPDATA")
+	if not local.is_empty():
+		var candidate := local.path_join(REL)
+		if FileAccess.file_exists(candidate):
+			return candidate
 
-	var from_installs := _valorant_dir_from_installs_json()
-	if not from_installs.is_empty():
-		return from_installs
+	var rc_dir: String = ConfigManager.get_value("RiotClientLocation", "")
+	if not rc_dir.is_empty():
+		var candidate := rc_dir.path_join(ValorantConstants.LOCKFILE_NAME)
+		if FileAccess.file_exists(candidate):
+			return candidate
 
-	var from_metadata := _valorant_dir_from_metadata_yaml()
-	if not from_metadata.is_empty():
-		return from_metadata
-
-	for drive: String in ValorantConstants.COMMON_INSTALL_DRIVES:
-		var candidate := drive + ValorantConstants.COMMON_INSTALL_PATH
-		if DirAccess.dir_exists_absolute(candidate):
+	var val_dir := _find_valorant_dir()
+	if not val_dir.is_empty():
+		var candidate := val_dir.path_join(ValorantConstants.LIVE_DIR_NAME).path_join(ValorantConstants.LOCKFILE_NAME)
+		if FileAccess.file_exists(candidate):
 			return candidate
 
 	return ""
+
+
+## Resolves the VALORANT **install root** (e.g. `C:/Riot Games/VALORANT`) used
+## only for informational logging and the legacy lockfile fallback.
+##
+## Detection sources are inconsistent about whether they already include the
+## trailing `live` component: the registry InstallLocation, RiotClientInstalls.json
+## and the metadata product_settings.yaml all return `.../VALORANT/live`, while the
+## COMMON_INSTALL_DRIVES fallback returns `.../VALORANT`. Every source is
+## normalized here to the shared root (otherwise the `live` would be doubled).
+func _find_valorant_dir() -> String:
+	var dir := ""
+	var from_registry := _valorant_dir_from_registry()
+	if not from_registry.is_empty():
+		dir = from_registry
+
+	if dir.is_empty():
+		dir = _valorant_dir_from_installs_json()
+	if dir.is_empty():
+		dir = _valorant_dir_from_metadata_yaml()
+
+	if dir.is_empty():
+		for drive: String in ValorantConstants.COMMON_INSTALL_DRIVES:
+			var candidate := drive + ValorantConstants.COMMON_INSTALL_PATH
+			if DirAccess.dir_exists_absolute(candidate):
+				dir = candidate
+				break
+
+	if dir.is_empty():
+		return ""
+
+	var normalized := dir.trim_suffix("/").trim_suffix("\\")
+	if normalized.to_lower().ends_with("/live"):
+		normalized = normalized.substr(0, normalized.length() - "/live".length()).trim_suffix("/").trim_suffix("\\")
+	return normalized
 
 
 func _valorant_dir_from_registry() -> String:
