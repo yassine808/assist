@@ -72,6 +72,8 @@ func set_dependencies(pm: Node, client_location: String) -> void:
 		return
 	if not profile_manager.profiles_updated.is_connected(_populate_profile_buttons):
 		profile_manager.profiles_updated.connect(_populate_profile_buttons)
+	if ValorantTracker and not ValorantTracker.valorant_data_updated.is_connected(_on_valorant_data_updated):
+		ValorantTracker.valorant_data_updated.connect(_on_valorant_data_updated)
 	_adopt_running_profile_from_config()
 	_populate_profile_buttons()
 	if not _running_profile_name.is_empty():
@@ -600,6 +602,8 @@ func _on_swap_finished(profile_name: String, executable_path: String, success: b
 	ConfigManager.set_value_and_save(CONFIG_KEY_LAST_RUNNING, profile_name)
 	_update_progress_bar(_active_button, 100, false)
 	print("ProfileGridController: Profile '%s' launched (PID %d)." % [profile_name, pid])
+	if ValorantTracker != null:
+		ValorantTracker.set_active_profile(profile_name)
 	_start_settings_watchdog()
 
 	# Trigger real-time LCU API Settings Injection for Secondary Profiles
@@ -622,6 +626,8 @@ func _begin_stop(button: Control) -> void:
 		PresenceManager.stop_proxy()
 	if _lcu_injector:
 		_lcu_injector.stop()
+	if ValorantTracker != null:
+		ValorantTracker.set_active_profile("")
 	_worker = Thread.new()
 	_worker.start(_session_save_worker.bind(button.profile_name))
 
@@ -656,6 +662,16 @@ func _on_save_finished(success: bool) -> void:
 #endregion
 
 #region Helpers
+
+## Fired by ValorantTracker when fresh rank/stats are captured for a profile.
+## Updates the matching card's hover display without rebuilding the whole grid.
+func _on_valorant_data_updated(profile_name: String) -> void:
+	var fresh: Dictionary = profile_manager.get_profile(profile_name)
+	for card in _cards:
+		if is_instance_valid(card) and card.has_method("update_valorant_from_profile") and card.profile_name == profile_name:
+			card.update_valorant_from_profile(fresh)
+			return
+
 
 func _fail_start() -> void:
 	_stop_settings_watchdog()

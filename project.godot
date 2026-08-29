@@ -29,6 +29,7 @@ Constants="*res://src/utils/constants.gd"
 ConfigManager="*res://src/managers/config_manager.gd"
 ProfileManager="*res://src/managers/profile_manager.gd"
 PresenceManager="*res://src/presence/presence_manager.gd"
+ValorantTracker="*res://src/valorant/valorant_tracker.gd"
 
 [display]
 

@@ -299,6 +299,33 @@ func get_profile(profile_name: String) -> Dictionary:
 	return result
 
 
+## Stores VALORANT rank/MMR data on a profile (from ValorantTracker) and
+## persists it. Emits `profiles_updated` on success. Returns true on success.
+func update_valorant_data(profile_name: String, data: Dictionary, puuid: String = "", in_game_name: String = "") -> bool:
+	_profiles_lock.lock()
+	var profile := _find_profile_unsafe(profile_name)
+	if profile.is_empty():
+		_profiles_lock.unlock()
+		printerr("ProfileManager: Profile '%s' not found for VALORANT data update." % profile_name)
+		return false
+
+	if not data.is_empty():
+		profile["valorant_data"] = data
+		profile["last_valorant_use"] = int(data.get(ValorantConstants.KEY_LAST_PLAYED_MS, profile.get("last_valorant_use", 0)))
+	if not puuid.is_empty():
+		profile["valorant_puuid"] = puuid
+	if not in_game_name.is_empty():
+		profile["valorant_in_game_name"] = in_game_name
+
+	if not _save_profiles_file():
+		_profiles_lock.unlock()
+		printerr("ProfileManager: Failed to save profiles file after VALORANT data update.")
+		return false
+	_profiles_lock.unlock()
+	profiles_updated.emit()
+	return true
+
+
 ## Returns the absolute directory path for a profile, or "" if not found.
 func get_profile_dir(profile_name: String) -> String:
 	_profiles_lock.lock()
@@ -530,6 +557,18 @@ func _normalize_profiles() -> void:
 			changed = true
 		if not profile.has("description"):
 			profile["description"] = ""
+			changed = true
+		if not profile.has("valorant_puuid"):
+			profile["valorant_puuid"] = ""
+			changed = true
+		if not profile.has("valorant_in_game_name"):
+			profile["valorant_in_game_name"] = ""
+			changed = true
+		if not profile.has("valorant_data"):
+			profile["valorant_data"] = {}
+			changed = true
+		if not profile.has("last_valorant_use"):
+			profile["last_valorant_use"] = 0
 			changed = true
 		normalized.append(profile)
 	if changed:

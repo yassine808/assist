@@ -66,7 +66,10 @@ var _drag_start_pos := Vector2.ZERO
 @onready var _state_icon: TextureRect = get_node_or_null("card/card_inner/Button/TextureRect")
 @onready var _card: Control = get_node_or_null("card")
 @onready var _hover_info: Control = $hover_info if has_node("hover_info") else null
-@onready var _desc_label: Label = $hover_info/desc_label if has_node("hover_info/desc_label") else null
+@onready var _desc_label: Label = $hover_info/content/desc_label if has_node("hover_info/content/desc_label") else null
+@onready var _valorant_rank_label: Label = $hover_info/content/valorant_rank_label if has_node("hover_info/content/valorant_rank_label") else null
+@onready var _valorant_stats_label: Label = $hover_info/content/valorant_stats_label if has_node("hover_info/content/valorant_stats_label") else null
+@onready var _valorant_meta_label: Label = $hover_info/content/valorant_meta_label if has_node("hover_info/content/valorant_meta_label") else null
 
 var _hover_tween: Tween = null
 var _glow_tween: Tween = null
@@ -260,8 +263,10 @@ func _on_card_mouse_entered() -> void:
 		_glow_tween.tween_property(_glow_effect, "scale", Vector2(HOVER_SCALE_FACTOR, HOVER_SCALE_FACTOR), HOVER_FADE_IN_TIME + 0.02).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	var description: String = profile_data.get("description", "").strip_edges()
-	if not description.is_empty() and _hover_info and _desc_label:
-		_desc_label.text = description
+	_set_description_visibility(description)
+	_apply_valorant_display(profile_data)
+	var has_valorant: bool = _has_valorant_display(profile_data)
+	if _hover_info and (not description.is_empty() or has_valorant):
 		_show_hover_info()
 
 
@@ -371,5 +376,90 @@ func set_interactable(interactable: bool, delay: float = 0.0) -> void:
 func hide_context_menu() -> void:
 	if _context_menu:
 		_context_menu.visible = false
+
+#endregion
+
+#region VALORANT rank & stats display (hover panel)
+
+## Called by ProfileGridController with the freshest captured stats for this
+## profile whenever the ValorantTracker emits valorant_data_updated. Re-applies
+## the hover display from the given profile dict so the card stays in sync.
+func update_valorant_from_profile(profile: Dictionary) -> void:
+	if Engine.is_editor_hint():
+		return
+	if not profile.is_empty():
+		profile_data = profile
+	_apply_valorant_display(profile_data)
+
+
+func _has_valorant_display(p: Dictionary) -> bool:
+	var data: Dictionary = p.get("valorant_data", {})
+	return not data.is_empty()
+
+
+func _set_description_visibility(description: String) -> void:
+	if _desc_label:
+		_desc_label.visible = not description.is_empty()
+		_desc_label.text = description
+
+
+## Updates the hover panel's VALORANT labels from a profile dict (rank, RR,
+## W/L record, in-game name and last-played). Called on hover and on refresh.
+func _apply_valorant_display(p: Dictionary) -> void:
+	var data: Dictionary = p.get("valorant_data", {})
+	if data.is_empty():
+		if _valorant_rank_label:
+			_valorant_rank_label.visible = false
+		if _valorant_stats_label:
+			_valorant_stats_label.visible = false
+		if _valorant_meta_label:
+			_valorant_meta_label.visible = false
+		return
+
+	var rank_name: String = str(data.get(ValorantConstants.KEY_RANK_NAME, "Unranked"))
+	var rr := int(data.get(ValorantConstants.KEY_RR, 0))
+	var wins := int(data.get(ValorantConstants.KEY_WINS, 0))
+	var games := int(data.get(ValorantConstants.KEY_GAMES, 0))
+	var last_played_ms := int(data.get(ValorantConstants.KEY_LAST_PLAYED_MS, 0))
+	var in_game_name: String = str(p.get("valorant_in_game_name", ""))
+	var updated_ms := int(data.get(ValorantConstants.KEY_LAST_UPDATED_MS, 0))
+
+	if _valorant_rank_label:
+		_valorant_rank_label.visible = true
+		_valorant_rank_label.text = "%s · %d RR" % [rank_name, rr]
+
+	if _valorant_stats_label:
+		_valorant_stats_label.visible = true
+		if games > 0:
+			var losses := maxi(0, games - wins)
+			_valorant_stats_label.text = "W %d · L %d" % [wins, losses]
+		else:
+			_valorant_stats_label.text = "No competitive games"
+
+	if _valorant_meta_label:
+		_valorant_meta_label.visible = true
+		var parts: Array[String] = []
+		if not in_game_name.is_empty():
+			parts.append(in_game_name)
+		if last_played_ms > 0:
+			parts.append("Last %s" % _time_ago(last_played_ms / 1000))
+		else:
+			parts.append("Not played yet")
+		if updated_ms > 0:
+			parts.append("Updated %s" % _time_ago(updated_ms / 1000))
+		_valorant_meta_label.text = " · ".join(parts)
+
+
+## Formats a unix-timestamp diff into a compact "time ago" string.
+func _time_ago(seconds: int) -> String:
+	var now := int(Time.get_unix_time_from_system())
+	var diff := maxi(0, now - seconds)
+	if diff < 60:
+		return "now"
+	if diff < 3600:
+		return "%dm ago" % (diff / 60)
+	if diff < 86400:
+		return "%dh ago" % (diff / 3600)
+	return "%dd ago" % (diff / 86400)
 
 #endregion
