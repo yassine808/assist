@@ -292,8 +292,18 @@ func _flush_request_queue() -> void:
 	var mmr := _fetch_mmr_henrikdev(str(job.get("region", "")), str(job.get("puuid", "")))
 	_last_request_ms = int(Time.get_ticks_msec())
 	if mmr.is_empty():
+		# Fetch failed outright (missing API key, curl/network error, bad JSON).
+		# Must bail out here WITHOUT calling _build_data(): previously-saved
+		# rank/stats need to survive a transient failure. Falling through used
+		# to call _build_data({}), which returns a fully-populated dict of
+		# all-zero defaults (tier 0 = "Unranked", 0 RR, 0 games) — and because
+		# that dict isn't empty, it passed straight through as if it were a
+		# real, successful result and permanently overwrote the correct rank.
 		print("[Valorant/Tracker] MMR vazio retornado do HenrikDev.")
-	var payload: Variant = mmr.get("data") if mmr.has("data") else {}
+		if not _request_queue.is_empty():
+			_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
+		return
+	var payload: Variant = mmr.get("data")
 	if not (payload is Dictionary):
 		print("[Valorant/Tracker] No MMR data for region '%s'." % str(job.get("region", "")))
 		if not _request_queue.is_empty():
@@ -366,19 +376,22 @@ func _build_data(mmr: Dictionary) -> Dictionary:
 			tier = int(current_dict.get("tier", {}).get("id", 0)) if (current_dict.get("tier") is Dictionary) else 0
 			tier_name = str(current_dict.get("tier", {}).get("name", "")) if (current_dict.get("tier") is Dictionary) else ""
 			rr = int(current_dict.get("rr", 0))
-			wins = int(current_dict.get("wins", 0))
-			games = int(current_dict.get("games_played", 0))
+			# NOTE: HenrikDev's v3 `current` object only ever has tier/rr/last_change/
+			# elo/leaderboard_placement — no wins or games_played. W/L always comes
+			# from `seasonal` below, not as a fallback but as the only source.
 
 		var peak: Variant = (payload as Dictionary).get("peak")
 		if peak is Dictionary and (peak as Dictionary).get("tier") is Dictionary:
 			peak_name = str((peak as Dictionary).get("tier", {}).get("name", ""))
 
 		var seasonal: Variant = (payload as Dictionary).get("seasonal")
-		if seasonal is Array and (seasonal as Array).size() > 0 and wins == 0 and games == 0:
+		if seasonal is Array and (seasonal as Array).size() > 0:
 			var latest: Dictionary = (seasonal as Array)[0]
 			wins = int(latest.get("wins", 0))
 			games = int(latest.get("games", 0))
-			act_id = str(latest.get("season", ""))
+			var season_info: Variant = latest.get("season")
+			if season_info is Dictionary:
+				act_id = str((season_info as Dictionary).get("id", ""))
 
 	# Rank display: prefer the concrete name the API returned; fall back to the
 	# numeric-tier mapping (covers "Unranked"/empty cases).
