@@ -1,0 +1,43 @@
+name: Safety Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  godot-validation:
+    name: Godot Import & Script Validation
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Godot import
+        uses: actions/cache@v4
+        with:
+          path: .godot
+          key: godot-import-${{ runner.os }}-${{ hashFiles('project.godot', 'src/**', 'scenes/**', 'assets/**', 'shaders/**') }}
+          restore-keys: |
+            godot-import-${{ runner.os }}-
+
+      - name: Import project (headless)
+        run: |
+          godot --headless --path "$GITHUB_WORKSPACE" --editor --quit --import
+
+  secrets-scan:
+    name: Secrets & Plaintext Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
