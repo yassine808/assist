@@ -70,6 +70,12 @@ var _drag_start_pos := Vector2.ZERO
 @onready var _valorant_rank_label: Label = get_node_or_null("card/valorant_rank")
 @onready var _valorant_stats_label: Label = get_node_or_null("card/valorant_stats")
 
+# Skeleton placeholder shown while this card has a VALORANT PUUID configured but
+# rank/stats have not been fetched yet (refresh pending / in flight / failed).
+var _skeleton_root: Control = null
+var _skeleton_bars: Array[Control] = []
+var _skeleton_tween: Tween = null
+
 var _glow_tween: Tween = null
 
 
@@ -83,6 +89,8 @@ func _ready() -> void:
 
 	if Engine.is_editor_hint():
 		return
+
+	_build_skeleton()
 
 	if _delete_button:
 		_delete_button.pressed.connect(_on_delete_button_pressed)
@@ -315,6 +323,12 @@ func _relayout_card_text() -> void:
 	elif _valorant_stats_label:
 		_valorant_stats_label.visible = false
 
+	# Keep the skeleton (rank/stats placeholder) stacked in the same text column
+	# where the real labels will land, right after the name/description.
+	if _skeleton_root and _skeleton_root.visible:
+		_skeleton_root.position = Vector2(9, y)
+		_skeleton_root.size = Vector2(122, 36)
+
 
 var _interactable_tween: Tween = null
 
@@ -379,6 +393,63 @@ func _has_valorant_display(p: Dictionary) -> bool:
 	return not data.is_empty()
 
 
+## Skeleton shows only when a profile has a PUUID configured (so rank is fetchable)
+## but no rank/stats loaded yet — i.e. the refresh is pending, in flight, or failed.
+## Profiles without a PUUID never show the skeleton (nothing to wait on).
+func _should_show_skeleton(p: Dictionary) -> bool:
+	if _has_valorant_display(p):
+		return false
+	return not str(p.get("valorant_puuid", "")).is_empty()
+
+
+## Builds the lightweight rank/stats skeleton (two pulsing gray bars) in code so
+## it integrates with the dynamic text reflow without fragile .tscn node edits.
+func _build_skeleton() -> void:
+	if _skeleton_root:
+		return
+	_skeleton_root = Control.new()
+	_skeleton_root.name = "skeleton"
+	_skeleton_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_skeleton_root)
+	var bar_specs: Array = [
+		[Vector2(0, 0), Vector2(92, 10)],
+		[Vector2(0, 14), Vector2(58, 10)],
+	]
+	for spec in bar_specs:
+		var bar := Panel.new()
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.40, 0.40, 0.44, 1.0)
+		style.corner_radius_top_left = 3
+		style.corner_radius_top_right = 3
+		style.corner_radius_bottom_left = 3
+		style.corner_radius_bottom_right = 3
+		bar.add_theme_stylebox_override("panel", style)
+		bar.position = spec[0]
+		bar.size = spec[1]
+		_skeleton_root.add_child(bar)
+		_skeleton_bars.append(bar)
+	_skeleton_root.visible = false
+
+
+func _show_skeleton() -> void:
+	if not _skeleton_root:
+		_build_skeleton()
+	_skeleton_root.visible = true
+	if _skeleton_tween and _skeleton_tween.is_valid():
+		_skeleton_tween.kill()
+	_skeleton_tween = create_tween().set_loops()
+	_skeleton_tween.tween_property(_skeleton_root, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_skeleton_tween.tween_property(_skeleton_root, "modulate:a", 0.85, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _hide_skeleton() -> void:
+	if _skeleton_tween and _skeleton_tween.is_valid():
+		_skeleton_tween.kill()
+	if _skeleton_root:
+		_skeleton_root.visible = false
+
+
 ## Updates the always-visible card labels from a profile dict (description,
 ## rank + RR, W/L record). Called on ready and whenever stats are refreshed.
 func _apply_valorant_display(p: Dictionary) -> void:
@@ -392,7 +463,13 @@ func _apply_valorant_display(p: Dictionary) -> void:
 			_valorant_rank_label.text = ""
 		if _valorant_stats_label:
 			_valorant_stats_label.text = ""
+		if _should_show_skeleton(p):
+			_show_skeleton()
+		else:
+			_hide_skeleton()
 		return
+
+	_hide_skeleton()
 
 	var rank_name: String = str(data.get(ValorantConstants.KEY_RANK_NAME, "Unranked"))
 	var rr := int(data.get(ValorantConstants.KEY_RR, 0))

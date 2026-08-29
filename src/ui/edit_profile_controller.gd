@@ -21,6 +21,8 @@ var _anim_tween: Tween = null
 @onready var _panel: Panel = $Panel if has_node("Panel") else find_child("Panel", true, false)
 @onready var _name_input: LineEdit = $Panel/profile_name/Panel/LineEdit if has_node("Panel/profile_name/Panel/LineEdit") else find_child("LineEdit", true, false)
 @onready var _desc_input: LineEdit = $Panel/profile_description/Panel/LineEdit if has_node("Panel/profile_description/Panel/LineEdit") else null
+@onready var _puuid_input: LineEdit = $Panel/valorant_section/valorant_puuid/Panel/LineEdit if has_node("Panel/valorant_section/valorant_puuid/Panel/LineEdit") else null
+@onready var _region_input: LineEdit = $Panel/valorant_section/valorant_region/Panel/LineEdit if has_node("Panel/valorant_section/valorant_region/Panel/LineEdit") else null
 @onready var _preview_button: Control = $Panel/preview/profile_button if has_node("Panel/preview/profile_button") else find_child("profile_button", true, false)
 @onready var _preview_name: Label = $Panel/preview/profile_button/profile_name if has_node("Panel/preview/profile_button/profile_name") else find_child("profile_name", true, false)
 @onready var _preview_bg: TextureRect = $Panel/preview/profile_button/card/Panel/profile_bg if has_node("Panel/preview/profile_button/card/Panel/profile_bg") else find_child("profile_bg", true, false)
@@ -87,6 +89,10 @@ func open_edit(profile_data: Dictionary) -> void:
 	_name_input.text = current_name
 	if _desc_input:
 		_desc_input.text = profile_data.get("description", "")
+	if _puuid_input:
+		_puuid_input.text = profile_data.get("valorant_puuid", "")
+	if _region_input:
+		_region_input.text = profile_data.get("valorant_region", "")
 	_preview_name.text = current_name
 	_update_bg_preview()
 	_hide_error()
@@ -200,6 +206,8 @@ func _on_save_pressed() -> void:
 		return
 
 	var description: String = _desc_input.text.strip_edges() if _desc_input else ""
+	var puuid: String = _puuid_input.text.strip_edges() if _puuid_input else ""
+	var region: String = _region_input.text.strip_edges() if _region_input else ""
 
 	var success: bool = profile_manager.update_profile(
 		old_name,
@@ -207,7 +215,9 @@ func _on_save_pressed() -> void:
 		_current_bg_path,
 		true,
 		true,
-		description
+		description,
+		puuid,
+		region
 	)
 
 	if not success:
@@ -215,7 +225,17 @@ func _on_save_pressed() -> void:
 		return
 
 	profile_edited.emit(old_name, new_name)
+	if not puuid.is_empty() and not region.is_empty():
+		_refresh_valorant_after_save(new_name)
 	close()
+
+
+## Fetches fresh rank/stats for the profile right after a manual PUUID+region
+## save, so the card updates immediately without launching the game.
+func _refresh_valorant_after_save(profile_name: String) -> void:
+	var tracker := ValorantTracker
+	if tracker != null and is_instance_valid(tracker) and tracker.has_method("refresh_profile"):
+		tracker.refresh_profile(profile_name)
 
 
 func _on_backdrop_gui_input(event: InputEvent) -> void:

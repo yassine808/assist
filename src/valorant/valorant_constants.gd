@@ -48,10 +48,36 @@ const CURL_TIMEOUT_MS := 8000
 
 ## HenrikDev public API base + MMR v3 by-puuid path.
 const HENRIKDEV_BASE := "https://api.henrikdev.xyz"
-const HENRIKDEV_API_KEY := "HDEV-bf953a99-0510-46cf-92f9-04499e833277"
+const HENRIKDEV_API_KEY_DEFAULT := "HDEV-bf953a99-0510-46cf-92f9-04499e833277"
 # {region}, {platform}, {puuid} -> MMRV3Response
 const PATH_MMR_BY_PUUID := "/valorant/v3/by-puuid/mmr/%s/%s/%s"
 const PLATFORM := "pc"
+
+## Local `.env` file, looked up next to the executable (project root in the
+## editor, alongside the binary in packaged builds). Lets owners supply their
+## own HenrikDev API key without editing source. Falls back to the default key.
+const ENV_FILENAME := ".env"
+const ENV_KEY_HENRIKDEV := "HENRIKDEV_API_KEY"
+
+
+## Returns the HenrikDev API key. `res://.env` takes precedence over the built-in
+## default so each deployment can ship its own key without a code change.
+static func api_key() -> String:
+	var env_path := ProjectSettings.globalize_path("res://" + ENV_FILENAME)
+	if FileAccess.file_exists(env_path):
+		var f := FileAccess.open(env_path, FileAccess.READ)
+		if f:
+			while not f.eof_reached():
+				var line := f.get_line().strip_edges()
+				if line.is_empty() or line.begins_with("#"):
+					continue
+				if line.begins_with(ENV_KEY_HENRIKDEV + "="):
+					var value := line.trim_prefix(ENV_KEY_HENRIKDEV + "=").strip_edges()
+					f.close()
+					if not value.is_empty():
+						return value.trim_prefix("\"").trim_suffix("\"").strip_edges()
+			f.close()
+	return HENRIKDEV_API_KEY_DEFAULT
 
 ## Local API endpoint (hosted only by a *running* client on 127.0.0.1, served
 ## with lockfile basic auth `riot:<password>`). Returns { subject (PUUID),

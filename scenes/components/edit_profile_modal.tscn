@@ -240,6 +240,97 @@ theme_override_styles/focus = SubResource("StyleBoxEmpty_lineedit")
 placeholder_text = "description"
 max_length = 35
 
+[node name="valorant_section" type="Control" parent="Panel" unique_id=900000001]
+anchors_preset = 0
+offset_left = 480.0
+offset_top = 82.0
+offset_right = 655.0
+offset_bottom = 226.0
+
+[node name="label" type="Label" parent="Panel/valorant_section" unique_id=900000002]
+layout_mode = 0
+offset_top = -26.0
+offset_right = 175.0
+offset_bottom = -3.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.8)
+theme_override_fonts/font = ExtResource("3_raleway_light")
+theme_override_font_sizes/font_size = 14
+text = "VALORANT (manual)"
+
+[node name="valorant_puuid" type="Control" parent="Panel/valorant_section" unique_id=900000003]
+layout_mode = 0
+offset_top = 0.0
+offset_right = 175.0
+offset_bottom = 68.0
+
+[node name="Label2" type="Label" parent="Panel/valorant_section/valorant_puuid" unique_id=900000004]
+layout_mode = 0
+offset_top = 2.0
+offset_right = 175.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.8)
+theme_override_fonts/font = ExtResource("3_raleway_light")
+theme_override_font_sizes/font_size = 14
+text = "PUUID"
+
+[node name="Panel" type="Panel" parent="Panel/valorant_section/valorant_puuid" unique_id=900000005]
+layout_mode = 0
+offset_top = 28.0
+offset_right = 175.0
+offset_bottom = 62.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_input_box")
+
+[node name="LineEdit" type="LineEdit" parent="Panel/valorant_section/valorant_puuid/Panel" unique_id=900000006]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("2_raleway_bold")
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxEmpty_lineedit")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_lineedit")
+placeholder_text = "paste PUUID"
+max_length = 64
+
+[node name="valorant_region" type="Control" parent="Panel/valorant_section" unique_id=900000007]
+layout_mode = 0
+offset_top = 76.0
+offset_right = 175.0
+offset_bottom = 144.0
+
+[node name="Label2" type="Label" parent="Panel/valorant_section/valorant_region" unique_id=900000008]
+layout_mode = 0
+offset_top = 2.0
+offset_right = 175.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.8)
+theme_override_fonts/font = ExtResource("3_raleway_light")
+theme_override_font_sizes/font_size = 14
+text = "Region"
+
+[node name="Panel" type="Panel" parent="Panel/valorant_section/valorant_region" unique_id=900000009]
+layout_mode = 0
+offset_top = 28.0
+offset_right = 175.0
+offset_bottom = 62.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_input_box")
+
+[node name="LineEdit" type="LineEdit" parent="Panel/valorant_section/valorant_region/Panel" unique_id=900000010]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("2_raleway_bold")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxEmpty_lineedit")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_lineedit")
+placeholder_text = "eu / na / ap"
+max_length = 8
+
 [node name="bg_select" type="Control" parent="Panel" unique_id=647320231]
 anchors_preset = 0
 offset_left = 46.0

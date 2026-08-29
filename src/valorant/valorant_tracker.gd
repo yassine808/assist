@@ -37,6 +37,23 @@ var _attempts := 0
 const MAX_POLL_ATTEMPTS := 30 # 30 * 10s = 300s of live capture window
 const POLL_INTERVAL_SEC := 10.0
 
+## HenrikDev rate cap: Basic tier allows 30 req/min (Enhanced 90). We pace
+## ~1 request / 2.2s (~27 req/min) to stay safely inside the Basic limit even
+## when several profiles refresh in a burst (e.g. at app boot), so we never
+## hit a 429 that would blank every card's rank.
+const MIN_REQ_INTERVAL_MS := 2200
+
+## Periodic rank refresh: every 60s we re-fetch stats for every profile that has
+## a PUUID, so the displayed rank/stats stay current while the app is open. The
+## renewals go through the same rate limiter, so bursts stay within HenrikDev's
+## cap and the queue self-paces.
+const RENEW_INTERVAL_SEC := 60.0
+
+var _last_request_ms := 0
+var _request_queue: Array[Dictionary] = []
+var _rate_timer: Timer = null
+var _renew_timer: Timer = null
+
 
 func _ready() -> void:
 	_poll_timer = Timer.new()
@@ -44,6 +61,18 @@ func _ready() -> void:
 	_poll_timer.one_shot = false
 	_poll_timer.timeout.connect(_on_tick)
 	add_child(_poll_timer)
+
+	_rate_timer = Timer.new()
+	_rate_timer.one_shot = true
+	_rate_timer.timeout.connect(_flush_request_queue)
+	add_child(_rate_timer)
+
+	_renew_timer = Timer.new()
+	_renew_timer.wait_time = RENEW_INTERVAL_SEC
+	_renew_timer.one_shot = false
+	_renew_timer.timeout.connect(_on_renew_tick)
+	add_child(_renew_timer)
+	_renew_timer.start()
 	print("[Valorant/Tracker] Initialized. Feature enabled: ", is_enabled())
 
 
@@ -85,7 +114,32 @@ func refresh_profile(profile_name: String) -> void:
 		return
 	var region := str(profile.get("valorant_region", ""))
 	_active_profile = profile_name
-	_capture_with_identity(puuid, region)
+	_capture_with_identity(profile_name, puuid, region)
+
+
+## Periodic renew tick: every RENEW_INTERVAL_SEC we re-fetch rank/stats for every
+## profile that has a saved PUUID, so displayed stats stay fresh while the app is
+## open. A pending queue means the previous renewal is still draining, so we skip
+## this round to avoid piling up (the queue will finish and the next tick resumes
+## the cadence).
+func _on_renew_tick() -> void:
+	if not is_enabled():
+		return
+	if not _request_queue.is_empty():
+		return
+	var renewed := 0
+	for profile in ProfileManager.get_profiles():
+		if not (profile is Dictionary):
+			continue
+		var profile_name := str((profile as Dictionary).get("profile_name", ""))
+		if profile_name.is_empty():
+			continue
+		if str((profile as Dictionary).get("valorant_puuid", "")).is_empty():
+			continue
+		refresh_profile(profile_name)
+		renewed += 1
+	if renewed > 0:
+		print("[Valorant/Tracker] Renovação periódica acionada para %d perfil(is)." % renewed)
 
 
 ## Starts the capture watchdog for the active profile.
@@ -135,7 +189,7 @@ func _capture_once() -> void:
 
 	# Fast path: identity already known -> fetch rank straight from HenrikDev.
 	if not stored_puuid.is_empty():
-		_capture_with_identity(stored_puuid, stored_region)
+		_capture_with_identity(_active_profile, stored_puuid, stored_region)
 		return
 
 	var lockfile := _valorant_dir
@@ -175,7 +229,7 @@ func _capture_once() -> void:
 		_seed_identity(_active_profile, puuid, stored_region)
 		print("[Valorant/Tracker] Identidade semeada: puuid='%s' region='%s'." % [puuid, stored_region])
 
-	_capture_with_identity(puuid, stored_region)
+	_capture_with_identity(_active_profile, puuid, stored_region)
 
 
 ## Persists the account identity discovered from a live session, so future
@@ -190,25 +244,56 @@ func _seed_identity(profile_name: String, puuid: String, region: String) -> void
 
 
 ## Fetches rank/stats from HenrikDev for a known PUUID + region and stores it on
-## the profile (`_active_profile`). The in-game name is recovered from the same
+## the profile (`profile_name`). The in-game name is recovered from the same
 ## payload (`account.name#tag`), so it needs no separate service call. Empty
 ## region falls back to the profile's stored value; skipped if still empty.
-func _capture_with_identity(puuid: String, region: String) -> void:
+##
+## The fetch is enqueued through a rate limiter so bursts (many profiles at app
+## boot, or repeated edits) never exceed HenrikDev's ~30 req/min Basic cap.
+func _capture_with_identity(profile_name: String, puuid: String, region: String) -> void:
 	if puuid.is_empty():
 		return
 	if region.is_empty():
-		var profile := ProfileManager.get_profile(_active_profile)
+		var profile := ProfileManager.get_profile(profile_name)
 		region = str(profile.get("valorant_region", "")) if not profile.is_empty() else ""
 	if region.is_empty():
-		print("[Valorant/Tracker] '%s': região desconhecida — não foi possível consultar o HenrikDev." % _active_profile)
+		print("[Valorant/Tracker] '%s': região desconhecida — não foi possível consultar o HenrikDev." % profile_name)
 		return
 
-	print("[Valorant/Tracker] Consultando HenrikDev: region='%s' puuid='%s'." % [region, puuid])
-	var mmr := _fetch_mmr_henrikdev(region, puuid)
+	print("[Valorant/Tracker] Consultando HenrikDev (fila): region='%s' puuid='%s'." % [region, puuid])
+	_enqueue_fetch(profile_name, puuid, region)
+
+
+## Appends a HenrikDev lookup for a profile to the request queue and kicks the
+## rate limiter, which fires jobs at least MIN_REQ_INTERVAL_MS apart.
+func _enqueue_fetch(profile_name: String, puuid: String, region: String) -> void:
+	_request_queue.append({"profile_name": profile_name, "puuid": puuid, "region": region})
+	print("[Valorant/Tracker] Fila de consultas: %d pendente(s)." % _request_queue.size())
+	_flush_request_queue()
+
+
+## Paces HenrikDev requests to MIN_REQ_INTERVAL_MS apart, popping at most one job
+## per tick so multiple queued refreshes never hammer the API at once.
+func _flush_request_queue() -> void:
+	if _rate_timer and not _rate_timer.is_stopped():
+		# A flush is already scheduled; it will drain the queue.
+		return
+	if _request_queue.is_empty():
+		return
+
+	var now_ms := int(Time.get_ticks_msec())
+	var elapsed := now_ms - _last_request_ms
+	if _last_request_ms > 0 and elapsed < MIN_REQ_INTERVAL_MS:
+		_rate_timer.start(float(MIN_REQ_INTERVAL_MS - elapsed) / 1000.0)
+		return
+
+	var job: Dictionary = _request_queue.pop_front()
+	var mmr := _fetch_mmr_henrikdev(str(job.get("region", "")), str(job.get("puuid", "")))
+	_last_request_ms = int(Time.get_ticks_msec())
 	if mmr.is_empty():
 		print("[Valorant/Tracker] MMR vazio retornado do HenrikDev.")
 	var data := _build_data(mmr)
-	var payload: Variant = mmr.get("data") if mmr.has("data") else {} 
+	var payload: Variant = mmr.get("data") if mmr.has("data") else {}
 	var in_game_name := ""
 	if payload is Dictionary:
 		var account: Variant = (payload as Dictionary).get("account")
@@ -217,14 +302,17 @@ func _capture_with_identity(puuid: String, region: String) -> void:
 			var tag := str((account as Dictionary).get("tag", ""))
 			if not game_name.is_empty():
 				in_game_name = game_name + "#" + tag
-	_apply(puuid, region, in_game_name, data)
+	_apply(str(job.get("profile_name", "")), str(job.get("puuid", "")), str(job.get("region", "")), in_game_name, data)
+
+	# Drain the rest of the queue on the same pacing schedule.
+	if not _request_queue.is_empty():
+		_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
 
 
-func _apply(puuid: String, region: String, in_game_name: String, data: Dictionary) -> void:
-	var profile := ProfileManager.get_profile(_active_profile)
+func _apply(profile_name: String, puuid: String, region: String, in_game_name: String, data: Dictionary) -> void:
+	var profile := ProfileManager.get_profile(profile_name)
 	if profile.is_empty():
 		return
-	var profile_name: String = _active_profile
 
 	if not puuid.is_empty():
 		profile["valorant_puuid"] = puuid
@@ -351,7 +439,7 @@ func _fetch_mmr_henrikdev(region: String, puuid: String) -> Dictionary:
 	# HenrikDev expects the raw key as the Authorization value (NO "Bearer "
 	# prefix). The prefix causes a 401 — verified live against the real API.
 	args.append("-H")
-	args.append("Authorization: " + ValorantConstants.HENRIKDEV_API_KEY)
+	args.append("Authorization: " + ValorantConstants.api_key())
 	args.append("-H")
 	args.append("User-Agent: RiotSwitcher/1.0")
 	args.append(url)

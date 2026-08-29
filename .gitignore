@@ -23,6 +23,10 @@ user://
 UserBackground/
 profiles/
 
+# Local secrets (API keys) — never commit
+.env
+.env.*
+
 # OS specific
 .DS_Store
 Thumbs.db
