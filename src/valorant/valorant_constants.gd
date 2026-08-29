@@ -39,9 +39,31 @@ const MAX_POLL_ATTEMPTS := 12 # 12 * 10s = 120s of live capture
 ## curl connectivity + timing.
 const CURL_TIMEOUT_MS := 8000
 
-## Local API endpoints (hosted by the running client on 127.0.0.1).
+## Local API endpoints (hosted by the running client on 127.0.0.1, served with
+## lockfile basic auth `riot:<password>`).
+# Returns { subject (PUUID), accessToken, token (entitlement JWT), expiry }.
+const PATH_TOKEN := "/entitlements/v1/token"
+# Returns the current clientVersion (e.g. "VALORANT 10.10.0.0").
+const PATH_VERSIONS := "/system/v1/products/valorant/versions"
+
+## Server-side "pd" API host, templated with the account's shard/region.
+## These endpoints require the 4 RSO headers below, NOT lockfile basic auth.
+const PD_PREFIX := "https://pd.%s.a.pvp.net"
+
+## Rank/MMR + display name paths (relative to PD_PREFIX, templated with PUUID).
+# /mmr/v1/players/{puuid}   -> QueueSkills -> SeasonalInfoBySeasonID
+# /name-service/v2/players/{puuid} -> { gameName, tagLine }
 const PATH_MMR := "/mmr/v1/players/%s"
 const PATH_NAME := "/name-service/v2/players/%s"
+
+## X-Riot-ClientPlatform header value. Fixed, well-known base64-encoded JSON that
+## identifies a PC/Windows Riot client (used by every VALORANT tracker/overlay).
+const X_RIOT_CLIENT_PLATFORM := "eyJwbGF0Zm9ybVR5cGUiOiJQQyIsInBsYXRmb3JtT1MiOiJXaW5kb3dzIiwicGxhdGZvcm1PU1ZlcnNpb24iOiIxMC4wLjE5MDQyLjEiLCJwbGF0Zm9ybUNoaXBzZXQiOiJVbmtub3duIn0="
+
+## Relative path (from %LOCALAPPDATA%) to the ShooterGame log used to detect the
+## account's shard/region via: glz-{SHARD}-1.{region}.a.pvp.net
+const SHOOTER_LOG_REL := "VALORANT/Saved/Logs/ShooterGame.log"
+const SHARD_REGEX := "glz-([a-z0-9]+)-1\\.[a-z0-9]+\\.a\\.pvp\\.net"
 
 ## Rank/MMR cache keys stored in a profile's `valorant_data` dict.
 const KEY_TIER := "tier"

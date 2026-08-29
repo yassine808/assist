@@ -15,7 +15,7 @@ const DEFAULT_BG_PATH := "res://assets/backgrounds/default_bg.webp"
 const CLIENT_EXE := "RiotClientServices.exe"
 const LAUNCH_ARGS: Array[String] = ["--launch-product=league_of_legends", "--launch-patchline=live"]
 
-@export var card_size: Vector2 = Vector2(181, 50)
+@export var card_size: Vector2 = Vector2(181, 110)
 const HYSTERESIS_FACTOR := 0.20 # 15px deadband on 75px pitch to completely prevent jitter
 const SETTINGS_WATCHDOG_INTERVAL := 2.0
 

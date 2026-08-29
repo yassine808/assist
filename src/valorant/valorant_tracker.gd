@@ -1,12 +1,22 @@
 extends Node
 
-## VALORANT official local API (in-game client) tracker.
+## VALORANT rank/stat tracker.
 ##
-## While the launched account runs VALORANT, this service reads the game's
-## local HTTPS API (rank, RR, wins/losses, last-played) and stores it on the
-## active profile so it can be shown on the profile card. It uses the same
-## "official API" that Tracker.gg relies on — the local client API — and needs
-## no external developer key because it authenticates with the game's lockfile.
+## VALORANT does NOT expose rank/MMR through the local in-client HTTP API. Rank
+## lives on the server-side `pd.{shard}.a.pvp.net` API, which requires RSO
+## credentials (access + entitlement tokens) that are themselves only obtainable
+## from the local client. So the capture is a two-stage flow, same as every
+## VALORANT tracker/overlay:
+##
+##   1. Read the lockfile (basic auth `riot:<password>`) and call the LOCAL
+##      `/entitlements/v1/token` endpoint to get the PUUID, access token and
+##      entitlement JWT.
+##   2. Resolve the account shard from ShooterGame.log and the client version,
+##      then call `pd.{shard}.a.pvp.net` (name-service + mmr) with the four RSO
+##      headers (Authorization, X-Riot-Entitlements-JWT, X-Riot-ClientPlatform,
+##      X-Riot-ClientVersion).
+##
+## Results are stored on the active profile so the card can show rank/RR/W-L.
 ##
 ## Blocking curl calls mirror LcuInjector (they are short, low-frequency, and
 ## run inside the poll timer on the main thread), so no worker threads are
@@ -119,14 +129,29 @@ func _capture_once() -> void:
 	if pid <= 0 or port <= 0 or token.is_empty():
 		return
 
-	var puuid := _fetch_puuid(port, token)
-	if puuid.is_empty():
+	# 1) Pull RSO tokens + PUUID from the LOCAL entitlements endpoint. This is
+	#    the only local endpoint that yields the server-side credentials needed
+	#    to query rank/MMR, and it works with lockfile basic auth.
+	var session := _fetch_local_session(port, token)
+	if session.is_empty():
+		return
+	var puuid: String = str(session.get("subject", ""))
+	var access_token: String = str(session.get("access_token", ""))
+	var entitlement_token: String = str(session.get("entitlement_token", ""))
+	if puuid.is_empty() or access_token.is_empty() or entitlement_token.is_empty():
 		return
 
-	var name_and_tag := _fetch_name(port, token, puuid)
-	var mmr := _fetch_mmr(port, token, puuid)
-	var data := _build_data(mmr)
+	# 2) Resolve the shard/region and client version required by the "pd" API.
+	var shard := _resolve_shard()
+	var client_version := _fetch_client_version(port, token)
 
+	var name_and_tag := ""
+	var mmr: Dictionary = {}
+	if not shard.is_empty():
+		name_and_tag = _fetch_name_pd(shard, puuid, access_token, entitlement_token, client_version)
+		mmr = _fetch_mmr_pd(shard, puuid, access_token, entitlement_token, client_version)
+
+	var data := _build_data(mmr)
 	_apply(pid, _active_profile, puuid, name_and_tag, data)
 
 
@@ -231,43 +256,99 @@ func _build_data(mmr: Dictionary) -> Dictionary:
 	return data
 
 
-## Fetches the PUUID of the account logged into the running client.
-func _fetch_puuid(port: int, token: String) -> String:
+## Fetches PUUID + RSO tokens (access + entitlement) from the local client.
+## Returns an empty Dictionary on any failure so the capture is skipped safely.
+func _fetch_local_session(port: int, token: String) -> Dictionary:
 	var auth := "riot:%s" % token
-	var url := "https://127.0.0.1:%d/personalization/v2/players/playerloadout" % port
+	var url := "https://127.0.0.1:%d%s" % [port, ValorantConstants.PATH_TOKEN]
 	var output: Array = []
 	var exit_code := OS.execute("curl.exe", ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000), "-u", auth, url], output, true, false)
 	if exit_code != 0 or output.is_empty():
-		return ""
+		return {}
 	var json: Variant = JSON.parse_string(str(output[0]))
-	if json is Dictionary and json.has("Subject"):
-		return str(json["Subject"])
+	if not (json is Dictionary):
+		return {}
+	var result: Dictionary = json
+	return {
+		"subject": str(result.get("subject", "")),
+		"access_token": str(result.get("accessToken", "")),
+		"entitlement_token": str(result.get("token", "")),
+	}
+
+
+## Resolves the account's shard/region from the ShooterGame log so the pd API
+## can be addressed (`pd.{shard}.a.pvp.net`). Empty string if undeterminable.
+func _resolve_shard() -> String:
+	var log_path := OS.get_environment("LOCALAPPDATA").path_join(ValorantConstants.SHOOTER_LOG_REL)
+	if not FileAccess.file_exists(log_path):
+		return ""
+	var f := FileAccess.open(log_path, FileAccess.READ)
+	if not f:
+		return ""
+	var text := f.get_as_text()
+	f.close()
+	if text.is_empty():
+		return ""
+	var re := RegEx.new()
+	if re.compile(ValorantConstants.SHARD_REGEX) != OK:
+		return ""
+	var m := re.search(text)
+	if m and m.get_string_count() >= 2:
+		return m.get_string(1)
 	return ""
 
 
-## Fetches the display name + tag for a PUUID.
-func _fetch_name(port: int, token: String, puuid: String) -> String:
+## Fetches the current client version needed by the X-Riot-ClientVersion header
+## from the local `/system/v1/products/valorant/versions` endpoint.
+func _fetch_client_version(port: int, token: String) -> String:
 	var auth := "riot:%s" % token
-	var url := "https://127.0.0.1:%d%s" % [port, ValorantConstants.PATH_NAME % puuid]
+	var url := "https://127.0.0.1:%d%s" % [port, ValorantConstants.PATH_VERSIONS]
 	var output: Array = []
 	var exit_code := OS.execute("curl.exe", ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000), "-u", auth, url], output, true, false)
 	if exit_code != 0 or output.is_empty():
 		return ""
 	var json: Variant = JSON.parse_string(str(output[0]))
 	if json is Dictionary:
-		var game_name := str(json.get("gameName", ""))
-		var tag := str(json.get("tagLine", ""))
+		return str((json as Dictionary).get("clientVersion", ""))
+	return ""
+
+
+## Builds the curl argument list for the server-side "pd" API with RSO headers.
+func _pd_curl_args(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String, path: String) -> Array[String]:
+	var url := (ValorantConstants.PD_PREFIX % shard) + (path % puuid)
+	var args: Array[String] = ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000)]
+	args.append("-H")
+	args.append("Authorization: Bearer " + access_token)
+	args.append("-H")
+	args.append("X-Riot-Entitlements-JWT: " + entitlement_token)
+	args.append("-H")
+	args.append("X-Riot-ClientPlatform: " + ValorantConstants.X_RIOT_CLIENT_PLATFORM)
+	if not client_version.is_empty():
+		args.append("-H")
+		args.append("X-Riot-ClientVersion: " + client_version)
+	args.append(url)
+	return args
+
+
+## Fetches the display name + tag for a PUUID from the server-side pd API.
+func _fetch_name_pd(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String) -> String:
+	var output: Array = []
+	var exit_code := OS.execute("curl.exe", _pd_curl_args(shard, puuid, access_token, entitlement_token, client_version, ValorantConstants.PATH_NAME), output, true, false)
+	if exit_code != 0 or output.is_empty():
+		return ""
+	var json: Variant = JSON.parse_string(str(output[0]))
+	if json is Dictionary:
+		var game_name := str((json as Dictionary).get("gameName", ""))
+		var tag := str((json as Dictionary).get("tagLine", ""))
 		if not game_name.is_empty():
 			return game_name + "#" + tag
 	return ""
 
 
-## Fetches the MMR/rank payload for a PUUID.
-func _fetch_mmr(port: int, token: String, puuid: String) -> Dictionary:
-	var auth := "riot:%s" % token
-	var url := "https://127.0.0.1:%d%s" % [port, ValorantConstants.PATH_MMR % puuid]
+## Fetches the MMR/rank payload for a PUUID from the server-side pd API.
+func _fetch_mmr_pd(shard: String, puuid: String, access_token: String, entitlement_token: String, client_version: String) -> Dictionary:
 	var output: Array = []
-	var exit_code := OS.execute("curl.exe", ["-k", "-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000), "-u", auth, url], output, true, false)
+	var exit_code := OS.execute("curl.exe", _pd_curl_args(shard, puuid, access_token, entitlement_token, client_version, ValorantConstants.PATH_MMR), output, true, false)
 	if exit_code != 0 or output.is_empty():
 		return {}
 	var json: Variant = JSON.parse_string(str(output[0]))

@@ -65,13 +65,11 @@ var _drag_start_pos := Vector2.ZERO
 @onready var _button: Button = get_node_or_null("card/card_inner/Button")
 @onready var _state_icon: TextureRect = get_node_or_null("card/card_inner/Button/TextureRect")
 @onready var _card: Control = get_node_or_null("card")
-@onready var _hover_info: Control = $hover_info if has_node("hover_info") else null
-@onready var _desc_label: Label = $hover_info/content/desc_label if has_node("hover_info/content/desc_label") else null
-@onready var _valorant_rank_label: Label = $hover_info/content/valorant_rank_label if has_node("hover_info/content/valorant_rank_label") else null
-@onready var _valorant_stats_label: Label = $hover_info/content/valorant_stats_label if has_node("hover_info/content/valorant_stats_label") else null
-@onready var _valorant_meta_label: Label = $hover_info/content/valorant_meta_label if has_node("hover_info/content/valorant_meta_label") else null
+@onready var _profile_name_label: Label = $profile_name if has_node("profile_name") else null
+@onready var _desc_label: Label = get_node_or_null("card/desc_label")
+@onready var _valorant_rank_label: Label = get_node_or_null("card/valorant_rank")
+@onready var _valorant_stats_label: Label = get_node_or_null("card/valorant_stats")
 
-var _hover_tween: Tween = null
 var _glow_tween: Tween = null
 
 
@@ -99,12 +97,14 @@ func _ready() -> void:
 		_button.mouse_exited.connect(_on_card_mouse_exited)
 	if _context_menu:
 		_context_menu.visible = false
-	if _hover_info:
-		_hover_info.visible = false
 	if _glow_effect:
 		_glow_effect.modulate.a = 0.0
 		_glow_effect.scale = Vector2(0.96, 0.96)
 		_glow_effect.pivot_offset = _glow_effect.size * 0.5
+
+	# Always-visible card text (description + rank/RR + W/L) — no hover popup.
+	_apply_valorant_display(profile_data)
+	_relayout_card_text()
 	set_process_input(true)
 
 
@@ -204,7 +204,6 @@ func _on_card_gui_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_RIGHT and event.is_pressed():
 			_context_menu.visible = not _context_menu.visible
 			if _context_menu.visible:
-				_hide_hover_info()
 				_context_menu.global_position = get_global_mouse_position()
 			get_viewport().set_input_as_handled()
 			return
@@ -231,7 +230,6 @@ func _on_card_gui_input(event: InputEvent) -> void:
 			_is_mouse_down = false
 			if _context_menu:
 				_context_menu.visible = false
-			_hide_hover_info()
 			var parent_grid = get_parent()
 			if parent_grid and parent_grid.has_method("start_card_drag"):
 				parent_grid.start_card_drag(self, event.global_position)
@@ -251,6 +249,9 @@ func _input(event: InputEvent) -> void:
 
 #region Visual state & Hover Info
 
+## Hover feedback is a simple glow pulse on the card — all profile info
+## (description, rank, W/L) is shown directly on the card, so there is no
+## tooltip popup to build/hide.
 func _on_card_mouse_entered() -> void:
 	if Engine.is_editor_hint() or not _is_interactable:
 		return
@@ -261,13 +262,6 @@ func _on_card_mouse_entered() -> void:
 		_glow_tween = create_tween().set_parallel(true)
 		_glow_tween.tween_property(_glow_effect, "modulate:a", 1.0, HOVER_FADE_IN_TIME).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		_glow_tween.tween_property(_glow_effect, "scale", Vector2(HOVER_SCALE_FACTOR, HOVER_SCALE_FACTOR), HOVER_FADE_IN_TIME + 0.02).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	var description: String = profile_data.get("description", "").strip_edges()
-	_set_description_visibility(description)
-	_apply_valorant_display(profile_data)
-	var has_valorant: bool = _has_valorant_display(profile_data)
-	if _hover_info and (not description.is_empty() or has_valorant):
-		_show_hover_info()
 
 
 func _on_card_mouse_exited() -> void:
@@ -286,51 +280,40 @@ func _on_card_mouse_exited() -> void:
 		_glow_tween.tween_property(_glow_effect, "modulate:a", 0.0, HOVER_FADE_OUT_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		_glow_tween.tween_property(_glow_effect, "scale", Vector2(0.96, 0.96), HOVER_FADE_OUT_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
-	_hide_hover_info()
 
+## Stacks the profile card's text labels from the top, hiding any that are
+## empty so there are no awkward gaps. Text area is constrained to the left
+## side (x 9..131) to keep clear of the 48px play-button slice.
+func _relayout_card_text() -> void:
+	var y := 6.0
+	var max_h := 26.0
+	if _profile_name_label and not _profile_name_label.text.is_empty():
+		_profile_name_label.position = Vector2(9, y)
+		_profile_name_label.size = Vector2(122, max_h)
+		y += max_h + 4.0
 
-func _show_hover_info() -> void:
-	if not _hover_info or (_context_menu and _context_menu.visible) or not _is_interactable:
-		return
+	if _desc_label and not _desc_label.text.is_empty():
+		_desc_label.visible = true
+		_desc_label.position = Vector2(9, y)
+		_desc_label.size = Vector2(122, 16)
+		y += 20.0
+	elif _desc_label:
+		_desc_label.visible = false
 
-	if _hover_tween and _hover_tween.is_valid():
-		_hover_tween.kill()
+	if _valorant_rank_label and not _valorant_rank_label.text.is_empty():
+		_valorant_rank_label.visible = true
+		_valorant_rank_label.position = Vector2(9, y)
+		_valorant_rank_label.size = Vector2(122, 18)
+		y += 22.0
+	elif _valorant_rank_label:
+		_valorant_rank_label.visible = false
 
-	# Recalculate dynamic container dimensions based on text content & padding
-	_hover_info.visible = true
-	_hover_info.reset_size()
-	var min_sz := _hover_info.get_combined_minimum_size()
-	var card_w: float = size.x if size.x > 0 else 181.0
-	var final_w: float = maxf(min_sz.x, _hover_info.size.x)
-	var final_h: float = maxf(min_sz.y, _hover_info.size.y)
-
-	_hover_info.size = Vector2(final_w, final_h)
-	# Center horizontally above card with 7px gap
-	_hover_info.position = Vector2((card_w - final_w) * 0.5, -final_h - 7.0)
-	_hover_info.pivot_offset = Vector2(final_w * 0.5, final_h)
-
-	_hover_info.modulate.a = 0.0
-	_hover_info.scale = Vector2(0.94, 0.94)
-
-	_hover_tween = create_tween().set_parallel(true)
-	_hover_tween.tween_property(_hover_info, "modulate:a", 1.0, 0.08).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	_hover_tween.tween_property(_hover_info, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
-func _hide_hover_info() -> void:
-	if not _hover_info or not _hover_info.visible:
-		return
-
-	if _hover_tween and _hover_tween.is_valid():
-		_hover_tween.kill()
-
-	_hover_tween = create_tween().set_parallel(true)
-	_hover_tween.tween_property(_hover_info, "modulate:a", 0.0, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_hover_tween.tween_property(_hover_info, "scale", Vector2(0.95, 0.95), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_hover_tween.chain().tween_callback(func():
-		if is_instance_valid(_hover_info):
-			_hover_info.visible = false
-	)
+	if _valorant_stats_label and not _valorant_stats_label.text.is_empty():
+		_valorant_stats_label.visible = true
+		_valorant_stats_label.position = Vector2(9, y)
+		_valorant_stats_label.size = Vector2(122, 16)
+	elif _valorant_stats_label:
+		_valorant_stats_label.visible = false
 
 
 var _interactable_tween: Tween = null
@@ -341,8 +324,6 @@ func set_interactable(interactable: bool, delay: float = 0.0) -> void:
 	_is_interactable = interactable
 	if _button:
 		_button.disabled = not interactable
-	if not interactable:
-		_hide_hover_info()
 
 	pivot_offset = size * 0.5
 
@@ -379,17 +360,18 @@ func hide_context_menu() -> void:
 
 #endregion
 
-#region VALORANT rank & stats display (hover panel)
+#region VALORANT rank & stats display (on-card)
 
 ## Called by ProfileGridController with the freshest captured stats for this
 ## profile whenever the ValorantTracker emits valorant_data_updated. Re-applies
-## the hover display from the given profile dict so the card stays in sync.
+## the on-card display from the given profile dict so the card stays in sync.
 func update_valorant_from_profile(profile: Dictionary) -> void:
 	if Engine.is_editor_hint():
 		return
 	if not profile.is_empty():
 		profile_data = profile
 	_apply_valorant_display(profile_data)
+	_relayout_card_text()
 
 
 func _has_valorant_display(p: Dictionary) -> bool:
@@ -397,57 +379,35 @@ func _has_valorant_display(p: Dictionary) -> bool:
 	return not data.is_empty()
 
 
-func _set_description_visibility(description: String) -> void:
+## Updates the always-visible card labels from a profile dict (description,
+## rank + RR, W/L record). Called on ready and whenever stats are refreshed.
+func _apply_valorant_display(p: Dictionary) -> void:
+	var description: String = str(p.get("description", "")).strip_edges()
 	if _desc_label:
-		_desc_label.visible = not description.is_empty()
 		_desc_label.text = description
 
-
-## Updates the hover panel's VALORANT labels from a profile dict (rank, RR,
-## W/L record, in-game name and last-played). Called on hover and on refresh.
-func _apply_valorant_display(p: Dictionary) -> void:
 	var data: Dictionary = p.get("valorant_data", {})
 	if data.is_empty():
 		if _valorant_rank_label:
-			_valorant_rank_label.visible = false
+			_valorant_rank_label.text = ""
 		if _valorant_stats_label:
-			_valorant_stats_label.visible = false
-		if _valorant_meta_label:
-			_valorant_meta_label.visible = false
+			_valorant_stats_label.text = ""
 		return
 
 	var rank_name: String = str(data.get(ValorantConstants.KEY_RANK_NAME, "Unranked"))
 	var rr := int(data.get(ValorantConstants.KEY_RR, 0))
 	var wins := int(data.get(ValorantConstants.KEY_WINS, 0))
 	var games := int(data.get(ValorantConstants.KEY_GAMES, 0))
-	var last_played_ms := int(data.get(ValorantConstants.KEY_LAST_PLAYED_MS, 0))
-	var in_game_name: String = str(p.get("valorant_in_game_name", ""))
-	var updated_ms := int(data.get(ValorantConstants.KEY_LAST_UPDATED_MS, 0))
 
 	if _valorant_rank_label:
-		_valorant_rank_label.visible = true
 		_valorant_rank_label.text = "%s · %d RR" % [rank_name, rr]
 
 	if _valorant_stats_label:
-		_valorant_stats_label.visible = true
 		if games > 0:
 			var losses := maxi(0, games - wins)
 			_valorant_stats_label.text = "W %d · L %d" % [wins, losses]
 		else:
 			_valorant_stats_label.text = "No competitive games"
-
-	if _valorant_meta_label:
-		_valorant_meta_label.visible = true
-		var parts: Array[String] = []
-		if not in_game_name.is_empty():
-			parts.append(in_game_name)
-		if last_played_ms > 0:
-			parts.append("Last %s" % _time_ago(last_played_ms / 1000))
-		else:
-			parts.append("Not played yet")
-		if updated_ms > 0:
-			parts.append("Updated %s" % _time_ago(updated_ms / 1000))
-		_valorant_meta_label.text = " · ".join(parts)
 
 
 ## Formats a unix-timestamp diff into a compact "time ago" string.
