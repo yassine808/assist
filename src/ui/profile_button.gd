@@ -193,19 +193,15 @@ func _build_delete_button() -> void:
 	_delete_btn.flat = true
 	_delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_delete_btn.tooltip_text = "Delete profile"
-	var style_normal := StyleBoxEmpty.new()
-	_delete_btn.add_theme_stylebox_override("normal", style_normal)
-	_delete_btn.add_theme_stylebox_override("hover", style_normal)
-	_delete_btn.add_theme_stylebox_override("pressed", style_normal)
-	_delete_btn.add_theme_stylebox_override("focus", style_normal)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		_delete_btn.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	_delete_btn.pressed.connect(_on_post_delete_pressed)
-	_card.add_child(_delete_btn)
-	_delete_btn.anchors_preset = Control.PRESET_TOP_RIGHT
-	_delete_btn.offset_left = -60.0
-	_delete_btn.offset_top = 4.0
-	_delete_btn.offset_right = -38.0
-	_delete_btn.offset_bottom = 26.0
-	_delete_btn.size = Vector2(22, 22)
+	add_child(_delete_btn)
+	_delete_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_delete_btn.offset_left = -34.0
+	_delete_btn.offset_top = 6.0
+	_delete_btn.offset_right = -10.0
+	_delete_btn.offset_bottom = 30.0
 
 	_delete_btn_icon = TextureRect.new()
 	_delete_btn_icon.name = "icon"
@@ -422,14 +418,15 @@ func _relayout_card_text() -> void:
 
 	if _valorant_rank_label and not _valorant_rank_label.text.is_empty():
 		_valorant_rank_label.visible = true
+		_valorant_rank_label.add_theme_font_size_override("font_size", 16)
 		var icon_w := 0.0
 		if _valorant_rank_icon and _valorant_rank_icon.visible and _valorant_rank_icon.texture:
-			icon_w = 22.0
+			icon_w = 28.0
 			_valorant_rank_icon.position = Vector2(x, y)
-			_valorant_rank_icon.size = Vector2(18, 20)
-		_valorant_rank_label.position = Vector2(x + icon_w, y)
-		_valorant_rank_label.size = Vector2(width - icon_w, 20)
-		y += 22.0
+			_valorant_rank_icon.size = Vector2(28, 28)
+		_valorant_rank_label.position = Vector2(x + icon_w, y + 2)
+		_valorant_rank_label.size = Vector2(width - icon_w, 24)
+		y += 32.0
 	elif _valorant_rank_label:
 		_valorant_rank_label.visible = false
 		if _valorant_rank_icon:
@@ -615,7 +612,6 @@ func _apply_valorant_display(p: Dictionary) -> void:
 
 	_hide_skeleton()
 
-	var rank_name: String = str(data.get(ValorantConstants.KEY_RANK_NAME, "Unranked"))
 	var tier: int = int(data.get(ValorantConstants.KEY_TIER, 0))
 	var rr := int(data.get(ValorantConstants.KEY_RR, 0))
 	var wins := int(data.get(ValorantConstants.KEY_WINS, 0))
@@ -627,12 +623,12 @@ func _apply_valorant_display(p: Dictionary) -> void:
 		_valorant_rank_icon.visible = icon != null
 
 	if _valorant_rank_label:
-		_valorant_rank_label.text = "%s · %d RR" % [rank_name, rr]
+		_valorant_rank_label.text = "%d RR" % rr
 
 	if _valorant_stats_label:
 		if games > 0:
 			var losses := maxi(0, games - wins)
-			_valorant_stats_label.text = "W %d · L %d" % [wins, losses]
+			_valorant_stats_label.text = "%d W · %d L" % [wins, losses]
 		else:
 			_valorant_stats_label.text = "No competitive games"
 

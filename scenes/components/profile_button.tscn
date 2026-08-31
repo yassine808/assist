@@ -2716,19 +2716,19 @@ clip_text = true
 layout_mode = 0
 offset_left = 14.0
 offset_top = 48.0
-offset_right = 38.0
-offset_bottom = 68.0
+offset_right = 42.0
+offset_bottom = 76.0
 expand_mode = 3
 stretch_mode = 5
 mouse_filter = 2
 
 [node name="valorant_rank" type="Label" parent="card"]
 layout_mode = 0
-offset_left = 40.0
+offset_left = 42.0
 offset_top = 48.0
 offset_right = 130.0
-offset_bottom = 68.0
-theme_override_font_sizes/font_size = 12
+offset_bottom = 76.0
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(1, 0.4, 0.45, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 theme_override_constants/outline_size = 2
