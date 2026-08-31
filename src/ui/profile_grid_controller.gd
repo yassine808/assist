@@ -249,9 +249,8 @@ func _create_profile_button(profile_data: Dictionary, slot_index: int) -> void:
 
 	var label := button.find_child("profile_name", true, false)
 	if label and label is Label:
-		var has_custom_name: bool = profile_data.get("has_custom_name", true)
 		var riot_id := str(profile_data.get("valorant_in_game_name", "")).strip_edges()
-		label.text = profile_data.get("profile_name", "") if has_custom_name else riot_id
+		label.text = riot_id if not riot_id.is_empty() else str(profile_data.get("profile_name", ""))
 
 	var background := button.get_node_or_null("card/Panel/profile_bg")
 	if background:

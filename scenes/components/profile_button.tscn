@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://b7502oi8kl10a" path="res://src/ui/profile_button.gd" id="1_bfvnd"]
 [ext_resource type="Texture2D" uid="uid://gvvosu0smpm3" path="res://assets/icons/ui/icon_play.png" id="1_dc1tc"]
 [ext_resource type="FontFile" uid="uid://bpump1v2onhl0" path="res://assets/fonts/Raleway-Bold.ttf" id="2_h8srp"]
-[ext_resource type="Texture2D" uid="uid://81r0kj8nnwtj" path="res://assets/backgrounds/default_bg.webp" id="4_at24t"]
+
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_a4rcj"]
 shader = ExtResource("1_3aoht")
@@ -16,6 +16,21 @@ shader_parameter/glow_color = Color(1, 0.039215688, 0.14117648, 0.627451)
 shader_parameter/glow_color_secondary = Color(0.75, 0.029411767, 0.10588236, 0.627451)
 shader_parameter/pulse_speed = 2.0
 shader_parameter/pulse_amount = 0.330000015675
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cardbg"]
+bg_color = Color(0.05882353, 0.0627451, 0.07058824, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.2, 0.22, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
 
 [sub_resource type="Image" id="Image_1r0kl"]
 data = {
@@ -2504,7 +2519,6 @@ theme = SubResource("Theme_umlav")
 flat = true
 
 [node name="Panel" type="Panel" parent="card" unique_id=2109158057]
-modulate = Color(0.678944, 0.678944, 0.678944, 1)
 clip_children = 2
 clip_contents = true
 layout_mode = 1
@@ -2514,32 +2528,15 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_cardbg")
 
-[node name="profile_bg" type="TextureRect" parent="card/Panel" unique_id=1562076324]
-clip_children = 2
+[node name="accent_bar" type="ColorRect" parent="card/Panel" unique_id=2109158058]
+color = Color(1, 0.039215688, 0.14117648, 0.95)
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 4.0
+offset_bottom = 110.0
 mouse_filter = 2
-texture = ExtResource("4_at24t")
-expand_mode = 5
-stretch_mode = 6
-
-[node name="ProgressBar" type="ProgressBar" parent="card/Panel" unique_id=1334389532]
-layout_mode = 1
-anchors_preset = -1
-anchor_top = 0.85
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_at24t")
-theme_override_styles/fill = SubResource("StyleBoxFlat_hqcdx")
-show_percentage = false
 
 [node name="card_inner" type="Panel" parent="card" unique_id=1314834495]
 layout_mode = 1
@@ -2689,63 +2686,64 @@ mouse_default_cursor_shape = 2
 
 [node name="profile_name" type="Label" parent="." unique_id=552114266]
 layout_mode = 0
-offset_left = 9.0
-offset_top = 6.0
-offset_right = 126.0
-offset_bottom = 32.0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 130.0
+offset_bottom = 30.0
 theme_override_fonts/font = ExtResource("2_h8srp")
-theme_override_font_sizes/font_size = 21
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 2
 text = "Account1"
 clip_text = true
 
 [node name="desc_label" type="Label" parent="card"]
 layout_mode = 0
-offset_left = 9.0
-offset_top = 34.0
-offset_right = 126.0
-offset_bottom = 50.0
-theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
+offset_left = 14.0
+offset_top = 32.0
+offset_right = 130.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.72, 0.74, 0.78, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 2
 text = ""
 clip_text = true
 
 [node name="valorant_rank_icon" type="TextureRect" parent="card"]
 layout_mode = 0
-offset_left = 9.0
-offset_top = 52.0
-offset_right = 29.0
-offset_bottom = 70.0
+offset_left = 14.0
+offset_top = 48.0
+offset_right = 38.0
+offset_bottom = 68.0
 expand_mode = 3
 stretch_mode = 5
 mouse_filter = 2
 
 [node name="valorant_rank" type="Label" parent="card"]
 layout_mode = 0
-offset_left = 31.0
-offset_top = 52.0
-offset_right = 126.0
-offset_bottom = 70.0
-theme_override_font_sizes/font_size = 13
-theme_override_colors/font_color = Color(1, 0.45, 0.5, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
+offset_left = 40.0
+offset_top = 48.0
+offset_right = 130.0
+offset_bottom = 68.0
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1, 0.4, 0.45, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 2
 text = ""
 clip_text = true
 
 [node name="valorant_stats" type="Label" parent="card"]
 layout_mode = 0
-offset_left = 9.0
-offset_top = 72.0
-offset_right = 126.0
-offset_bottom = 88.0
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.78, 0.78, 0.78, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
+offset_left = 14.0
+offset_top = 68.0
+offset_right = 130.0
+offset_bottom = 84.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.66, 0.69, 0.74, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 2
 text = ""
 clip_text = true
 

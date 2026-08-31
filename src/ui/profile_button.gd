@@ -292,20 +292,24 @@ func _on_card_mouse_exited() -> void:
 
 ## Stacks the profile card's text labels from the top, hiding any that are
 ## empty so there are no awkward gaps. Text area is constrained to the left
-## side (x 9..131) to keep clear of the 48px play-button slice.
+## side (x 14..130) to clear the accent bar and the 48px play-button slice.
 func _relayout_card_text() -> void:
-	var y := 6.0
-	var max_h := 26.0
+	var x := 14.0
+	var width := 130.0 - x
+	var y := 9.0
+
 	if _profile_name_label and not _profile_name_label.text.is_empty():
-		_profile_name_label.position = Vector2(9, y)
-		_profile_name_label.size = Vector2(122, max_h)
-		y += max_h + 4.0
+		_profile_name_label.position = Vector2(x, y)
+		_profile_name_label.size = Vector2(width, 22)
+		y += 24.0
+	elif _profile_name_label:
+		_profile_name_label.visible = false
 
 	if _desc_label and not _desc_label.text.is_empty():
 		_desc_label.visible = true
-		_desc_label.position = Vector2(9, y)
-		_desc_label.size = Vector2(122, 16)
-		y += 20.0
+		_desc_label.position = Vector2(x, y)
+		_desc_label.size = Vector2(width, 14)
+		y += 17.0
 	elif _desc_label:
 		_desc_label.visible = false
 
@@ -313,27 +317,29 @@ func _relayout_card_text() -> void:
 		_valorant_rank_label.visible = true
 		var icon_w := 0.0
 		if _valorant_rank_icon and _valorant_rank_icon.visible and _valorant_rank_icon.texture:
-			icon_w = 20.0
-			_valorant_rank_icon.position = Vector2(9, y)
-			_valorant_rank_icon.size = Vector2(16, 18)
-		_valorant_rank_label.position = Vector2(9 + icon_w, y)
-		_valorant_rank_label.size = Vector2(122 - icon_w, 18)
+			icon_w = 22.0
+			_valorant_rank_icon.position = Vector2(x, y)
+			_valorant_rank_icon.size = Vector2(18, 20)
+		_valorant_rank_label.position = Vector2(x + icon_w, y)
+		_valorant_rank_label.size = Vector2(width - icon_w, 20)
 		y += 22.0
 	elif _valorant_rank_label:
 		_valorant_rank_label.visible = false
+		if _valorant_rank_icon:
+			_valorant_rank_icon.visible = false
 
 	if _valorant_stats_label and not _valorant_stats_label.text.is_empty():
 		_valorant_stats_label.visible = true
-		_valorant_stats_label.position = Vector2(9, y)
-		_valorant_stats_label.size = Vector2(122, 16)
+		_valorant_stats_label.position = Vector2(x, y)
+		_valorant_stats_label.size = Vector2(width, 16)
 	elif _valorant_stats_label:
 		_valorant_stats_label.visible = false
 
 	# Keep the skeleton (rank/stats placeholder) stacked in the same text column
 	# where the real labels will land, right after the name/description.
 	if _skeleton_root and _skeleton_root.visible:
-		_skeleton_root.position = Vector2(9, y)
-		_skeleton_root.size = Vector2(122, 36)
+		_skeleton_root.position = Vector2(x, y)
+		_skeleton_root.size = Vector2(width, 34)
 
 
 var _interactable_tween: Tween = null
