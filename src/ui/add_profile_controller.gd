@@ -17,7 +17,7 @@ var _current_custom_bg_path: String = ""
 var _background_textures: Array = [] # Built-in backgrounds, aligned with picker buttons.
 
 @onready var _backgrounds_container: Control = $bg_select/backgrounds
-@onready var _preview_background: TextureRect = $preview/profile_button/card/Panel/profile_bg
+@onready var _preview_background: TextureRect = $preview/profile_button/card/Panel/profile_bg if has_node("preview/profile_button/card/Panel/profile_bg") else null
 @onready var _browse_button: Button = $upload_custom_bg/browser_button
 @onready var _file_dialog: FileDialog = $creation/create_button/FileDialog
 @onready var _name_input: LineEdit = $profile_name/LineEdit
@@ -54,7 +54,8 @@ func reset_form() -> void:
 	if _description_input:
 		_description_input.text = ""
 	_update_name_preview()
-	_preview_background.texture = null
+	if _preview_background:
+		_preview_background.texture = null
 	_current_custom_bg_path = ""
 
 
@@ -111,9 +112,6 @@ func _on_create_button_pressed() -> void:
 	var profile_name := raw_typed if has_custom_name else _generate_auto_profile_name()
 	var description := _description_input.text.strip_edges() if _description_input else ""
 
-	if not _preview_background.texture:
-		_show_error("Please select or upload a background image!")
-		return
 	if profile_manager.has_profile(profile_name):
 		_show_error("Profile name '%s' already exists!" % profile_name)
 		return
@@ -128,10 +126,14 @@ func _on_create_button_pressed() -> void:
 	profile_created_successfully.emit()
 
 
-## Decides which background path gets stored for the new profile.
+## Decides which background path gets stored for the new profile. Backgrounds
+## are no longer rendered on the profile card, so this resolves to empty (or a
+## default path if a custom one was previously uploaded) to keep data intact.
 func _resolve_background_path() -> String:
 	if not _current_custom_bg_path.is_empty():
 		return _current_custom_bg_path
+	if not _preview_background or not _preview_background.texture:
+		return ""
 	var resource_path: String = _preview_background.texture.resource_path
 	if resource_path.begins_with("res://"):
 		return resource_path
@@ -165,7 +167,8 @@ func _on_file_selected(path: String) -> void:
 		_current_custom_bg_path = ""
 		return
 
-	_preview_background.texture = ImageTexture.create_from_image(image)
+	if _preview_background:
+		_preview_background.texture = ImageTexture.create_from_image(image)
 	_current_custom_bg_path = destination_path
 	_hide_error()
 
@@ -174,7 +177,8 @@ func _on_standard_background_selected(index: int) -> void:
 	if index < 0 or index >= _background_textures.size() or not _background_textures[index]:
 		_show_error("Selected background is unavailable.")
 		return
-	_preview_background.texture = _background_textures[index]
+	if _preview_background:
+		_preview_background.texture = _background_textures[index]
 	_current_custom_bg_path = ""
 	_hide_error()
 
