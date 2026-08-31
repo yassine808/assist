@@ -267,8 +267,13 @@ func _capture_with_identity(profile_name: String, puuid: String, region: String)
 
 ## Appends a HenrikDev lookup for a profile to the request queue and kicks the
 ## rate limiter, which fires jobs at least MIN_REQ_INTERVAL_MS apart.
-func _enqueue_fetch(profile_name: String, puuid: String, region: String) -> void:
-	_request_queue.append({"profile_name": profile_name, "puuid": puuid, "region": region})
+func _enqueue_fetch(profile_name: String, puuid: String, region: String, tried_regions: Array[String] = []) -> void:
+	_request_queue.append({
+		"profile_name": profile_name,
+		"puuid": puuid,
+		"region": region,
+		"tried_regions": tried_regions,
+	})
 	print("[Valorant/Tracker] Fila de consultas: %d pendente(s)." % _request_queue.size())
 	_flush_request_queue()
 
@@ -305,7 +310,17 @@ func _flush_request_queue() -> void:
 		return
 	var payload: Variant = mmr.get("data")
 	if not (payload is Dictionary):
-		print("[Valorant/Tracker] No MMR data for region '%s'." % str(job.get("region", "")))
+		# Empty data for this region — try the next untried region from
+		# REGION_PROBE_ORDER before giving up.  This handles the case where a
+		# wrong region was persisted (e.g. "br" stored for an EU account).
+		var tried: Array = job.get("tried_regions", [])
+		tried.append(str(job.get("region", "")))
+		for candidate in REGION_PROBE_ORDER:
+			if not candidate in tried:
+				print("[Valorant/Tracker] No data for region '%s', trying '%s'." % [str(job.get("region", "")), candidate])
+				_enqueue_fetch(str(job.get("profile_name", "")), str(job.get("puuid", "")), candidate, tried)
+				return
+		print("[Valorant/Tracker] No MMR data for region '%s' (all regions tried)." % str(job.get("region", "")))
 		if not _request_queue.is_empty():
 			_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
 		return
@@ -445,7 +460,12 @@ func _resolve_shard() -> String:
 		return ""
 	var m := re.search(text)
 	if m and m.get_string_count() >= 2:
-		return m.get_string(1)
+		var shard := m.get_string(1)
+		# Strip trailing digits (e.g. "eu1" → "eu", "br1" → "br") so the
+		# clean region code is compatible with HenrikDev's API paths.
+		while not shard.is_empty() and shard[-1].is_valid_int():
+			shard = shard.left(shard.length() - 1)
+		return shard
 	return ""
 
 

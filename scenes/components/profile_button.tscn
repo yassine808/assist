@@ -2713,9 +2713,19 @@ theme_override_constants/outline_size = 3
 text = ""
 clip_text = true
 
-[node name="valorant_rank" type="Label" parent="card"]
+[node name="valorant_rank_icon" type="TextureRect" parent="card"]
 layout_mode = 0
 offset_left = 9.0
+offset_top = 52.0
+offset_right = 29.0
+offset_bottom = 70.0
+expand_mode = 3
+stretch_mode = 5
+mouse_filter = 2
+
+[node name="valorant_rank" type="Label" parent="card"]
+layout_mode = 0
+offset_left = 31.0
 offset_top = 52.0
 offset_right = 126.0
 offset_bottom = 70.0

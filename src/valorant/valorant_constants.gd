@@ -122,3 +122,30 @@ static func rank_name_from_tier(tier: int) -> String:
 	if names.has(tier):
 		return names[tier]
 	return "Unranked"
+
+
+## Tier id -> relative icon path inside assets/icons/ranks/.
+## Matches the filenames downloaded from wiki.playvalorant.com/en-us/Category:Rank_Images.
+const _RANK_ICON_MAP := {
+	0: "TX_CompetitiveTier_Large_0.png",
+	3: "Iron_1_Rank.png", 4: "Iron_2_Rank.png", 5: "Iron_3_Rank.png",
+	6: "Bronze_1_Rank.png", 7: "Bronze_2_Rank.png", 8: "Bronze_3_Rank.png",
+	9: "Silver_1_Rank.png", 10: "Silver_2_Rank.png", 11: "Silver_3_Rank.png",
+	12: "Gold_1_Rank.png", 13: "Gold_2_Rank.png", 14: "Gold_3_Rank.png",
+	15: "Platinum_1_Rank.png", 16: "Platinum_2_Rank.png", 17: "Platinum_3_Rank.png",
+	18: "Diamond_1_Rank.png", 19: "Diamond_2_Rank.png", 20: "Diamond_3_Rank.png",
+	21: "Ascendant_1_Rank.png", 22: "Ascendant_2_Rank.png", 23: "Ascendant_3_Rank.png",
+	24: "Immortal_1_Rank.png", 25: "Immortal_2_Rank.png", 26: "Immortal_3_Rank.png",
+	27: "Radiant_Rank.png",
+}
+
+## Returns the preloaded rank icon texture for the given competitive tier,
+## or null if no matching image exists on disk.
+static func rank_icon_from_tier(tier: int) -> Texture2D:
+	var filename: String = _RANK_ICON_MAP.get(tier, "")
+	if filename.is_empty():
+		return null
+	var path := "res://assets/icons/ranks/" + filename
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path)

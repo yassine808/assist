@@ -67,6 +67,7 @@ var _drag_start_pos := Vector2.ZERO
 @onready var _card: Control = get_node_or_null("card")
 @onready var _profile_name_label: Label = $profile_name if has_node("profile_name") else null
 @onready var _desc_label: Label = get_node_or_null("card/desc_label")
+@onready var _valorant_rank_icon: TextureRect = get_node_or_null("card/valorant_rank_icon")
 @onready var _valorant_rank_label: Label = get_node_or_null("card/valorant_rank")
 @onready var _valorant_stats_label: Label = get_node_or_null("card/valorant_stats")
 
@@ -310,8 +311,13 @@ func _relayout_card_text() -> void:
 
 	if _valorant_rank_label and not _valorant_rank_label.text.is_empty():
 		_valorant_rank_label.visible = true
-		_valorant_rank_label.position = Vector2(9, y)
-		_valorant_rank_label.size = Vector2(122, 18)
+		var icon_w := 0.0
+		if _valorant_rank_icon and _valorant_rank_icon.visible and _valorant_rank_icon.texture:
+			icon_w = 20.0
+			_valorant_rank_icon.position = Vector2(9, y)
+			_valorant_rank_icon.size = Vector2(16, 18)
+		_valorant_rank_label.position = Vector2(9 + icon_w, y)
+		_valorant_rank_label.size = Vector2(122 - icon_w, 18)
 		y += 22.0
 	elif _valorant_rank_label:
 		_valorant_rank_label.visible = false
@@ -476,9 +482,15 @@ func _apply_valorant_display(p: Dictionary) -> void:
 	_hide_skeleton()
 
 	var rank_name: String = str(data.get(ValorantConstants.KEY_RANK_NAME, "Unranked"))
+	var tier: int = int(data.get(ValorantConstants.KEY_TIER, 0))
 	var rr := int(data.get(ValorantConstants.KEY_RR, 0))
 	var wins := int(data.get(ValorantConstants.KEY_WINS, 0))
 	var games := int(data.get(ValorantConstants.KEY_GAMES, 0))
+
+	if _valorant_rank_icon:
+		var icon := ValorantConstants.rank_icon_from_tier(tier)
+		_valorant_rank_icon.texture = icon
+		_valorant_rank_icon.visible = icon != null
 
 	if _valorant_rank_label:
 		_valorant_rank_label.text = "%s · %d RR" % [rank_name, rr]
