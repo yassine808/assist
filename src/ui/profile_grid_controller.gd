@@ -203,7 +203,6 @@ func _populate_profile_buttons() -> void:
 		if profile_data.get("profile_name") == _running_profile_name:
 			running_still_exists = true
 		_create_profile_button(profile_data, i)
-	_create_add_account_card(profiles.size())
 
 	# Safety net: the profile backing the running state was removed.
 	if not running_still_exists:
@@ -211,25 +210,6 @@ func _populate_profile_buttons() -> void:
 
 	if is_visible_in_tree():
 		call_deferred("play_cascade_entrance")
-
-func _create_add_account_card(slot_index: int) -> void:
-	var button := Button.new()
-	button.name = "add_riot_account"
-	button.position = get_slot_position(slot_index)
-	button.custom_minimum_size = card_size
-	button.size = card_size
-	button.tooltip_text = "Sign in to another Riot account"
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.10, 0.10, 0.12, 0.92)
-	style.border_color = Color(1.0, 0.18, 0.25, 0.60)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
-	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_font_size_override("font_size", 14)
-	button.text = "+\nAdd Riot account"
-	button.pressed.connect(func(): add_profile_requested.emit())
-	add_child(button)
 
 func launch_profile(profile_name: String) -> void:
 	for card in _cards:

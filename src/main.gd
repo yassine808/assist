@@ -11,6 +11,7 @@ extends Control
 @onready var edit_profile_modal: Control = $edit_profile_modal if has_node("edit_profile_modal") else find_child("edit_profile_modal", true, false)
 @onready var boot_screen: Control = $boot if has_node("boot") else find_child("boot", true, false)
 @onready var system_tray: Node = $systemtray if has_node("systemtray") else find_child("systemtray", true, false)
+@onready var add_riot_button: Button = $add_riot_button as Button if has_node("add_riot_button") else null
 
 var riot_client_location: String = ""
 var _current_active_view: Control = null
@@ -40,8 +41,13 @@ func _ready() -> void:
 	if add_menu:
 		if add_menu.has_method("set_profile_manager"):
 			add_menu.set_profile_manager(ProfileManager)
+		if add_menu.has_method("set_riot_client_location"):
+			add_menu.set_riot_client_location(riot_client_location)
 		add_menu.profile_created_successfully.connect(_on_profile_creation_success)
 		add_menu.warning_dismissed.connect(_on_add_menu_warning_dismissed)
+
+	if add_riot_button:
+		add_riot_button.pressed.connect(_show_add_profile_view)
 
 	if edit_profile_modal:
 		edit_profile_modal.profile_manager = ProfileManager
@@ -242,8 +248,11 @@ func _show_settings_view() -> void:
 
 
 func _show_add_profile_view() -> void:
-	if add_menu and add_menu.has_method("reset_form"):
-		add_menu.reset_form()
+	if add_menu:
+		if add_menu.has_method("start_add_flow"):
+			add_menu.start_add_flow()
+		elif add_menu.has_method("reset_form"):
+			add_menu.reset_form()
 	_switch_to_view(add_menu)
 
 
