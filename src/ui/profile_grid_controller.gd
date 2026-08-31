@@ -21,7 +21,7 @@ const LAUNCH_PRODUCT_VALORANT := "valorant" # Auto-launch VALORANT after the cli
 const CONFIG_KEY_LAUNCH_PRODUCT := "LaunchProduct"
 const LAUNCH_ARGS_BASE: Array[String] = ["--launch-patchline=live"]
 
-@export var card_size: Vector2 = Vector2(181, 110)
+@export var card_size: Vector2 = Vector2(181, 200)
 const HYSTERESIS_FACTOR := 0.20 # 15px deadband on 75px pitch to completely prevent jitter
 const SETTINGS_WATCHDOG_INTERVAL := 2.0
 

@@ -2474,7 +2474,7 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [node name="profile_button" type="Control" unique_id=1488976912]
-custom_minimum_size = Vector2(181, 50)
+custom_minimum_size = Vector2(181, 200)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -2499,13 +2499,13 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -145.80002
-offset_top = -88.600006
+offset_top = -103.0
 offset_right = 144.58463
-offset_bottom = 86.400024
+offset_bottom = 101.0
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(1.04, 1.04)
-pivot_offset = Vector2(130, 60)
+pivot_offset = Vector2(130, 100)
 mouse_filter = 2
 
 [node name="card" type="Button" parent="." unique_id=1225897721]
@@ -2535,18 +2535,19 @@ color = Color(1, 0.039215688, 0.14117648, 0.95)
 layout_mode = 1
 anchors_preset = 0
 offset_right = 4.0
-offset_bottom = 110.0
+offset_bottom = 200.0
 mouse_filter = 2
 
 [node name="card_inner" type="Panel" parent="card" unique_id=1314834495]
 layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
+anchors_preset = 12
+anchor_left = 0.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -48.0
-grow_horizontal = 0
-grow_vertical = 2
+offset_top = -40.0
+grow_horizontal = 2
+grow_vertical = 0
 mouse_default_cursor_shape = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_rmlkp")
 
@@ -2740,6 +2741,32 @@ offset_left = 14.0
 offset_top = 68.0
 offset_right = 130.0
 offset_bottom = 84.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.66, 0.69, 0.74, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 2
+text = ""
+clip_text = true
+
+[node name="valorant_agent" type="Label" parent="card"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 84.0
+offset_right = 130.0
+offset_bottom = 98.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.66, 0.69, 0.74, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 2
+text = ""
+clip_text = true
+
+[node name="valorant_combat" type="Label" parent="card"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 100.0
+offset_right = 130.0
+offset_bottom = 114.0
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.66, 0.69, 0.74, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)

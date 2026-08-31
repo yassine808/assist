@@ -267,12 +267,14 @@ func _capture_with_identity(profile_name: String, puuid: String, region: String)
 
 ## Appends a HenrikDev lookup for a profile to the request queue and kicks the
 ## rate limiter, which fires jobs at least MIN_REQ_INTERVAL_MS apart.
-func _enqueue_fetch(profile_name: String, puuid: String, region: String, tried_regions: Array[String] = []) -> void:
+## `kind` is "mmr" (rank) or "matches" (recent matches for agent/combat score).
+func _enqueue_fetch(profile_name: String, puuid: String, region: String, tried_regions: Array[String] = [], kind := "mmr") -> void:
 	_request_queue.append({
 		"profile_name": profile_name,
 		"puuid": puuid,
 		"region": region,
 		"tried_regions": tried_regions,
+		"kind": kind,
 	})
 	print("[Valorant/Tracker] Fila de consultas: %d pendente(s)." % _request_queue.size())
 	_flush_request_queue()
@@ -294,8 +296,21 @@ func _flush_request_queue() -> void:
 		return
 
 	var job: Dictionary = _request_queue.pop_front()
-	var mmr := _fetch_mmr_henrikdev(str(job.get("region", "")), str(job.get("puuid", "")))
 	_last_request_ms = int(Time.get_ticks_msec())
+
+	var kind := str(job.get("kind", "mmr"))
+	if kind == "matches":
+		_dispatch_matches_job(job)
+	else:
+		_dispatch_mmr_job(job)
+
+	# Drain the rest of the queue on the same pacing schedule.
+	if not _request_queue.is_empty():
+		_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
+
+
+func _dispatch_mmr_job(job: Dictionary) -> void:
+	var mmr := _fetch_mmr_henrikdev(str(job.get("region", "")), str(job.get("puuid", "")))
 	if mmr.is_empty():
 		# Fetch failed outright (missing API key, curl/network error, bad JSON).
 		# Must bail out here WITHOUT calling _build_data(): previously-saved
@@ -305,8 +320,6 @@ func _flush_request_queue() -> void:
 		# that dict isn't empty, it passed straight through as if it were a
 		# real, successful result and permanently overwrote the correct rank.
 		print("[Valorant/Tracker] MMR vazio retornado do HenrikDev.")
-		if not _request_queue.is_empty():
-			_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
 		return
 	var payload: Variant = mmr.get("data")
 	if not (payload is Dictionary):
@@ -318,11 +331,9 @@ func _flush_request_queue() -> void:
 		for candidate in REGION_PROBE_ORDER:
 			if not candidate in tried:
 				print("[Valorant/Tracker] No data for region '%s', trying '%s'." % [str(job.get("region", "")), candidate])
-				_enqueue_fetch(str(job.get("profile_name", "")), str(job.get("puuid", "")), candidate, tried)
+				_enqueue_fetch(str(job.get("profile_name", "")), str(job.get("puuid", "")), candidate, tried, "mmr")
 				return
 		print("[Valorant/Tracker] No MMR data for region '%s' (all regions tried)." % str(job.get("region", "")))
-		if not _request_queue.is_empty():
-			_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
 		return
 	var data := _build_data(mmr)
 	var in_game_name := ""
@@ -335,9 +346,29 @@ func _flush_request_queue() -> void:
 				in_game_name = game_name + "#" + tag
 	_apply(str(job.get("profile_name", "")), str(job.get("puuid", "")), str(job.get("region", "")), in_game_name, data)
 
-	# Drain the rest of the queue on the same pacing schedule.
-	if not _request_queue.is_empty():
-		_rate_timer.start(float(MIN_REQ_INTERVAL_MS) / 1000.0)
+	# Rank just landed with a definite region — queue the follow-up matches fetch
+	# so the card can show most-played agent + avg combat score. Reuses the same
+	# rate limiter so both stay within HenrikDev's Basic cap.
+	var resolved_region := str(profile_region(str(job.get("profile_name", ""))))
+	if not resolved_region.is_empty():
+		_enqueue_fetch(str(job.get("profile_name", "")), str(job.get("puuid", "")), resolved_region, [], "matches")
+
+
+func _dispatch_matches_job(job: Dictionary) -> void:
+	var matches := _fetch_matches_henrikdev(str(job.get("region", "")), str(job.get("puuid", "")))
+	if matches.is_empty():
+		print("[Valorant/Tracker] Matches vazio retornado do HenrikDev.")
+		return
+	_apply_matches(str(job.get("profile_name", "")), matches)
+
+
+## Reads a profile's stored region ("" if none), used after a successful MMR
+## fetch to address the follow-up matches request to the same region.
+func profile_region(profile_name: String) -> String:
+	var profile := ProfileManager.get_profile(profile_name)
+	if profile.is_empty():
+		return ""
+	return str(profile.get("valorant_region", ""))
 
 
 func _apply(profile_name: String, puuid: String, region: String, in_game_name: String, data: Dictionary) -> void:
@@ -494,6 +525,104 @@ func _fetch_mmr_henrikdev(region: String, puuid: String) -> Dictionary:
 	if json is Dictionary:
 		return json
 	return {}
+
+
+## Fetches recent matches for a PUUID from the public HenrikDev API (v3
+## by-puuid matches), filtered to Competitive and the last MATCHES_QUERY_SIZE
+## games. We only need these to derive the most-played agent and average combat
+## score, so a small recent window keeps the payload light. Returns the parsed
+## MatchesV3ListResponse dictionary or {} on failure.
+func _fetch_matches_henrikdev(region: String, puuid: String) -> Dictionary:
+	var api_key := ValorantConstants.api_key()
+	if api_key.is_empty():
+		print("[Valorant/Tracker] HENRIKDEV_API_KEY não definida em .env — consulta de partidas ignorada.")
+		return {}
+	var path := ValorantConstants.PATH_MATCHES_BY_PUUID % [region, puuid]
+	var url := "%s%s?mode=%s&size=%d" % [
+		ValorantConstants.HENRIKDEV_BASE, path,
+		ValorantConstants.MATCHES_MODE, ValorantConstants.MATCHES_QUERY_SIZE,
+	]
+	var args: Array[String] = ["-s", "-m", str(ValorantConstants.CURL_TIMEOUT_MS / 1000)]
+	args.append("-H")
+	args.append("Authorization: " + api_key)
+	args.append("-H")
+	args.append("User-Agent: RiotSwitcher/1.0")
+	args.append(url)
+	var output: Array = []
+	var exit_code := OS.execute("curl.exe", args, output, true, false)
+	if exit_code != 0 or output.is_empty():
+		return {}
+	var json: Variant = JSON.parse_string(str(output[0]))
+	if json is Dictionary:
+		return json
+	return {}
+
+
+## Merges derived match-history stats (most-played agent + average combat score)
+## into the profile's existing `valorant_data` without disturbing the rank fields
+## written by the MMR fetch. Emits `valorant_data_updated` so cards re-read the
+## new values.
+func _apply_matches(profile_name: String, matches: Dictionary) -> void:
+	var profile := ProfileManager.get_profile(profile_name)
+	if profile.is_empty():
+		return
+	var payload: Variant = matches.get("data")
+	if not (payload is Array):
+		return
+	var data: Dictionary = profile.get("valorant_data", {})
+	var puuid := str(profile.get("valorant_puuid", "")).to_lower()
+	var in_game_name := str(profile.get("valorant_in_game_name", ""))
+	var region := str(profile.get("valorant_region", ""))
+
+	var agent_counts := {}
+	var score_sum := 0
+	var score_count := 0
+	for match: Variant in (payload as Array):
+		if not (match is Dictionary):
+			continue
+		var players: Variant = (match as Dictionary).get("players")
+		if not (players is Array):
+			continue
+		for player: Variant in (players as Array):
+			if not (player is Dictionary):
+				continue
+			if not str((player as Dictionary).get("puuid", "")).to_lower() == puuid:
+				continue
+			var agent_name := _player_agent_name(player as Dictionary)
+			if not agent_name.is_empty():
+				agent_counts[agent_name] = int(agent_counts.get(agent_name, 0)) + 1
+			var stats: Variant = (player as Dictionary).get("stats")
+			if stats is Dictionary:
+				var score := int((stats as Dictionary).get("score", 0))
+				if score > 0:
+					score_sum += score
+					score_count += 1
+			break
+
+	var top_agent := ""
+	var top_count := 0
+	for agent_name: String in agent_counts:
+		if int(agent_counts[agent_name]) > top_count:
+			top_count = int(agent_counts[agent_name])
+			top_agent = agent_name
+
+	data[ValorantConstants.KEY_TOP_AGENT] = top_agent
+	data[ValorantConstants.KEY_AVG_COMBAT_SCORE] = int(round(float(score_sum) / maxi(1, score_count))) if score_count > 0 else 0
+
+	ProfileManager.update_valorant_data(profile_name, data, puuid, in_game_name, region)
+	valorant_data_updated.emit(profile_name)
+	print("[Valorant/Tracker] Stats de partida para '%s': agente='%s' score médio=%d." % [profile_name, top_agent, data[ValorantConstants.KEY_AVG_COMBAT_SCORE]])
+
+
+## Reads the agent display name from a player object, tolerating both the v3
+## `character` object and the v4 `agent` object. "" if either is absent.
+func _player_agent_name(player: Dictionary) -> String:
+	var agent: Variant = player.get("character")
+	if not (agent is Dictionary):
+		agent = player.get("agent")
+	if agent is Dictionary:
+		return str((agent as Dictionary).get("name", ""))
+	return ""
 
 
 ## Locates the lockfile of the **running Riot Client**, which is the one that

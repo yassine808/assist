@@ -50,6 +50,12 @@ const CURL_TIMEOUT_MS := 8000
 const HENRIKDEV_BASE := "https://api.henrikdev.xyz"
 # {region}, {platform}, {puuid} -> MMRV3Response
 const PATH_MMR_BY_PUUID := "/valorant/v3/by-puuid/mmr/%s/%s/%s"
+# {region}, {puuid} -> MatchesV3ListResponse. Filtered to Competitive and a small
+# recent window so we can derive the most-played agent and average combat score
+# without paying for the full history.
+const PATH_MATCHES_BY_PUUID := "/valorant/v3/by-puuid/matches/%s/%s"
+const MATCHES_QUERY_SIZE := 20
+const MATCHES_MODE := "competitive"
 const PLATFORM := "pc"
 
 ## Local `.env` file, looked up next to the executable (project root in the
@@ -102,6 +108,8 @@ const KEY_GAMES := "games"
 const KEY_LAST_PLAYED_MS := "last_played_ms"
 const KEY_LAST_UPDATED_MS := "last_updated_ms"
 const KEY_ACT_ID := "act_id"
+const KEY_TOP_AGENT := "top_agent"
+const KEY_AVG_COMBAT_SCORE := "avg_combat_score"
 
 ## Tier id -> human readable rank name (0 = Unranked).
 ## https://support-valorant.riotgames.com (competitive tiers)

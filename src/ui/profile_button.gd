@@ -70,6 +70,14 @@ var _drag_start_pos := Vector2.ZERO
 @onready var _valorant_rank_icon: TextureRect = get_node_or_null("card/valorant_rank_icon")
 @onready var _valorant_rank_label: Label = get_node_or_null("card/valorant_rank")
 @onready var _valorant_stats_label: Label = get_node_or_null("card/valorant_stats")
+@onready var _valorant_agent_label: Label = get_node_or_null("card/valorant_agent")
+@onready var _valorant_combat_label: Label = get_node_or_null("card/valorant_combat")
+
+## Always-visible top-right "✕" delete button and its confirmation dialog. The
+## button is built in code (self-drawn ✕ texture) so no icon asset is required.
+var _delete_btn: Button = null
+var _delete_btn_icon: TextureRect = null
+var _confirm_dialog: ConfirmationDialog = null
 
 # Skeleton placeholder shown while this card has a VALORANT PUUID configured but
 # rank/stats have not been fetched yet (refresh pending / in flight / failed).
@@ -111,7 +119,11 @@ func _ready() -> void:
 		_glow_effect.scale = Vector2(0.96, 0.96)
 		_glow_effect.pivot_offset = _glow_effect.size * 0.5
 
-	# Always-visible card text (description + rank/RR + W/L) — no hover popup.
+	_build_delete_button()
+	_build_confirm_dialog()
+
+	# Always-visible card text (description + rank/RR + W/L + agent + combat) —
+	# no hover popup.
 	_apply_valorant_display(profile_data)
 	_relayout_card_text()
 	set_process_input(true)
@@ -166,6 +178,100 @@ func reset_toggle_state() -> void:
 	_is_transitioning = false
 	if _state_icon:
 		_state_icon.texture = PLAY_ICON
+
+#endregion
+
+#region On-card delete button & confirmation
+
+## Builds the always-visible "✕" delete button in the top-right corner of the
+## card, plus the Godot ConfirmationDialog that guards a destructive delete.
+func _build_delete_button() -> void:
+	if not _card or _delete_btn:
+		return
+	_delete_btn = Button.new()
+	_delete_btn.name = "delete_btn"
+	_delete_btn.flat = true
+	_delete_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_delete_btn.tooltip_text = "Delete profile"
+	var style_normal := StyleBoxEmpty.new()
+	_delete_btn.add_theme_stylebox_override("normal", style_normal)
+	_delete_btn.add_theme_stylebox_override("hover", style_normal)
+	_delete_btn.add_theme_stylebox_override("pressed", style_normal)
+	_delete_btn.add_theme_stylebox_override("focus", style_normal)
+	_delete_btn.pressed.connect(_on_post_delete_pressed)
+	_card.add_child(_delete_btn)
+	_delete_btn.anchors_preset = Control.PRESET_TOP_RIGHT
+	_delete_btn.offset_left = -60.0
+	_delete_btn.offset_top = 4.0
+	_delete_btn.offset_right = -38.0
+	_delete_btn.offset_bottom = 26.0
+	_delete_btn.size = Vector2(22, 22)
+
+	_delete_btn_icon = TextureRect.new()
+	_delete_btn_icon.name = "icon"
+	_delete_btn_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_delete_btn_icon.texture = _make_delete_icon(16, Color(1.0, 0.9, 0.9, 0.75))
+	_delete_btn_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_delete_btn.add_child(_delete_btn_icon)
+	_delete_btn_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_delete_btn_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _build_confirm_dialog() -> void:
+	if _confirm_dialog:
+		return
+	_confirm_dialog = ConfirmationDialog.new()
+	_confirm_dialog.name = "confirm_dialog"
+	_confirm_dialog.title = "Delete profile"
+	_confirm_dialog.dialog_text = "Delete this profile? This cannot be undone."
+	_confirm_dialog.ok_button_text = "Delete"
+	_confirm_dialog.cancel_button_text = "Cancel"
+	add_child(_confirm_dialog)
+	_confirm_dialog.confirmed.connect(_on_delete_confirmed)
+
+
+func _on_post_delete_pressed() -> void:
+	if client_is_running or _is_transitioning:
+		printerr("Cannot delete profile while its client is running.")
+		return
+	if not _confirm_dialog:
+		# Concrete fallback: if the dialog failed to build, go straight ahead.
+		delete_requested.emit(self)
+		return
+	_confirm_dialog.popup_centered()
+
+
+func _on_delete_confirmed() -> void:
+	delete_requested.emit(self)
+
+
+## Draws an "✕" as a pair of diagonal lines into a small RGBA image, which is
+## returned as a texture. No icon asset required.
+func _make_delete_icon(size: int, color: Color) -> Texture2D:
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var t := 4
+	for off in [0, 1]:
+		_draw_line_aa(img, Vector2i(t + off, t), Vector2i(size - 1 - t, size - 1 - t), color)
+		_draw_line_aa(img, Vector2i(size - 1 - t, t + off), Vector2i(t, size - 1 - t), color)
+	return ImageTexture.create_from_image(img)
+
+
+## Draws a 1px line into an Image by stepping along the dominant axis.
+func _draw_line_aa(img: Image, p0: Vector2i, p1: Vector2i, color: Color) -> void:
+	var dx := absi(p1.x - p0.x)
+	var dy := absi(p1.y - p0.y)
+	var steps := maxi(dx, dy)
+	if steps == 0:
+		if img.get_width() > 0 and img.get_height() > 0:
+			img.set_pixel(p0.x, p0.y, color)
+		return
+	for s in steps + 1:
+		var t := float(s) / float(steps)
+		var px := int(round(float(p0.x) + (p1.x - p0.x) * t))
+		var py := int(round(float(p0.y) + (p1.y - p0.y) * t))
+		if px >= 0 and py >= 0 and px < img.get_width() and py < img.get_height():
+			img.set_pixel(px, py, color)
 
 #endregion
 
@@ -292,7 +398,8 @@ func _on_card_mouse_exited() -> void:
 
 ## Stacks the profile card's text labels from the top, hiding any that are
 ## empty so there are no awkward gaps. Text area is constrained to the left
-## side (x 14..130) to clear the accent bar and the 48px play-button slice.
+## side (x 14..130) to clear the accent bar, the top-right delete button, and
+## the play/pause strip (which now spans the bottom edge).
 func _relayout_card_text() -> void:
 	var x := 14.0
 	var width := 130.0 - x
@@ -332,8 +439,25 @@ func _relayout_card_text() -> void:
 		_valorant_stats_label.visible = true
 		_valorant_stats_label.position = Vector2(x, y)
 		_valorant_stats_label.size = Vector2(width, 16)
+		y += 17.0
 	elif _valorant_stats_label:
 		_valorant_stats_label.visible = false
+
+	if _valorant_agent_label and not _valorant_agent_label.text.is_empty():
+		_valorant_agent_label.visible = true
+		_valorant_agent_label.position = Vector2(x, y)
+		_valorant_agent_label.size = Vector2(width, 14)
+		y += 16.0
+	elif _valorant_agent_label:
+		_valorant_agent_label.visible = false
+
+	if _valorant_combat_label and not _valorant_combat_label.text.is_empty():
+		_valorant_combat_label.visible = true
+		_valorant_combat_label.position = Vector2(x, y)
+		_valorant_combat_label.size = Vector2(width, 14)
+		y += 16.0
+	elif _valorant_combat_label:
+		_valorant_combat_label.visible = false
 
 	# Keep the skeleton (rank/stats placeholder) stacked in the same text column
 	# where the real labels will land, right after the name/description.
@@ -479,6 +603,10 @@ func _apply_valorant_display(p: Dictionary) -> void:
 		if _valorant_stats_label:
 			_valorant_stats_label.visible = true
 			_valorant_stats_label.text = "Fetching from HenrikDev" if not str(p.get("valorant_puuid", "")).is_empty() else "Launch VALORANT once to connect"
+		if _valorant_agent_label:
+			_valorant_agent_label.visible = false
+		if _valorant_combat_label:
+			_valorant_combat_label.visible = false
 		if _should_show_skeleton(p):
 			_show_skeleton()
 		else:
@@ -507,6 +635,22 @@ func _apply_valorant_display(p: Dictionary) -> void:
 			_valorant_stats_label.text = "W %d · L %d" % [wins, losses]
 		else:
 			_valorant_stats_label.text = "No competitive games"
+
+	var top_agent: String = str(data.get(ValorantConstants.KEY_TOP_AGENT, "")).strip_edges()
+	if _valorant_agent_label:
+		if top_agent.is_empty():
+			_valorant_agent_label.visible = false
+		else:
+			_valorant_agent_label.visible = true
+			_valorant_agent_label.text = "Main %s" % top_agent
+
+	var avg_cs := int(data.get(ValorantConstants.KEY_AVG_COMBAT_SCORE, 0))
+	if _valorant_combat_label:
+		if avg_cs > 0:
+			_valorant_combat_label.visible = true
+			_valorant_combat_label.text = "ACS %d" % avg_cs
+		else:
+			_valorant_combat_label.visible = false
 
 
 ## Formats a unix-timestamp diff into a compact "time ago" string.
