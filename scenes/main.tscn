@@ -4279,9 +4279,9 @@ script = ExtResource("8_njgeq")
 
 [node name="add_riot_button" type="Button" parent="upper_side" unique_id=31094258]
 layout_mode = 0
-offset_left = 990.0
+offset_left = 985.0
 offset_top = 5.0
-offset_right = 1100.0
+offset_right = 1110.0
 offset_bottom = 34.0
 mouse_default_cursor_shape = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_addbtn")
@@ -4289,7 +4289,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_addbtn")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_addbtn")
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
-text = "+ Add Account"
+text = "+ Add Riot Account"
 
 [node name="window_buttons" type="Control" parent="upper_side" unique_id=719105557]
 anchors_preset = 0

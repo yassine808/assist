@@ -154,6 +154,8 @@ func _on_configs_updated(new_config_data: Dictionary) -> void:
 		riot_client_location = new_location
 		if profile_grid:
 			profile_grid.update_riot_client_location(riot_client_location)
+		if add_menu and add_menu.has_method("set_riot_client_location"):
+			add_menu.set_riot_client_location(riot_client_location)
 
 	# First-run: no client location yet, so keep the setup screen visible.
 	_set_boot_visible(riot_client_location.is_empty())
