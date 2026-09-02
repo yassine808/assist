@@ -1,0 +1,39 @@
+{
+  "name": "riotswitcher",
+  "version": "2.0.0",
+  "description": "Riot Account Manager — Switch between Riot accounts instantly",
+  "main": "out/main/index.js",
+  "author": "RiotSwitcher Contributors",
+  "license": "GPL-3.0",
+  "scripts": {
+    "dev": "concurrently -n electron,python -c blue,green \"npm run dev:electron\" \"npm run dev:python\"",
+    "dev:electron": "electron-vite dev",
+    "dev:python": "python src/backend/main.py --dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "build:py": "pyinstaller build/build-python.spec --noconfirm",
+    "dist": "npm run build && npm run build:py && electron-builder",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0",
+    "lucide-react": "^0.525.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^3.0.0",
+    "postcss": "^8.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.5.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0"
+  }
+}

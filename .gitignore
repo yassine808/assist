@@ -1,41 +1,43 @@
-# Godot 4+ specific ignores
-.godot/
-/android/
-/ios/
-
-# Imported assets (Godot 4 uses .godot/imported, but legacy or misconfig might leave these)
-*.import
-
-# Binary Tools
-rcedit-x64.exe
-
-# Build Artifacts
-*.exe
-*.pck
-*.tmp
-/build/dist/
-/build/*.zip
-
-# User Data & sensitive configs
-Data/profiles_data.json
-Data/configs.json
-user://
-UserBackground/
-profiles/
-
-# Local secrets (API keys) — never commit
-.env
-.env.*
-
-# OS specific
-.DS_Store
-Thumbs.db
+# Node
+node_modules/
+dist/
+out/
+.vite/
+*.tsbuildinfo
 
 # Python
 __pycache__/
+*.pyc
+*.pyo
+*.spec
+build/
+*.exe
+venv/
+.venv/
 
-# Logs
+# Electron
+release/
 *.log
 
-# Export presets (contains absolute paths)
-export_presets.cfg
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Godot (legacy)
+src_godot/
+.godot/
+*.import
+*.tres
+*.tscn
+*.gdshader
+*.godot
+.godotrc
+godot.md
+
+data/
+data/
