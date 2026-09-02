@@ -10,6 +10,15 @@ from riot_client import RiotClientManager, RiotClientError
 from session_manager import SessionManager, sanitize_directory_name
 from league_settings_sync import LeagueSettingsSync
 import riot_account_detect as rad
+from deceive.presence_manager import PresenceManager
+
+
+def _pid_is_running(pid):
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _make_tracker(protocol, profiles):
@@ -48,6 +57,8 @@ def main():
         os.path.join(data_dir, "shared", "settings"),
         install_dir_provider=lambda: riot.ensure_location(),
     )
+    presence = PresenceManager(config, is_process_running=_pid_is_running)
+    riot.set_launch_args_provider(presence.get_launch_args)
 
 
     def _league_config_dir():
@@ -140,6 +151,18 @@ def main():
         "league_cleanup_readonly": lambda p: (_cleanup_league_readonly(), None)[1],
         "league_resolve_source": lambda p: league.resolve_source_profile(),
         "league_get_metadata": lambda p: league.get_snapshot_metadata(),
+        # Appear Offline / Deceive presence proxy
+        "presence_start": lambda p: (presence.start_proxy(), None)[1],
+        "presence_stop": lambda p: (presence.stop_proxy(), None)[1],
+        "presence_state": lambda p: presence.get_state(),
+        "presence_get_ports": lambda p: {
+            "config": presence.get_config_port(),
+            "chat": presence.get_chat_port(),
+            "running": presence.get_state() in ("READY", "RUNNING"),
+        },
+        "presence_get_launch_args": lambda p: presence.get_launch_args(
+            riot.build_launch_args()
+        ),
     }
 
     # Announce ready so the parent knows initialization succeeded.

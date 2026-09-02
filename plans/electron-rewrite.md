@@ -444,7 +444,7 @@ Step 8 (React Shell)
 - [x] Step 4: Riot Client Management
 - [x] Step 5: Session File Swap
 - [x] Step 6: League Settings Sync
-- [ ] Step 7: Deceive / Presence Proxy
+- [x] Step 7: Deceive / Presence Proxy
 - [ ] Step 8: React App Shell + Routing
 - [ ] Step 9: Profile Cards + Grid
 - [ ] Step 10: Profile Launch/Stop

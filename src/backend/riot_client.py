@@ -86,6 +86,7 @@ class RiotClientManager:
         self._jobs = []
         self._last_error = None
         self._listener = None
+        self._launch_args_provider = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -94,6 +95,14 @@ class RiotClientManager:
     def set_listener(self, listener):
         """listener(status) is called after each kill/wait transition."""
         self._listener = listener
+
+    def set_launch_args_provider(self, provider):
+        """provider(launch_args) -> launch_args, called before launching.
+
+        Used by the presence manager to inject --client-config-url when the
+        Deceive proxy is active.
+        """
+        self._launch_args_provider = provider
 
     def get_location(self):
         return str(self._config.get("RiotClientLocation", "") or "")
@@ -253,12 +262,19 @@ class RiotClientManager:
             raise RiotClientError(f"{self._client_exe} not found in the selected folder")
         try:
             proc = subprocess.Popen(
-                [client_path] + self.build_launch_args(),
+                [client_path] + self.get_resolved_launch_args(),
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
         except OSError as exc:
             raise RiotClientError(f"Failed to launch Riot Client: {exc}") from exc
         return proc.pid
+
+    def get_resolved_launch_args(self):
+        """Launch args after applying the presence provider (if any)."""
+        args = self.build_launch_args()
+        if self._launch_args_provider is not None:
+            args = self._launch_args_provider(args)
+        return args
 
     def is_running(self):
         """True while any known Riot process is running."""
@@ -273,6 +289,7 @@ class RiotClientManager:
             "client_location": self.get_location(),
             "launch_product": self.get_launch_product(),
             "launch_args": self.build_launch_args(),
+            "resolved_launch_args": self.get_resolved_launch_args(),
         }
 
     # ------------------------------------------------------------------
