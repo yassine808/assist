@@ -443,7 +443,7 @@ Step 8 (React Shell)
 - [x] Step 3: HenrikDev API + Rank Tracking
 - [x] Step 4: Riot Client Management
 - [x] Step 5: Session File Swap
-- [ ] Step 6: League Settings Sync
+- [x] Step 6: League Settings Sync
 - [ ] Step 7: Deceive / Presence Proxy
 - [ ] Step 8: React App Shell + Routing
 - [ ] Step 9: Profile Cards + Grid

@@ -8,6 +8,7 @@ from valorant_tracker import ValorantTracker
 from config_manager import ConfigManager
 from riot_client import RiotClientManager, RiotClientError
 from session_manager import SessionManager, sanitize_directory_name
+from league_settings_sync import LeagueSettingsSync
 import riot_account_detect as rad
 
 
@@ -41,6 +42,27 @@ def main():
         "riot_client_status", {"status": status}
     ))
     sessions = SessionManager(os.path.join(data_dir, "profiles"))
+    league = LeagueSettingsSync(
+        config,
+        profiles,
+        os.path.join(data_dir, "shared", "settings"),
+        install_dir_provider=lambda: riot.ensure_location(),
+    )
+
+
+    def _league_config_dir():
+        """Best-effort League Config dir for the current machine."""
+        league_dir = league.find_league_dir()
+        if not league_dir:
+            return ""
+        return os.path.join(league_dir, "Config")
+
+
+    def _cleanup_league_readonly():
+        config_dir = _league_config_dir()
+        if config_dir:
+            league.cleanup_readonly_flags(config_dir)
+        return True
 
 
     def _profile_dir_name(name):
@@ -96,6 +118,28 @@ def main():
         "save_session": lambda p: _swap_profile(p.get("name"), True),
         "restore_session": lambda p: _swap_profile(p.get("name"), False),
         "has_session": lambda p: os.path.isdir(sessions.profile_dir(_profile_dir_name(p.get("name")))),
+        # League settings sync
+        "league_find_dir": lambda p: league.find_league_dir(),
+        "league_capture": lambda p: league.capture_master_snapshot(
+            p.get("source_dir"), p.get("directory_name", ""),
+            p.get("display_name", p.get("directory_name", "")),
+        ),
+        "league_apply": lambda p: league.apply_master_snapshot_to_league(
+            p.get("config_dir") or _league_config_dir(),
+            bool(p.get("enforce_readonly", True)),
+        ),
+        "league_refresh": lambda p: league.refresh_master_for_source(
+            p.get("live_config_dir", "") or _league_config_dir(),
+            p.get("source_profile_dir", ""),
+            p.get("directory_name", ""),
+            p.get("display_name", p.get("directory_name", "")),
+        ),
+        "league_dir_differs": lambda p: league.settings_dir_differs_from_master(
+            p.get("config_dir") or _league_config_dir()
+        ),
+        "league_cleanup_readonly": lambda p: (_cleanup_league_readonly(), None)[1],
+        "league_resolve_source": lambda p: league.resolve_source_profile(),
+        "league_get_metadata": lambda p: league.get_snapshot_metadata(),
     }
 
     # Announce ready so the parent knows initialization succeeded.
