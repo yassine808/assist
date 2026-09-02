@@ -14,11 +14,13 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto bg-bg-dark">
-          <Routes location={location}>
-            <Route path="/" element={<HomeView />} />
-            <Route path="/settings" element={<SettingsView />} />
-            <Route path="/add-account" element={<AddAccountView />} />
-          </Routes>
+          <div key={location.pathname} className="view-transition h-full">
+            <Routes location={location}>
+              <Route path="/" element={<HomeView />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route path="/add-account" element={<AddAccountView />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </div>

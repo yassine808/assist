@@ -445,7 +445,7 @@ Step 8 (React Shell)
 - [x] Step 5: Session File Swap
 - [x] Step 6: League Settings Sync
 - [x] Step 7: Deceive / Presence Proxy
-- [ ] Step 8: React App Shell + Routing
+- [x] Step 8: React App Shell + Routing
 - [ ] Step 9: Profile Cards + Grid
 - [ ] Step 10: Profile Launch/Stop
 - [ ] Step 11: Add Account Flow
