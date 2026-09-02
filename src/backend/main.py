@@ -7,6 +7,7 @@ from profile_manager import ProfileManager
 from valorant_tracker import ValorantTracker
 from config_manager import ConfigManager
 from riot_client import RiotClientManager, RiotClientError
+from session_manager import SessionManager, sanitize_directory_name
 import riot_account_detect as rad
 
 
@@ -39,6 +40,29 @@ def main():
     riot.set_listener(lambda status: protocol.send_event(
         "riot_client_status", {"status": status}
     ))
+    sessions = SessionManager(os.path.join(data_dir, "profiles"))
+
+
+    def _profile_dir_name(name):
+        """Resolve a stable backup-directory name for a profile."""
+        profile = profiles.get(name) or {}
+        directory_name = profile.get("directory_name", "")
+        if not directory_name:
+            directory_name = sanitize_directory_name(name or "profile")
+        return directory_name
+
+
+    def _install_dir():
+        """Return the live Riot Client install dir, auto-detecting if unset."""
+        return riot.ensure_location()
+
+
+    def _swap_profile(profile_name, save):
+        directory_name = _profile_dir_name(profile_name)
+        install_dir = _install_dir()
+        if save:
+            return sessions.save_session(directory_name, install_dir)
+        return sessions.restore_session(directory_name, install_dir)
 
     handlers = {
         "ping": lambda p: "pong",
@@ -68,6 +92,10 @@ def main():
         "detect_live_account_new": lambda p: rad.is_account_new(
             p.get("account") or {}, profiles.load()
         ),
+        # Session file swap
+        "save_session": lambda p: _swap_profile(p.get("name"), True),
+        "restore_session": lambda p: _swap_profile(p.get("name"), False),
+        "has_session": lambda p: os.path.isdir(sessions.profile_dir(_profile_dir_name(p.get("name")))),
     }
 
     # Announce ready so the parent knows initialization succeeded.
