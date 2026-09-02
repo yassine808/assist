@@ -9,8 +9,9 @@ out/
 __pycache__/
 *.pyc
 *.pyo
-*.spec
-build/
+build/pyinstaller/
+*.pyinstaller.log
+!build/build-python.spec
 *.exe
 venv/
 .venv/

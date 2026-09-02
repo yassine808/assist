@@ -2,7 +2,6 @@ import { ChildProcess, spawn } from "child_process";
 import { join } from "path";
 import { EventEmitter } from "events";
 import { app } from "electron";
-
 /**
  * Spawns the Python backend as a child process and communicates via
  * JSON-line protocol over stdin/stdout.
@@ -27,21 +26,32 @@ export class PythonBridge extends EventEmitter {
   private callTimeout = 30_000;
 
   start(): void {
-    // In dev, the source backend lives at <projectRoot>/src/backend/main.py.
-    // app.getAppPath() points to the project root in dev and asar in production.
-    const appPath = app.getAppPath();
-    const candidate = join(appPath, "src/backend/main.py");
-    const scriptPath = process.env.RIOTSWITCHER_BACKEND
-      ? process.env.RIOTSWITCHER_BACKEND
-      : candidate;
+    // In dev, the source backend lives at <projectRoot>/src/backend/main.py and
+    // runs via the system Python with the --dev flag (project-local data dir).
+    // In a packaged app, spawn the PyInstaller-bundled executable from the
+    // resources/python folder (no --dev flag => %APPDATA%\RiotSwitcher).
+    let command: string;
+    let args: string[];
 
-    const args = [scriptPath];
-    if (!process.env.RIOTSWITCHER_BACKEND) {
-      // Passing --dev tells the backend to use the project-local data dir.
-      args.push("--dev");
+    if (app.isPackaged) {
+      command = join(process.resourcesPath, "python", "main.exe");
+      args = [];
+    } else {
+      const appPath = app.getAppPath();
+      const candidate = join(appPath, "src/backend/main.py");
+      const scriptPath = process.env.RIOTSWITCHER_BACKEND
+        ? process.env.RIOTSWITCHER_BACKEND
+        : candidate;
+
+      command = "python";
+      args = [scriptPath];
+      if (!process.env.RIOTSWITCHER_BACKEND) {
+        // Passing --dev tells the backend to use the project-local data dir.
+        args.push("--dev");
+      }
     }
 
-    this.process = spawn("python", args, {
+    this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env },
     });

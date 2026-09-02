@@ -448,7 +448,7 @@ Step 8 (React Shell)
 - [x] Step 8: React App Shell + Routing
 - [x] Step 9: Profile Cards + Grid
 - [x] Step 10: Profile Launch/Stop
-- [ ] Step 11: Add Account Flow
-- [ ] Step 12: Settings View
-- [ ] Step 13: System Tray + Window
-- [ ] Step 14: Packaging + Distribution
+- [x] Step 11: Add Account Flow
+- [x] Step 12: Settings View
+- [x] Step 13: System Tray + Window
+- [x] Step 14: Packaging + Distribution

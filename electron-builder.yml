@@ -1,18 +1,43 @@
 appId: com.riotswitcher.app
 productName: RiotSwitcher
+copyright: Copyright © 2026 RiotSwitcher Contributors
+
 directories:
   output: release
+  buildResources: build
+
 files:
-  - out/**/*
-  - resources/**/*
-  - "!src_godot/**"
+  - out/**
+  - package.json
+
+extraResources:
+  - from: release/python
+    to: python
+    filter:
+      - "**/*"
+
+asarUnpack:
+  - resources/python/**
+
 win:
-  icon: resources/icon.ico
   target:
     - target: nsis
-      arch: [x64]
+      arch:
+        - x64
+  icon: build/icon.ico
+  executableName: RiotSwitcher
+
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  shortcutName: RiotSwitcher
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+
+# Single instance is enforced in the main process (app.requestSingleInstanceLock);
+# auto-launch on login is handled via registry at runtime/settings.
+
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

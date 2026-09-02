@@ -11,7 +11,7 @@
     "dev:python": "python src/backend/main.py --dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "build:py": "pyinstaller build/build-python.spec --noconfirm",
+    "build:py": "pyinstaller build/build-python.spec --noconfirm --distpath release --workpath build/pyinstaller",
     "dist": "npm run build && npm run build:py && electron-builder",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },

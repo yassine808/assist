@@ -12,6 +12,7 @@ from league_settings_sync import LeagueSettingsSync
 import riot_account_detect as rad
 from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
+from account_detector import AccountDetector
 
 
 def _pid_is_running(pid):
@@ -70,6 +71,13 @@ def main():
             "profile_switch_progress",
             {"step": step, "status": status, "message": message, **extra},
         )
+    )
+
+    def _handle_event(name, data):
+        protocol.send_event(name, data)
+
+    detector = AccountDetector(
+        profiles, on_event=_handle_event, launcher=riot.launch_client
     )
 
 
@@ -139,6 +147,9 @@ def main():
         "detect_live_account_new": lambda p: rad.is_account_new(
             p.get("account") or {}, profiles.load()
         ),
+        "start_account_detection": lambda p: detector.start_detection(),
+        "stop_account_detection": lambda p: (detector.stop_detection(), None)[1],
+        "account_detection_state": lambda p: detector.is_running(),
         # Session file swap
         "save_session": lambda p: _swap_profile(p.get("name"), True),
         "restore_session": lambda p: _swap_profile(p.get("name"), False),
