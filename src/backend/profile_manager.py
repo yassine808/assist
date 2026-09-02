@@ -131,6 +131,34 @@ class ProfileManager:
                     return p
             raise ValueError(f"Profile '{old_name}' not found")
 
+    def update_valorant_data(self, name, data, puuid="", in_game_name="", region=""):
+        """Update a profile's VALORANT rank/stats and identity in-place.
+
+        Merges `data` into `valorant_data`, preserving existing fields not
+        present in `data` (notably `last_played_ms`). `puuid`/`in_game_name`/
+        `region` update the profile identity when non-empty.
+        """
+        if not name:
+            raise ValueError("name is required")
+        with self._lock:
+            for i, p in enumerate(self._profiles):
+                if p.get("profile_name") != name:
+                    continue
+                current = p.get("valorant_data", {}) or {}
+                merged = dict(current)
+                merged.update(data or {})
+                p["valorant_data"] = merged
+                if puuid:
+                    p["valorant_puuid"] = puuid
+                if region:
+                    p["valorant_region"] = region
+                if in_game_name:
+                    p["valorant_in_game_name"] = in_game_name
+                self._profiles[i] = p
+                self._write()
+                return p
+            raise ValueError(f"Profile '{name}' not found")
+
     def reorder(self, names):
         """Reorder profiles to the order given in `names`.
 

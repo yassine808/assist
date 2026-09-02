@@ -4,6 +4,15 @@ import sys
 
 from protocol import Protocol
 from profile_manager import ProfileManager
+from valorant_tracker import ValorantTracker
+
+
+def _make_tracker(protocol, profiles):
+    tracker = ValorantTracker(profiles, on_update=lambda name, data: protocol.send_event(
+        "valorant_data_updated", {"profile_name": name}
+    ))
+    tracker.start()
+    return tracker
 
 
 def main():
@@ -21,6 +30,7 @@ def main():
 
     protocol = Protocol()
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
+    tracker = _make_tracker(protocol, profiles)
 
     handlers = {
         "ping": lambda p: "pong",
@@ -30,6 +40,10 @@ def main():
         "update_profile": lambda p: profiles.update(p.get("name"), p.get("data")),
         "rename_profile": lambda p: profiles.rename(p.get("old_name"), p.get("new_name")),
         "reorder_profiles": lambda p: profiles.reorder(p.get("names")),
+        "get_valorant": lambda p: (profiles.get(p.get("name")) or {}).get("valorant_data", {}),
+        "refresh_valorant": lambda p: tracker.refresh_profile(p.get("name")) if p.get("name") else tracker.refresh_all(),
+        "refresh_valorant_all": lambda p: tracker.refresh_all(),
+        "has_api_key": lambda p: tracker.has_key(),
     }
 
     # Announce ready so the parent knows initialization succeeded.
