@@ -441,7 +441,7 @@ Step 8 (React Shell)
 - [x] Step 1: Project Scaffolding
 - [x] Step 2: Profile Manager
 - [x] Step 3: HenrikDev API + Rank Tracking
-- [ ] Step 4: Riot Client Management
+- [x] Step 4: Riot Client Management
 - [ ] Step 5: Session File Swap
 - [ ] Step 6: League Settings Sync
 - [ ] Step 7: Deceive / Presence Proxy

@@ -5,6 +5,9 @@ import sys
 from protocol import Protocol
 from profile_manager import ProfileManager
 from valorant_tracker import ValorantTracker
+from config_manager import ConfigManager
+from riot_client import RiotClientManager, RiotClientError
+import riot_account_detect as rad
 
 
 def _make_tracker(protocol, profiles):
@@ -31,6 +34,11 @@ def main():
     protocol = Protocol()
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
     tracker = _make_tracker(protocol, profiles)
+    config = ConfigManager(os.path.join(data_dir, "configs.json"))
+    riot = RiotClientManager(config)
+    riot.set_listener(lambda status: protocol.send_event(
+        "riot_client_status", {"status": status}
+    ))
 
     handlers = {
         "ping": lambda p: "pong",
@@ -44,6 +52,22 @@ def main():
         "refresh_valorant": lambda p: tracker.refresh_profile(p.get("name")) if p.get("name") else tracker.refresh_all(),
         "refresh_valorant_all": lambda p: tracker.refresh_all(),
         "has_api_key": lambda p: tracker.has_key(),
+        # Config
+        "get_config": lambda p: config.all(),
+        "set_config": lambda p: config.set(p.get("key"), p.get("value")),
+        "set_config_many": lambda p: config.set_many(p.get("items") or {}),
+        # Riot Client lifecycle
+        "set_riot_client_location": lambda p: riot.set_location(p.get("folder")),
+        "detect_riot_client_location": lambda p: riot.detect_install_dir(),
+        "get_riot_client_status": lambda p: riot.status(),
+        "kill_riot_processes": lambda p: (riot.kill_all(), None)[1],
+        "stop_riot_client": lambda p: (riot.stop_and_wait(), None)[1],
+        "launch_riot_client": lambda p: riot.launch_client(),
+        # Live account detection
+        "read_live_account": lambda p: rad.read_live_account(),
+        "detect_live_account_new": lambda p: rad.is_account_new(
+            p.get("account") or {}, profiles.load()
+        ),
     }
 
     # Announce ready so the parent knows initialization succeeded.
