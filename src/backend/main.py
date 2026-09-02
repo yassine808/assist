@@ -11,6 +11,7 @@ from session_manager import SessionManager, sanitize_directory_name
 from league_settings_sync import LeagueSettingsSync
 import riot_account_detect as rad
 from deceive.presence_manager import PresenceManager
+from launch_orchestrator import LaunchOrchestrator
 
 
 def _pid_is_running(pid):
@@ -59,6 +60,17 @@ def main():
     )
     presence = PresenceManager(config, is_process_running=_pid_is_running)
     riot.set_launch_args_provider(presence.get_launch_args)
+
+    orchestrator = LaunchOrchestrator(
+        riot, sessions, profiles, config,
+        league=league, presence=presence,
+    )
+    orchestrator.set_listener(
+        lambda step, status, message, extra: protocol.send_event(
+            "profile_switch_progress",
+            {"step": step, "status": status, "message": message, **extra},
+        )
+    )
 
 
     def _league_config_dir():
@@ -120,6 +132,8 @@ def main():
         "kill_riot_processes": lambda p: (riot.kill_all(), None)[1],
         "stop_riot_client": lambda p: (riot.stop_and_wait(), None)[1],
         "launch_riot_client": lambda p: riot.launch_client(),
+        "launch_profile": lambda p: orchestrator.switch_to(p.get("name") or ""),
+        "stop_profile": lambda p: orchestrator.stop(),
         # Live account detection
         "read_live_account": lambda p: rad.read_live_account(),
         "detect_live_account_new": lambda p: rad.is_account_new(
