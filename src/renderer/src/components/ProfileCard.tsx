@@ -43,8 +43,8 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
       style={{
-        width: 700,
-        height: 1024,
+        width: 320,
+        height: 480,
         backgroundColor: '#0d1117',
       }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
@@ -68,9 +68,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
       {/* Content layer */}
       <div className="relative z-[2] flex flex-col h-full">
         {/* Top bar: profile name */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <span
-            className="text-[22px] font-extrabold tracking-tight truncate"
+            className="text-[16px] font-extrabold tracking-tight truncate"
             style={{
               fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
               color: '#fff',
@@ -90,58 +90,58 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         <div className="flex-1" />
 
         {/* Bottom section — stats + portrait */}
-        <div className="flex items-end gap-4 px-5 pb-5">
+        <div className="flex items-end gap-3 px-4 pb-4">
           {/* Left: Rank + Stats */}
           <div className="flex-1 min-w-0">
             {/* Rank icon + rank name + RR */}
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <img
                 src={rankIconPath(tierId)}
                 alt={rankName}
-                className="w-16 h-16 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+                className="w-12 h-12 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
               <div className="flex flex-col">
                 <span
-                  className="text-[13px] font-semibold leading-tight"
+                  className="text-[11px] font-semibold leading-tight"
                   style={{ color: rankColor(tierId) }}
                 >
                   {rankShort(tierId)}
                 </span>
                 <span
-                  className="text-[28px] font-black leading-none tracking-tight"
+                  className="text-[22px] font-black leading-none tracking-tight"
                   style={{ color: '#fff' }}
                 >
                   {rr}
-                  <span className="text-[14px] font-bold text-white/40 ml-1">RR</span>
+                  <span className="text-[11px] font-bold text-white/40 ml-1">RR</span>
                 </span>
               </div>
             </div>
 
             {/* W/L */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[14px] font-bold" style={{ color: '#4ade80' }}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-[12px] font-bold" style={{ color: '#4ade80' }}>
                 {wins}W
               </span>
               <span className="text-white/20">·</span>
-              <span className="text-[14px] font-bold" style={{ color: '#f87171' }}>
+              <span className="text-[12px] font-bold" style={{ color: '#f87171' }}>
                 {losses}L
               </span>
               <span className="text-white/20">·</span>
-              <span className="text-[14px] font-bold text-white/60">
+              <span className="text-[12px] font-bold text-white/60">
                 {winPct}%
               </span>
             </div>
 
             {/* ACS + Agent */}
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] font-medium text-white/40">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-medium text-white/40">
                 ACS <span className="text-white/70 font-bold">{avgScore}</span>
               </span>
               {topAgent && (
                 <>
                   <span className="text-white/20">·</span>
-                  <span className="text-[12px] font-medium text-white/40">
+                  <span className="text-[10px] font-medium text-white/40">
                     {topAgent}
                   </span>
                 </>
@@ -149,7 +149,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               {agentRole && (
                 <>
                   <span className="text-white/20">·</span>
-                  <span className="text-[11px] font-medium text-white/30 uppercase tracking-wider">
+                  <span className="text-[9px] font-medium text-white/30 uppercase tracking-wider">
                     {agentRole}
                   </span>
                 </>
@@ -163,7 +163,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               <img
                 src={agentPortrait}
                 alt={topAgent}
-                className="h-[280px] w-auto object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
+                className="h-[180px] w-auto object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
@@ -171,11 +171,11 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         </div>
 
         {/* Bottom toolbar: Play / Edit / Delete */}
-        <div className="flex items-center gap-2 px-5 pb-5 pt-2">
+        <div className="flex items-center gap-1.5 px-4 pb-4 pt-1">
           <button
             onClick={handlePlay}
             disabled={running}
-            className="flex-1 h-11 rounded-lg font-bold text-[15px] transition-all
+            className="flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
                        bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25
                        hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40
                        disabled:opacity-40 disabled:cursor-not-allowed
@@ -185,9 +185,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(profile); }}
-            className="h-11 w-11 flex items-center justify-center rounded-lg
+            className="h-9 w-9 flex items-center justify-center rounded-lg
                        bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08]
-                       text-white/50 hover:text-white/80 transition-all text-[15px]"
+                       text-white/50 hover:text-white/80 transition-all text-[13px]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/>
@@ -195,9 +195,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
-            className="h-11 w-11 flex items-center justify-center rounded-lg
+            className="h-9 w-9 flex items-center justify-center rounded-lg
                        bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
-                       text-white/50 hover:text-red-400 transition-all text-[15px]"
+                       text-white/50 hover:text-red-400 transition-all text-[13px]"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
