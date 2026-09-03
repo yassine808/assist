@@ -9,8 +9,6 @@ interface ProfileCardProps {
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
   onEdit: (p: Profile) => void;
-  onDragStart?: (p: Profile) => void;
-  onDragEnd?: () => void;
 }
 
 export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit }: ProfileCardProps) {
@@ -36,7 +34,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
   return (
     <div
-      className={`card group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
+      className={`card group relative overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
         running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
@@ -59,11 +57,21 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         />
       )}
 
+      {/* Agent Portrait — absolute, as big as possible */}
+      {agentPortrait && (
+        <img
+          src={agentPortrait}
+          alt={topAgent}
+          className="absolute z-[1] w-full h-full object-contain object-bottom pointer-events-none drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+
       {/* Dark overlay for readability */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
 
       {/* Content layer */}
-      <div className="relative z-[2] flex flex-col h-full">
+      <div className="relative z-[3] flex flex-col h-full">
         {/* Username — centered */}
         <div className="flex items-center justify-center px-4 pt-5 pb-2">
           <span
@@ -78,13 +86,13 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           </span>
         </div>
 
-        {/* Spacer — pushes content to bottom */}
+        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section — rank, stats, portrait */}
-        <div className="flex items-end justify-between px-4 pb-4">
+        {/* Bottom section — stats left, buttons right */}
+        <div className="flex items-end justify-between px-4 pb-2">
           {/* Left: Rank + Stats */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             {/* Rank icon + RR */}
             <div className="flex items-center gap-2">
               <img
@@ -126,31 +134,21 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
                 {avgScore}
               </span>
             </div>
-          </div>
 
-          {/* Right: Agent portrait + name */}
-          {agentPortrait && (
-            <div className="flex flex-col items-center gap-1">
-              <img
-                src={agentPortrait}
-                alt={topAgent}
-                className="h-[340px] w-auto object-contain object-bottom drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-              {topAgent && (
-                <span
-                  className="text-[13px] font-semibold tracking-wide text-white/70"
-                  style={{ fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif" }}
-                >
-                  {topAgent}
-                </span>
-              )}
-            </div>
-          )}
+            {/* Agent name */}
+            {topAgent && (
+              <span
+                className="text-[13px] font-semibold tracking-wide text-white/60"
+                style={{ fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif" }}
+              >
+                {topAgent}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Bottom toolbar: Play / Edit / Delete */}
-        <div className="flex items-center gap-1.5 px-4 pb-4 pt-1">
+        {/* Buttons — pinned to very bottom */}
+        <div className="flex items-center gap-1.5 px-4 pb-4 pt-2">
           <button
             onClick={handlePlay}
             disabled={running}
@@ -188,7 +186,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
       {/* Running pulse animation */}
       {running && (
-        <div className="absolute inset-0 z-[3] rounded-2xl pointer-events-none">
+        <div className="absolute inset-0 z-[4] rounded-2xl pointer-events-none">
           <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/30 card-pulse" />
         </div>
       )}
