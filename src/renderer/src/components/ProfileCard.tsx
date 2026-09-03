@@ -31,6 +31,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
   const agentPortrait = vd?.agent_portrait ?? '';
   const agentRole = vd?.agent_role ?? '';
   const rankIcon = vd?.rank_icon ?? '';
+  const playerCardBg = vd?.player_card_bg ?? '';
 
   const roleColor = ROLE_COLORS[agentRole] ?? '#00d4ff';
 
@@ -51,13 +52,20 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
       style={{ width: 320, height: 480, backgroundColor: '#0a0e14' }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
-      {/* Background — subtle gradient */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          background: `linear-gradient(135deg, ${roleColor}18 0%, transparent 50%, ${roleColor}0a 100%)`,
-        }}
-      />
+      {/* Background — player card or role gradient */}
+      {playerCardBg ? (
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${playerCardBg})` }}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background: `linear-gradient(135deg, ${roleColor}18 0%, transparent 50%, ${roleColor}0a 100%)`,
+          }}
+        />
+      )}
 
       {/* Agent Portrait — left side, large */}
       {agentPortrait && (

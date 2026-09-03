@@ -32,6 +32,7 @@ export interface ValorantData {
   agent_portrait: string;
   agent_role: string;
   rank_icon: string;
+  player_card_bg: string;
 }
 
 export interface Profile {

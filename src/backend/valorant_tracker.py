@@ -22,6 +22,7 @@ import time
 import traceback
 
 from henrik_client import HenrikClient, HenrikError
+from riot_client import get_equipped_card_url
 
 AUTO_REFRESH_INTERVAL_S = 120
 
@@ -57,6 +58,7 @@ class ValorantTracker:
     KEY_AGENT_PORTRAIT = "agent_portrait"
     KEY_AGENT_ROLE = "agent_role"
     KEY_RANK_ICON = "rank_icon"
+    KEY_PLAYER_CARD_BG = "player_card_bg"
 
     def __init__(self, profiles, client=None, on_update=None, agent_db=None):
         self._profiles = profiles
@@ -422,6 +424,11 @@ class ValorantTracker:
             if agent_info:
                 data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
                 data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
+
+        # Try to get the equipped player card from the local Riot client
+        card_url = get_equipped_card_url()
+        if card_url:
+            data[self.KEY_PLAYER_CARD_BG] = card_url
 
         self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
         if self._on_update:
