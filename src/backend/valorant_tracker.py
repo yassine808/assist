@@ -54,9 +54,9 @@ class ValorantTracker:
     KEY_AVG_COMBAT_SCORE = "avg_combat_score"
     KEY_AGENT_STATS = "agent_stats"
     KEY_RECENT_MATCHES = "recent_matches"
-    KEY_AGENT_BACKGROUND = "agent_background"
     KEY_AGENT_PORTRAIT = "agent_portrait"
     KEY_AGENT_ROLE = "agent_role"
+    KEY_RANK_ICON = "rank_icon"
 
     def __init__(self, profiles, client=None, on_update=None, agent_db=None):
         self._profiles = profiles
@@ -295,6 +295,9 @@ class ValorantTracker:
         data[self.KEY_GAMES] = max(0, games)
         data[self.KEY_PEAK_RANK] = peak_name
         data[self.KEY_ACT_ID] = act_id
+        # Resolve rank icon from agent database
+        if self._agent_db and tier:
+            data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
         return data
 
     def _apply(self, profile_name, puuid, region, in_game_name, data):
@@ -417,7 +420,6 @@ class ValorantTracker:
         if self._agent_db and top_agent:
             agent_info = self._agent_db.get_agent(top_agent)
             if agent_info:
-                data[self.KEY_AGENT_BACKGROUND] = agent_info.get("background", "")
                 data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
                 data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
 

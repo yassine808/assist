@@ -1,7 +1,14 @@
 import { Profile } from '../types/profile';
-import { rankColor, rankIconPath } from '../lib/ranks';
+import { rankColor } from '../lib/ranks';
 import { useProfileLaunch } from '../hooks/useProfileLaunch';
 import '../styles/card-glow.css';
+
+const ROLE_COLORS: Record<string, string> = {
+  Duelist: '#ff4655',
+  Initiator: '#00b8d4',
+  Controller: '#00c853',
+  Sentinel: '#ffc107',
+};
 
 interface ProfileCardProps {
   profile: Profile;
@@ -21,8 +28,11 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
   const winPct = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
   const topAgent = vd?.top_agent ?? '';
   const avgScore = vd?.avg_combat_score ?? 0;
-  const agentBg = vd?.agent_background ?? '';
   const agentPortrait = vd?.agent_portrait ?? '';
+  const agentRole = vd?.agent_role ?? '';
+  const rankIcon = vd?.rank_icon ?? '';
+
+  const roleColor = ROLE_COLORS[agentRole] ?? '#00d4ff';
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,44 +48,51 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
-      style={{
-        width: 320,
-        height: 480,
-        backgroundColor: '#0d1117',
-      }}
+      style={{ width: 320, height: 480, backgroundColor: '#0a0e14' }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
-      {/* Agent Background — full bleed */}
-      {agentBg && (
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: `url(${agentBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-          }}
-        />
-      )}
+      {/* Background — subtle gradient */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: `linear-gradient(135deg, ${roleColor}18 0%, transparent 50%, ${roleColor}0a 100%)`,
+        }}
+      />
 
-      {/* Agent Portrait — absolute, as big as possible */}
+      {/* Agent Portrait — left side, large */}
       {agentPortrait && (
         <img
           src={agentPortrait}
           alt={topAgent}
-          className="absolute z-[1] w-full h-full object-contain object-bottom pointer-events-none drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
+          className="absolute z-[1] pointer-events-none"
+          style={{
+            left: -20,
+            bottom: 0,
+            height: '85%',
+            width: 'auto',
+            objectFit: 'contain',
+            objectPosition: 'bottom',
+            filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.6))',
+          }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
       )}
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+      {/* Dark overlay for text readability — stronger on right */}
+      <div
+        className="absolute inset-0 z-[2]"
+        style={{
+          background: 'linear-gradient(90deg, transparent 0%, transparent 35%, rgba(10,14,20,0.7) 55%, rgba(10,14,20,0.95) 75%, rgba(10,14,20,1) 100%)',
+        }}
+      />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/40" />
 
       {/* Content layer */}
       <div className="relative z-[3] flex flex-col h-full">
-        {/* Username — centered */}
-        <div className="flex items-center justify-center px-4 pt-5 pb-2">
+        {/* Username — right-aligned over dark bg */}
+        <div className="flex items-center justify-end px-5 pt-5 pb-2">
           <span
-            className="text-[20px] font-bold tracking-wide truncate text-center"
+            className="text-[20px] font-bold tracking-wide truncate text-right"
             style={{
               fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
               color: '#fff',
@@ -89,62 +106,70 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section — stats left, buttons right */}
-        <div className="flex items-end justify-between px-4 pb-2">
-          {/* Left: Rank + Stats */}
-          <div className="flex flex-col gap-1">
-            {/* Rank icon + RR */}
-            <div className="flex items-center gap-2">
+        {/* Bottom section — stats right side */}
+        <div className="flex flex-col items-end px-5 pb-2 gap-1">
+          {/* Rank icon + RR */}
+          <div className="flex items-center gap-2.5">
+            {rankIcon ? (
               <img
-                src={rankIconPath(tierId)}
+                src={rankIcon}
                 alt="Rank"
-                className="w-14 h-14 drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]"
+                className="w-[52px] h-[52px] drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
+            ) : (
+              <div className="w-[52px] h-[52px] rounded-full bg-white/10" />
+            )}
+            <div className="flex flex-col items-end">
               <span
-                className="text-[26px] font-black leading-none tracking-tight"
-                style={{ color: '#fff' }}
+                className="text-[28px] font-black leading-none tracking-tight"
+                style={{ color: rankColor(tierId) }}
               >
                 {rr}
-                <span className="text-[12px] font-bold text-white/40 ml-1">RR</span>
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-white/30">
+                RR
               </span>
             </div>
-
-            {/* W/L */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-bold" style={{ color: '#4ade80' }}>
-                {wins}W
-              </span>
-              <span className="text-white/20">·</span>
-              <span className="text-[13px] font-bold" style={{ color: '#f87171' }}>
-                {losses}L
-              </span>
-              <span className="text-white/20">·</span>
-              <span className="text-[13px] font-bold text-white/60">
-                {winPct}%
-              </span>
-            </div>
-
-            {/* ACS */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
-                ACS
-              </span>
-              <span className="text-[13px] font-bold text-white/80">
-                {avgScore}
-              </span>
-            </div>
-
-            {/* Agent name */}
-            {topAgent && (
-              <span
-                className="text-[13px] font-semibold tracking-wide text-white/60"
-                style={{ fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif" }}
-              >
-                {topAgent}
-              </span>
-            )}
           </div>
+
+          {/* W/L */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-bold" style={{ color: '#4ade80' }}>
+              {wins}W
+            </span>
+            <span className="text-white/20">·</span>
+            <span className="text-[13px] font-bold" style={{ color: '#f87171' }}>
+              {losses}L
+            </span>
+            <span className="text-white/20">·</span>
+            <span className="text-[13px] font-bold text-white/60">
+              {winPct}%
+            </span>
+          </div>
+
+          {/* ACS */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
+              ACS
+            </span>
+            <span className="text-[13px] font-bold text-white/80">
+              {avgScore}
+            </span>
+          </div>
+
+          {/* Agent name */}
+          {topAgent && (
+            <span
+              className="text-[13px] font-semibold tracking-wide"
+              style={{
+                fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
+                color: roleColor,
+              }}
+            >
+              {topAgent}
+            </span>
+          )}
         </div>
 
         {/* Buttons — pinned to very bottom */}
