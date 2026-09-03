@@ -38,6 +38,3 @@ nsis:
 
 # Single instance is enforced in the main process (app.requestSingleInstanceLock);
 # auto-launch on login is handled via registry at runtime/settings.
-
-electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
