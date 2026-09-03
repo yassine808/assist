@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ProfileGrid } from "../components/ProfileGrid";
 import { useIPC } from "../hooks/useIPC";
@@ -8,12 +8,11 @@ import type { Profile } from "../types/profile";
 
 export default function HomeView() {
   const { call, onEvent } = useIPC();
-  const { launching, progress, launch } = useProfileLaunch();
+  const { launch } = useProfileLaunch();
   const navigate = useNavigate();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
 
   const load = useCallback(async () => {
@@ -88,17 +87,6 @@ export default function HomeView() {
     [call, load]
   );
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await call("refresh_valorant_all");
-    } catch (e) {
-      console.error("refresh failed", e);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [call]);
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
@@ -110,14 +98,6 @@ export default function HomeView() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-            Refresh
-          </button>
-          <button
             onClick={() => navigate("/add-account")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
           >
@@ -125,24 +105,6 @@ export default function HomeView() {
           </button>
         </div>
       </div>
-
-      {progress && (
-        <div
-          className={`mb-4 flex items-center gap-2 rounded-md bg-bg-card border px-3 py-2 text-xs text-white/70 ${
-            progress.status === "failed"
-              ? "border-red-500/30 bg-red-500/5"
-              : "border-white/10"
-          }`}
-        >
-          {progress.status === "failed" ? (
-            <span className="text-red-400 text-sm">!</span>
-          ) : (
-            <Loader2 size={13} className="animate-spin text-riot-red" />
-          )}
-          <span className="font-semibold text-white/90">{progress.step}:</span>
-          <span className="flex-1">{progress.message}</span>
-        </div>
-      )}
 
       <ProfileGrid
         profiles={profiles}

@@ -13,6 +13,7 @@ Design notes:
     network error must not blank a card. Only successful payloads are applied.
   * A profile with no stored region probes common regions until one returns
     data (handles accounts that signed in on a different shard than persisted).
+  * Auto-refresh runs every 120 seconds (2 minutes) while the app is open.
 """
 
 import random
@@ -21,6 +22,8 @@ import time
 import traceback
 
 from henrik_client import HenrikClient, HenrikError
+
+AUTO_REFRESH_INTERVAL_S = 120
 
 # Any profile not in `names` is appended at the end in existing relative order.
 
@@ -49,6 +52,8 @@ class ValorantTracker:
     KEY_ACT_ID = "act_id"
     KEY_TOP_AGENT = "top_agent"
     KEY_AVG_COMBAT_SCORE = "avg_combat_score"
+    KEY_AGENT_STATS = "agent_stats"
+    KEY_RECENT_MATCHES = "recent_matches"
 
     def __init__(self, profiles, client=None, on_update=None):
         self._profiles = profiles
@@ -57,6 +62,8 @@ class ValorantTracker:
         self._thread = None
         self._queue_lock = threading.Lock()
         self._jobs = []
+        self._auto_refresh_timer = None
+        self._auto_refresh_active = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -88,12 +95,37 @@ class ValorantTracker:
             self.refresh_profile(name)
 
     def start(self):
-        """Start the background worker thread (idempotent)."""
+        """Start the background worker thread (idempotent). Also starts the
+        auto-refresh timer that refreshes all profiles every 2 minutes."""
         with self._queue_lock:
             if self._thread is not None and self._thread.is_alive():
                 return
             self._thread = threading.Thread(target=self._worker, daemon=True)
             self._thread.start()
+        if not self._auto_refresh_active:
+            self._auto_refresh_active = True
+            self._start_auto_refresh()
+
+    def _start_auto_refresh(self):
+        """Schedule the next auto-refresh cycle."""
+        if not self._auto_refresh_active:
+            return
+        self._auto_refresh_timer = threading.Timer(
+            AUTO_REFRESH_INTERVAL_S, self._auto_refresh_tick
+        )
+        self._auto_refresh_timer.daemon = True
+        self._auto_refresh_timer.start()
+
+    def _auto_refresh_tick(self):
+        """Called every AUTO_REFRESH_INTERVAL_S. Refreshes all profiles."""
+        if not self._auto_refresh_active:
+            return
+        try:
+            self.refresh_all()
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+        finally:
+            self._start_auto_refresh()
 
     # ------------------------------------------------------------------
     # Internal
@@ -280,41 +312,102 @@ class ValorantTracker:
         region = str(profile.get("valorant_region", ""))
         region = self.RIOT_TO_HENRIK_REGION.get(region, region)
 
-        agent_counts = {}
+        agent_wins = {}
+        agent_games = {}
         score_sum = 0
         score_count = 0
+        recent = []
 
         for match in payload:
             if not isinstance(match, dict):
                 continue
-            players = match.get("players")
-            if not isinstance(players, list):
-                continue
-            for player in players:
+            metadata = match.get("metadata", {})
+            map_name = str(metadata.get("map", "") or "")
+            rounds_played = int(metadata.get("rounds_played", 0) or 0)
+
+            # Find our player in all_players
+            players_obj = match.get("players", {})
+            all_players = []
+            if isinstance(players_obj, dict):
+                all_players = players_obj.get("all_players", [])
+            elif isinstance(players_obj, list):
+                all_players = players_obj
+
+            for player in all_players:
                 if not isinstance(player, dict):
                     continue
                 if str(player.get("puuid", "")).lower() != puuid:
                     continue
+
                 agent_name = self._player_agent_name(player)
+                stats = player.get("stats", {}) if isinstance(player.get("stats"), dict) else {}
+                score = int(stats.get("score", 0) or 0)
+                kills = int(stats.get("kills", 0) or 0)
+                deaths = int(stats.get("deaths", 0) or 0)
+                assists = int(stats.get("assists", 0) or 0)
+
+                # Determine win/loss from team
+                player_team = str(player.get("team", "") or "").lower()
+                result = "draw"
+                if player_team and rounds_played:
+                    # Check scoreboards for the other team
+                    teams_score = match.get("teams", {})
+                    if isinstance(teams_score, dict):
+                        red = teams_score.get("red", {})
+                        blue = teams_score.get("blue", {})
+                        if isinstance(red, dict) and isinstance(blue, dict):
+                            red_wins = int(red.get("rounds_won", 0) or 0)
+                            blue_wins = int(blue.get("rounds_won", 0) or 0)
+                            if player_team == "red":
+                                result = "win" if red_wins > blue_wins else "loss" if blue_wins > red_wins else "draw"
+                            elif player_team == "blue":
+                                result = "win" if blue_wins > red_wins else "loss" if red_wins > blue_wins else "draw"
+
                 if agent_name:
-                    agent_counts[agent_name] = agent_counts.get(agent_name, 0) + 1
-                stats = player.get("stats")
-                if isinstance(stats, dict):
-                    score = int(stats.get("score", 0) or 0)
-                    if score > 0:
-                        score_sum += score
-                        score_count += 1
+                    agent_games[agent_name] = agent_games.get(agent_name, 0) + 1
+                    if result == "win":
+                        agent_wins[agent_name] = agent_wins.get(agent_name, 0) + 1
+
+                if score > 0:
+                    score_sum += score
+                    score_count += 1
+
+                # Build recent match entry (keep last 10)
+                if len(recent) < 10:
+                    recent.append({
+                        "agent": agent_name,
+                        "map": map_name,
+                        "result": result,
+                        "score": score,
+                        "kills": kills,
+                        "deaths": deaths,
+                        "assists": assists,
+                    })
                 break
 
+        # Compute top agent
         top_agent = ""
         top_count = 0
-        for agent_name, count in agent_counts.items():
+        for agent_name, count in agent_games.items():
             if count > top_count:
                 top_count = count
                 top_agent = agent_name
 
+        # Build agent stats list
+        agent_stats = []
+        for agent_name in sorted(agent_games, key=lambda a: agent_games[a], reverse=True):
+            games = agent_games[agent_name]
+            wins = agent_wins.get(agent_name, 0)
+            agent_stats.append({
+                "agent": agent_name,
+                "games": games,
+                "winrate": round(wins / max(1, games) * 100),
+            })
+
         data[self.KEY_TOP_AGENT] = top_agent
         data[self.KEY_AVG_COMBAT_SCORE] = int(round(score_sum / max(1, score_count))) if score_count > 0 else 0
+        data[self.KEY_AGENT_STATS] = agent_stats
+        data[self.KEY_RECENT_MATCHES] = recent
 
         self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
         if self._on_update:
@@ -322,12 +415,19 @@ class ValorantTracker:
 
     @staticmethod
     def _player_agent_name(player):
-        """Reads agent display name, tolerating v3 `character` and v4 `agent`."""
+        """Reads agent display name from the match player object."""
+        # v3 API: "character" is a plain string like "Raze"
         agent = player.get("character")
-        if not isinstance(agent, dict):
-            agent = player.get("agent")
+        if isinstance(agent, str) and agent:
+            return agent
+        # v4 API fallback: "agent" is a dict with "name"
         if isinstance(agent, dict):
             return str(agent.get("name", "") or "")
+        agent_obj = player.get("agent")
+        if isinstance(agent_obj, dict):
+            return str(agent_obj.get("name", "") or "")
+        if isinstance(agent_obj, str) and agent_obj:
+            return agent_obj
         return ""
 
     @staticmethod

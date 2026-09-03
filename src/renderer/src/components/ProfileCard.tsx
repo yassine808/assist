@@ -29,6 +29,10 @@ export const ProfileCard = memo(function ProfileCard({
   const color = rankColor(tier);
   const inGame =
     profile.valorant_in_game_name || profile.profile_name || "Unknown#0000";
+  const wins = data.wins ?? 0;
+  const losses = data.losses ?? 0;
+  const totalGames = wins + losses;
+  const winPct = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,7 +48,7 @@ export const ProfileCard = memo(function ProfileCard({
   return (
     <div
       ref={cardRef}
-      className={`profile-card relative flex flex-col rounded-xl w-[192px] h-[216px] p-3.5 cursor-pointer overflow-hidden ${
+      className={`profile-card relative flex flex-col rounded-xl w-[200px] h-[240px] p-3.5 cursor-default overflow-hidden ${
         dragging ? "profile-card--dragging" : ""
       } ${profile.is_running ? "profile-card--running" : ""}`}
       style={{
@@ -53,38 +57,37 @@ export const ProfileCard = memo(function ProfileCard({
         border: "1px solid rgba(255,255,255,0.07)",
         boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 3px 0 rgba(0,0,0,0.3)",
       }}
-      onClick={() => onPlay(profile)}
       onContextMenu={handleContextMenu}
     >
-      {/* Top row: rank badge + actions */}
+      {/* Top row: rank icon + actions */}
       <div className="flex items-start justify-between">
         <div className="relative">
           {(() => {
             const iconPath = rankIconPath(tier);
             return iconPath ? (
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden"
+                className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden"
                 style={{
-                  background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+                  background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
                   border: `1px solid ${color}40`,
-                  boxShadow: `0 0 12px ${color}15`,
+                  boxShadow: `0 0 16px ${color}18`,
                 }}
               >
                 <img
                   src={iconPath}
                   alt={rankShort(tier)}
-                  className="w-8 h-8 object-contain"
+                  className="w-11 h-11 object-contain"
                   draggable={false}
                 />
               </div>
             ) : (
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-bold tracking-wide"
+                className="w-14 h-14 rounded-xl flex items-center justify-center text-sm font-bold tracking-wide"
                 style={{
-                  background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+                  background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
                   color,
                   border: `1px solid ${color}40`,
-                  boxShadow: `0 0 12px ${color}15, inset 0 1px 0 0 ${color}20`,
+                  boxShadow: `0 0 16px ${color}18, inset 0 1px 0 0 ${color}20`,
                 }}
               >
                 {rankShort(tier)}
@@ -117,26 +120,40 @@ export const ProfileCard = memo(function ProfileCard({
       </div>
 
       {/* Profile info */}
-      <div className="mt-2.5 flex-1 min-h-0">
-        <p className="text-[13px] font-semibold text-white/95 truncate leading-tight tracking-[-0.01em]">
+      <div className="mt-3 flex-1 min-h-0">
+        <p className="text-[15px] font-bold text-white/95 truncate leading-tight tracking-[-0.02em]"
+           style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}
+        >
           {inGame}
         </p>
         <p
-          className="text-[11px] mt-1 truncate font-medium"
-          style={{ color: `${color}cc` }}
+          className="text-[12px] mt-1 truncate font-semibold"
+          style={{ color }}
         >
           {data.rank_name || "Unranked"}
         </p>
-        <div className="mt-2.5 flex items-center gap-1.5 text-[10.5px]">
-          <span className="px-1.5 py-0.5 rounded-md bg-white/[0.04] text-white/50 font-medium tabular-nums">
-            RR {data.rr ?? 0}
+
+        {/* RR */}
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="text-[22px] font-extrabold text-white/90 tabular-nums leading-none"
+                style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}
+          >
+            {data.rr ?? 0}
           </span>
-          <span className="text-white/15">·</span>
-          <span className="text-white/50 font-medium tabular-nums">
-            {data.wins ?? 0}W {data.losses ?? 0}L
-          </span>
+          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">RR</span>
         </div>
-        <div className="mt-1.5 flex items-center gap-1.5 text-[10.5px] text-white/35">
+
+        {/* Win/Loss */}
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold tabular-nums">
+          <span className="text-emerald-400">{wins}W</span>
+          <span className="text-white/15">/</span>
+          <span className="text-red-400">{losses}L</span>
+          <span className="text-white/15">·</span>
+          <span className="text-white/50">{winPct}%</span>
+        </div>
+
+        {/* ACS + Agent */}
+        <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-white/40 font-medium">
           {data.top_agent ? (
             <span className="truncate">{data.top_agent}</span>
           ) : null}
@@ -149,9 +166,9 @@ export const ProfileCard = memo(function ProfileCard({
         </div>
       </div>
 
-      {/* Play / Stop button */}
+      {/* Play / Stop button — only this triggers launch */}
       <button
-        className="no-drag group/btn flex items-center justify-center gap-1.5 mt-2 rounded-lg py-[7px] w-full text-[11.5px] font-bold tracking-wide transition-all duration-200"
+        className="no-drag group/btn flex items-center justify-center gap-1.5 mt-2 rounded-lg py-[8px] w-full text-[12px] font-bold tracking-wide transition-all duration-200 cursor-pointer"
         style={{
           background: profile.is_running
             ? "rgba(255,255,255,0.06)"

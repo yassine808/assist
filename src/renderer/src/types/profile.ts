@@ -1,3 +1,19 @@
+export interface AgentStat {
+  agent: string;
+  games: number;
+  winrate: number;
+}
+
+export interface RecentMatch {
+  agent: string;
+  map: string;
+  result: 'win' | 'loss';
+  score: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+}
+
 export interface ValorantData {
   tier: number;
   rank_name: string;
@@ -11,6 +27,8 @@ export interface ValorantData {
   act_id: string;
   top_agent: string;
   avg_combat_score: number;
+  agent_stats: AgentStat[];
+  recent_matches: RecentMatch[];
 }
 
 export interface Profile {

@@ -1,7 +1,7 @@
 export function SkeletonCard({ index }: { index: number }) {
   return (
     <div
-      className="animate-pulse flex flex-col rounded-xl w-[192px] h-[216px] p-3.5"
+      className="animate-pulse flex flex-col rounded-xl w-[200px] h-[240px] p-3.5"
       style={{
         animationDelay: `${index * 50}ms`,
         background: "linear-gradient(165deg, rgba(30,30,38,0.95) 0%, rgba(22,22,28,0.98) 100%)",
@@ -10,25 +10,30 @@ export function SkeletonCard({ index }: { index: number }) {
       }}
     >
       <div className="flex items-start justify-between">
-        <div className="w-10 h-10 rounded-xl bg-white/[0.05]" />
+        <div className="w-14 h-14 rounded-xl bg-white/[0.05]" />
         <div className="flex items-center gap-0.5">
           <div className="w-7 h-7 rounded-lg bg-white/[0.04]" />
           <div className="w-7 h-7 rounded-lg bg-white/[0.04]" />
         </div>
       </div>
       <div className="mt-3.5 space-y-2 flex-1 min-h-0">
-        <div className="h-3 w-4/5 rounded-md bg-white/[0.07]" />
+        <div className="h-3.5 w-4/5 rounded-md bg-white/[0.07]" />
         <div className="h-2.5 w-1/2 rounded-md bg-white/[0.04] mt-0.5" />
-        <div className="mt-3 flex items-center gap-1.5">
-          <div className="h-5 w-12 rounded-md bg-white/[0.04]" />
-          <div className="h-5 w-14 rounded-md bg-white/[0.04]" />
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <div className="h-6 w-12 rounded-md bg-white/[0.05]" />
+          <div className="h-3 w-5 rounded-md bg-white/[0.03]" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="h-4 w-8 rounded-md bg-emerald-500/10" />
+          <div className="h-4 w-8 rounded-md bg-red-500/10" />
+          <div className="h-4 w-8 rounded-md bg-white/[0.04]" />
         </div>
         <div className="flex items-center gap-1.5">
           <div className="h-2.5 w-16 rounded-md bg-white/[0.03]" />
           <div className="h-2.5 w-10 rounded-md bg-white/[0.03]" />
         </div>
       </div>
-      <div className="h-[30px] w-full rounded-lg bg-white/[0.05] mt-2" />
+      <div className="h-[32px] w-full rounded-lg bg-white/[0.05] mt-2" />
     </div>
   );
 }
