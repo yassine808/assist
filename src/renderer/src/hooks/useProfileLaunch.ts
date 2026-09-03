@@ -41,7 +41,21 @@ export function useProfileLaunch(): UseProfileLaunch {
       setLaunching(true);
       setProgress({ step: "start", status: "pending", message: "Starting…" });
       try {
-        await call("launch_profile", { name });
+        const result = await call<{
+          ok?: boolean;
+          error?: string;
+          step?: string;
+          pid?: number;
+        }>("launch_profile", { name });
+        if (result && result.ok === false) {
+          const msg = result.error || "Launch failed";
+          setProgress({
+            step: result.step || "launch",
+            status: "failed",
+            message: msg,
+          });
+          setLaunching(false);
+        }
       } catch (e) {
         setProgress({ step: "launch", status: "failed", message: String(e) });
         setLaunching(false);

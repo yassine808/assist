@@ -77,7 +77,8 @@ def main():
         protocol.send_event(name, data)
 
     detector = AccountDetector(
-        profiles, on_event=_handle_event, launcher=riot.launch_client
+        profiles, on_event=_handle_event, launcher=riot.launch_client,
+        on_profile_created=lambda name: tracker.refresh_profile(name),
     )
 
 

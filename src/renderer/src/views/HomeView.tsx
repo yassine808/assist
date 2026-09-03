@@ -37,9 +37,11 @@ export default function HomeView() {
       if (name) void load();
     });
     const unsubStatus = onEvent("riot_client_status", () => void load());
+    const unsubCreated = onEvent("profile_created", () => void load());
     return () => {
       unsub();
       unsubStatus();
+      unsubCreated();
     };
   }, [onEvent, load]);
 
@@ -125,8 +127,18 @@ export default function HomeView() {
       </div>
 
       {progress && (
-        <div className="mb-4 flex items-center gap-2 rounded-md bg-bg-card border border-white/10 px-3 py-2 text-xs text-white/70">
-          <Loader2 size={13} className="animate-spin text-riot-red" />
+        <div
+          className={`mb-4 flex items-center gap-2 rounded-md bg-bg-card border px-3 py-2 text-xs text-white/70 ${
+            progress.status === "failed"
+              ? "border-red-500/30 bg-red-500/5"
+              : "border-white/10"
+          }`}
+        >
+          {progress.status === "failed" ? (
+            <span className="text-red-400 text-sm">!</span>
+          ) : (
+            <Loader2 size={13} className="animate-spin text-riot-red" />
+          )}
           <span className="font-semibold text-white/90">{progress.step}:</span>
           <span className="flex-1">{progress.message}</span>
         </div>

@@ -18,10 +18,11 @@ DETECTION_TIMEOUT_S = 300  # give up after 5 minutes of no new login
 
 
 class AccountDetector:
-    def __init__(self, profiles, on_event=None, launcher=None):
+    def __init__(self, profiles, on_event=None, launcher=None, on_profile_created=None):
         self.profiles = profiles
         self.on_event = on_event
         self.launcher = launcher
+        self._on_profile_created = on_profile_created
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = None
@@ -119,3 +120,10 @@ class AccountDetector:
             "profile_name": name,
         })
         self._emit("profile_created", profile)
+
+        # Trigger valorant data refresh so the card shows rank/stats immediately.
+        if self._on_profile_created:
+            try:
+                self._on_profile_created(name)
+            except Exception:  # noqa: BLE001
+                pass

@@ -1,7 +1,7 @@
 import { memo, useRef, useState } from "react";
 import { Play, Square, Trash2, MoreVertical } from "lucide-react";
 import type { Profile } from "../types/profile";
-import { rankColor, rankShort } from "../lib/ranks";
+import { rankColor, rankShort, rankIconPath } from "../lib/ranks";
 import { ContextMenu } from "./ContextMenu";
 
 interface Props {
@@ -59,17 +59,38 @@ export const ProfileCard = memo(function ProfileCard({
       {/* Top row: rank badge + actions */}
       <div className="flex items-start justify-between">
         <div className="relative">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-bold tracking-wide"
-            style={{
-              background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
-              color,
-              border: `1px solid ${color}40`,
-              boxShadow: `0 0 12px ${color}15, inset 0 1px 0 0 ${color}20`,
-            }}
-          >
-            {rankShort(tier)}
-          </div>
+          {(() => {
+            const iconPath = rankIconPath(tier);
+            return iconPath ? (
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+                  border: `1px solid ${color}40`,
+                  boxShadow: `0 0 12px ${color}15`,
+                }}
+              >
+                <img
+                  src={iconPath}
+                  alt={rankShort(tier)}
+                  className="w-8 h-8 object-contain"
+                  draggable={false}
+                />
+              </div>
+            ) : (
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-bold tracking-wide"
+                style={{
+                  background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`,
+                  color,
+                  border: `1px solid ${color}40`,
+                  boxShadow: `0 0 12px ${color}15, inset 0 1px 0 0 ${color}20`,
+                }}
+              >
+                {rankShort(tier)}
+              </div>
+            );
+          })()}
         </div>
         <div className="flex items-center gap-0.5">
           <button
