@@ -41,7 +41,7 @@ export default function ProfileGrid({
   };
 
   return (
-    <div className="flex flex-wrap gap-5 justify-center">
+    <div className="flex flex-wrap gap-5">
       {loading
         ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
         : visible.map((p, i) => (
