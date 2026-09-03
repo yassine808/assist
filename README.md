@@ -46,10 +46,16 @@ The Electron main process spawns the Python backend as a child process and commu
 ## Requirements
 
 - Windows 10/11
-- Node.js 18+ (development)
-- Python 3.10+ (development)
+- Node.js 20+ (development)
+- Python 3.11+ (development)
 - Installed Riot Games Client
 - A HenrikDev API key for rank/stats (place in `.env` as `HENRIKDEV_API_KEY=HDEV-...`)
+
+### Python dependencies (dev only)
+
+```bash
+pip install cryptography pyinstaller
+```
 
 ## Development
 
@@ -59,16 +65,40 @@ npm run dev
 ```
 
 - `npm run dev` — starts Electron (Vite dev server), React renderer, and the Python backend.
-- `npm run typecheck` — TypeScript type checking.
+  - Dev data directory: `data/` at repo root (gitignored).
+- `npm run typecheck` — TypeScript type checking (0 errors required before build).
 - `npm run build` — builds the main, preload, and renderer bundles into `out/`.
 
-## Building a Release
+## Building
+
+### Backend only
+
+```bash
+npm run build:py
+```
+
+Produces `release/python/main.exe` (PyInstaller standalone executable).
+
+### Full installer
 
 ```bash
 npm run dist
 ```
 
-This builds the frontend, packages the Python backend into a standalone executable (PyInstaller), and produces a Windows NSIS installer via electron-builder.
+This runs `build` + `build:py` + `electron-builder` and produces:
+
+| Artifact | Description |
+|---|---|
+| `release/python/main.exe` | Standalone Python backend |
+| `release/win-unpacked/` | Unpacked app directory |
+| `release/RiotSwitcher Setup x.x.x.exe` | NSIS installer (one-click: false, per-user) |
+
+## Data directories
+
+| Mode | Path |
+|---|---|
+| Development (`npm run dev`) | `D:\Projects\Assist\data` |
+| Packaged (installed app) | `%APPDATA%\RiotSwitcher` |
 
 ## Usage
 
