@@ -30,6 +30,13 @@ class ValorantTracker:
 
     REGION_PROBE_ORDER = ["na", "eu", "ap", "kr", "latam", "br"]
 
+    # Riot platform IDs -> HenrikDev region codes.
+    RIOT_TO_HENRIK_REGION = {
+        "EUW1": "eu", "EUNE1": "eu", "TR1": "eu", "RU": "eu",
+        "NA1": "na", "BR1": "br", "LAN1": "latam", "LAS1": "latam",
+        "AP": "ap", "KR": "kr", "JP1": "ap",
+    }
+
     # Data keys stored in profile["valorant_data"] (mirrors the Godot app).
     KEY_TIER = "tier"
     KEY_RANK_NAME = "rank_name"
@@ -125,16 +132,27 @@ class ValorantTracker:
         puuid = job["puuid"]
         region = job["region"]
 
-        if not region:
-            # No region stored yet — probe the common regions in order.
+        # Normalize Riot platform ID to HenrikDev region code.
+        if region:
+            region = self.RIOT_TO_HENRIK_REGION.get(region, region)
+
+        if region:
+            if self._try_mmr(profile_name, puuid, region, job["tried_regions"]):
+                return
+            # Region was set but API returned empty — try fallback regions.
             for candidate in self.REGION_PROBE_ORDER:
-                if candidate in job.get("tried_regions", []):
+                if candidate == region or candidate in job.get("tried_regions", []):
                     continue
                 if self._try_mmr(profile_name, puuid, candidate, job["tried_regions"]):
                     return
             return
 
-        self._try_mmr(profile_name, puuid, region, job["tried_regions"])
+        # No region stored — probe the common regions in order.
+        for candidate in self.REGION_PROBE_ORDER:
+            if candidate in job.get("tried_regions", []):
+                continue
+            if self._try_mmr(profile_name, puuid, candidate, job["tried_regions"]):
+                return
 
     def _try_mmr(self, profile_name, puuid, region, tried_regions):
         """Perform a single MMR fetch. Returns True if data was applied (which
@@ -260,6 +278,7 @@ class ValorantTracker:
         puuid = str(profile.get("valorant_puuid", "")).lower()
         in_game_name = str(profile.get("valorant_in_game_name", ""))
         region = str(profile.get("valorant_region", ""))
+        region = self.RIOT_TO_HENRIK_REGION.get(region, region)
 
         agent_counts = {}
         score_sum = 0
