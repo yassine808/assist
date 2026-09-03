@@ -116,9 +116,9 @@ Add to `README.md`:
 
 ## Definition of Done (session complete when all true)
 
-- [ ] `npm run typecheck` passes (0 errors)
-- [ ] `npm run dist` produces `release/RiotSwitcher Setup x.x.x.exe` and launches with bundled `resources/python/main.exe`
+- [x] `npm run typecheck` passes (0 errors)
+- [x] `npm run dist` produces `release/RiotSwitcher Setup 2.0.0.exe` and launches with bundled `resources/python/main.exe`
 - [ ] `npm run dev` interactive QA passed: Settings persistence, Add Account (real login), profile launch/stop, tray, single-instance
-- [ ] README updated with prereqs / dev / build / artifacts / data-dir docs
-- [ ] Working tree clean; no stray `data/` at repo root; `main` pushed and synced with `origin/main`
+- [x] README updated with prereqs / dev / build / artifacts / data-dir docs
+- [x] Working tree clean; no stray `data/` at repo root; `main` pushed and synced with `origin/main`
 
