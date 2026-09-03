@@ -1,39 +1,45 @@
-export function SkeletonCard({ index }: { index: number }) {
+export default function SkeletonCard() {
   return (
     <div
-      className="animate-pulse flex flex-col rounded-xl w-[200px] h-[240px] p-3.5"
-      style={{
-        animationDelay: `${index * 50}ms`,
-        background: "linear-gradient(165deg, rgba(30,30,38,0.95) 0%, rgba(22,22,28,0.98) 100%)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 3px 0 rgba(0,0,0,0.3)",
-      }}
+      className="relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.06] animate-pulse"
+      style={{ width: 700, height: 1024, backgroundColor: '#0d1117' }}
     >
-      <div className="flex items-start justify-between">
-        <div className="w-14 h-14 rounded-xl bg-white/[0.05]" />
-        <div className="flex items-center gap-0.5">
-          <div className="w-7 h-7 rounded-lg bg-white/[0.04]" />
-          <div className="w-7 h-7 rounded-lg bg-white/[0.04]" />
-        </div>
+      {/* Fake agent background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+      {/* Top: profile name */}
+      <div className="relative z-10 px-5 pt-5 pb-3">
+        <div className="h-6 w-36 rounded bg-white/[0.08]" />
       </div>
-      <div className="mt-3.5 space-y-2 flex-1 min-h-0">
-        <div className="h-3.5 w-4/5 rounded-md bg-white/[0.07]" />
-        <div className="h-2.5 w-1/2 rounded-md bg-white/[0.04] mt-0.5" />
-        <div className="mt-3 flex items-baseline gap-1.5">
-          <div className="h-6 w-12 rounded-md bg-white/[0.05]" />
-          <div className="h-3 w-5 rounded-md bg-white/[0.03]" />
+
+      <div className="flex-1" />
+
+      {/* Bottom: rank + portrait area */}
+      <div className="relative z-10 flex items-end gap-4 px-5 pb-5">
+        {/* Left: rank + stats */}
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-xl bg-white/[0.06]" />
+            <div className="space-y-1.5">
+              <div className="h-3.5 w-16 rounded bg-white/[0.06]" />
+              <div className="h-7 w-20 rounded bg-white/[0.06]" />
+            </div>
+          </div>
+          <div className="h-4 w-28 rounded bg-white/[0.06]" />
+          <div className="h-3.5 w-32 rounded bg-white/[0.06]" />
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-4 w-8 rounded-md bg-emerald-500/10" />
-          <div className="h-4 w-8 rounded-md bg-red-500/10" />
-          <div className="h-4 w-8 rounded-md bg-white/[0.04]" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2.5 w-16 rounded-md bg-white/[0.03]" />
-          <div className="h-2.5 w-10 rounded-md bg-white/[0.03]" />
-        </div>
+
+        {/* Right: agent portrait placeholder */}
+        <div className="flex-shrink-0 w-[160px] h-[280px] rounded-xl bg-white/[0.04]" />
       </div>
-      <div className="h-[32px] w-full rounded-lg bg-white/[0.05] mt-2" />
+
+      {/* Toolbar */}
+      <div className="relative z-10 flex items-center gap-2 px-5 pb-5 pt-2">
+        <div className="flex-1 h-11 rounded-lg bg-white/[0.06]" />
+        <div className="h-11 w-11 rounded-lg bg-white/[0.06]" />
+        <div className="h-11 w-11 rounded-lg bg-white/[0.06]" />
+      </div>
     </div>
   );
 }

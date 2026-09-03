@@ -114,8 +114,9 @@ class HenrikClient:
         path = PATH_MMR_BY_PUUID.format(region=region, platform=PLATFORM, puuid=puuid)
         return self._request(path)
 
-    def fetch_matches(self, region, puuid):
+    def fetch_matches(self, region, puuid, size=None):
         """Fetch recent competitive matches. Returns the parsed JSON
         (v3 MatchesV3ListResponse) or raises HenrikError."""
-        path = f"{PATH_MATCHES_BY_PUUID.format(region=region, puuid=puuid)}?mode={MATCHES_MODE}&size={MATCHES_QUERY_SIZE}"
+        query_size = size if size is not None else MATCHES_QUERY_SIZE
+        path = f"{PATH_MATCHES_BY_PUUID.format(region=region, puuid=puuid)}?mode={MATCHES_MODE}&size={query_size}"
         return self._request(path)

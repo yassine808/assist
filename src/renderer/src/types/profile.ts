@@ -29,6 +29,9 @@ export interface ValorantData {
   avg_combat_score: number;
   agent_stats: AgentStat[];
   recent_matches: RecentMatch[];
+  agent_background: string;
+  agent_portrait: string;
+  agent_role: string;
 }
 
 export interface Profile {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ProfileGrid } from "../components/ProfileGrid";
+import ProfileGrid from "../components/ProfileGrid";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
 import type { Profile } from "../types/profile";

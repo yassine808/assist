@@ -54,11 +54,15 @@ class ValorantTracker:
     KEY_AVG_COMBAT_SCORE = "avg_combat_score"
     KEY_AGENT_STATS = "agent_stats"
     KEY_RECENT_MATCHES = "recent_matches"
+    KEY_AGENT_BACKGROUND = "agent_background"
+    KEY_AGENT_PORTRAIT = "agent_portrait"
+    KEY_AGENT_ROLE = "agent_role"
 
-    def __init__(self, profiles, client=None, on_update=None):
+    def __init__(self, profiles, client=None, on_update=None, agent_db=None):
         self._profiles = profiles
         self._client = client or HenrikClient()
         self._on_update = on_update
+        self._agent_db = agent_db
         self._thread = None
         self._queue_lock = threading.Lock()
         self._jobs = []
@@ -213,7 +217,7 @@ class ValorantTracker:
 
     def _handle_matches_job(self, job):
         try:
-            matches = self._client.fetch_matches(job["region"], job["puuid"])
+            matches = self._client.fetch_matches(job["region"], job["puuid"], size=30)
         except HenrikError:
             return
         self._apply_matches(job["profile_name"], matches)
@@ -408,6 +412,14 @@ class ValorantTracker:
         data[self.KEY_AVG_COMBAT_SCORE] = int(round(score_sum / max(1, score_count))) if score_count > 0 else 0
         data[self.KEY_AGENT_STATS] = agent_stats
         data[self.KEY_RECENT_MATCHES] = recent
+
+        # Resolve agent images from the database
+        if self._agent_db and top_agent:
+            agent_info = self._agent_db.get_agent(top_agent)
+            if agent_info:
+                data[self.KEY_AGENT_BACKGROUND] = agent_info.get("background", "")
+                data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
+                data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
 
         self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
         if self._on_update:

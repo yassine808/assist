@@ -13,6 +13,7 @@ import riot_account_detect as rad
 from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
 from account_detector import AccountDetector
+from agent_database import AgentDatabase
 
 
 def _pid_is_running(pid):
@@ -23,10 +24,14 @@ def _pid_is_running(pid):
         return False
 
 
-def _make_tracker(protocol, profiles):
-    tracker = ValorantTracker(profiles, on_update=lambda name, data: protocol.send_event(
-        "valorant_data_updated", {"profile_name": name}
-    ))
+def _make_tracker(protocol, profiles, agent_db):
+    tracker = ValorantTracker(
+        profiles,
+        on_update=lambda name, data: protocol.send_event(
+            "valorant_data_updated", {"profile_name": name}
+        ),
+        agent_db=agent_db,
+    )
     tracker.start()
     return tracker
 
@@ -46,7 +51,8 @@ def main():
 
     protocol = Protocol()
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
-    tracker = _make_tracker(protocol, profiles)
+    agent_db = AgentDatabase(data_dir)
+    tracker = _make_tracker(protocol, profiles, agent_db)
     config = ConfigManager(os.path.join(data_dir, "configs.json"))
     riot = RiotClientManager(config)
     riot.set_listener(lambda status: protocol.send_event(

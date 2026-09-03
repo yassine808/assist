@@ -1,216 +1,218 @@
-import { memo, useRef, useState } from "react";
-import { Play, Square, Trash2, MoreVertical } from "lucide-react";
-import type { Profile } from "../types/profile";
-import { rankColor, rankShort, rankIconPath } from "../lib/ranks";
-import { ContextMenu } from "./ContextMenu";
+import { Profile } from '../types/profile';
+import { rankColor, rankShort, rankIconPath } from '../lib/ranks';
+import { useProfileLaunch } from '../hooks/useProfileLaunch';
+import '../styles/card-glow.css';
 
-interface Props {
+interface ProfileCardProps {
   profile: Profile;
-  index: number;
-  dragging: boolean;
+  running: boolean;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
   onEdit: (p: Profile) => void;
+  onDragStart?: (p: Profile) => void;
+  onDragEnd?: () => void;
 }
 
-export const ProfileCard = memo(function ProfileCard({
-  profile,
-  index,
-  dragging,
-  onPlay,
-  onDelete,
-  onEdit,
-}: Props) {
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit }: ProfileCardProps) {
+  const { launch } = useProfileLaunch();
+  const { valorant_data: vd } = profile;
+  const rr = vd?.rr ?? 0;
+  const tierId = vd?.tier ?? 0;
+  const rankName = vd?.rank_name || 'Unknown';
+  const wins = vd?.wins ?? 0;
+  const losses = vd?.losses ?? 0;
+  const winPct = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+  const topAgent = vd?.top_agent ?? '';
+  const avgScore = vd?.avg_combat_score ?? 0;
+  const agentBg = vd?.agent_background ?? '';
+  const agentPortrait = vd?.agent_portrait ?? '';
+  const agentRole = vd?.agent_role ?? '';
 
-  const data = profile.valorant_data ?? ({} as Profile["valorant_data"]);
-  const tier = data.tier ?? 0;
-  const color = rankColor(tier);
-  const inGame =
-    profile.valorant_in_game_name || profile.profile_name || "Unknown#0000";
-  const wins = data.wins ?? 0;
-  const losses = data.losses ?? 0;
-  const totalGames = wins + losses;
-  const winPct = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setMenu({ x: e.clientX, y: e.clientY });
+  const handlePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!running) {
+      launch(profile);
+      onPlay(profile);
+    }
   };
-
-  const menuItems = [
-    { id: "play", label: profile.is_running ? "Stop" : "Play" },
-    { id: "edit", label: "Edit profile" },
-    { id: "delete", label: "Delete", danger: true },
-  ];
 
   return (
     <div
-      ref={cardRef}
-      className={`profile-card relative flex flex-col rounded-xl w-[200px] h-[240px] p-3.5 cursor-default overflow-hidden ${
-        dragging ? "profile-card--dragging" : ""
-      } ${profile.is_running ? "profile-card--running" : ""}`}
+      className={`card group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
+        running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
+        'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
+      }`}
       style={{
-        animationDelay: `${index * 50}ms`,
-        background: `linear-gradient(165deg, rgba(30,30,38,0.95) 0%, rgba(22,22,28,0.98) 100%)`,
-        border: "1px solid rgba(255,255,255,0.07)",
-        boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 3px 0 rgba(0,0,0,0.3)",
+        width: 700,
+        height: 1024,
+        backgroundColor: '#0d1117',
       }}
-      onContextMenu={handleContextMenu}
+      onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
-      {/* Top row: rank icon + actions */}
-      <div className="flex items-start justify-between">
-        <div className="relative">
-          {(() => {
-            const iconPath = rankIconPath(tier);
-            return iconPath ? (
-              <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
-                  border: `1px solid ${color}40`,
-                  boxShadow: `0 0 16px ${color}18`,
-                }}
-              >
-                <img
-                  src={iconPath}
-                  alt={rankShort(tier)}
-                  className="w-11 h-11 object-contain"
-                  draggable={false}
-                />
-              </div>
-            ) : (
-              <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center text-sm font-bold tracking-wide"
-                style={{
-                  background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
-                  color,
-                  border: `1px solid ${color}40`,
-                  boxShadow: `0 0 16px ${color}18, inset 0 1px 0 0 ${color}20`,
-                }}
-              >
-                {rankShort(tier)}
-              </div>
-            );
-          })()}
-        </div>
-        <div className="flex items-center gap-0.5">
-          <button
-            className="no-drag p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/5 transition-all duration-150"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenu({ x: e.clientX, y: e.clientY });
-            }}
-            title="More"
-          >
-            <MoreVertical size={14} />
-          </button>
-          <button
-            className="no-drag p-1.5 rounded-lg text-white/30 hover:text-red-400/80 hover:bg-red-500/10 transition-all duration-150"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(profile);
-            }}
-            title="Delete profile"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-
-      {/* Profile info */}
-      <div className="mt-3 flex-1 min-h-0">
-        <p className="text-[15px] font-bold text-white/95 truncate leading-tight tracking-[-0.02em]"
-           style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}
-        >
-          {inGame}
-        </p>
-        <p
-          className="text-[12px] mt-1 truncate font-semibold"
-          style={{ color }}
-        >
-          {data.rank_name || "Unranked"}
-        </p>
-
-        {/* RR */}
-        <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="text-[22px] font-extrabold text-white/90 tabular-nums leading-none"
-                style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}
-          >
-            {data.rr ?? 0}
-          </span>
-          <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">RR</span>
-        </div>
-
-        {/* Win/Loss */}
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold tabular-nums">
-          <span className="text-emerald-400">{wins}W</span>
-          <span className="text-white/15">/</span>
-          <span className="text-red-400">{losses}L</span>
-          <span className="text-white/15">·</span>
-          <span className="text-white/50">{winPct}%</span>
-        </div>
-
-        {/* ACS + Agent */}
-        <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-white/40 font-medium">
-          {data.top_agent ? (
-            <span className="truncate">{data.top_agent}</span>
-          ) : null}
-          {data.top_agent && data.avg_combat_score ? (
-            <span className="text-white/15">·</span>
-          ) : null}
-          {data.avg_combat_score ? (
-            <span className="tabular-nums">ACS {data.avg_combat_score}</span>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Play / Stop button — only this triggers launch */}
-      <button
-        className="no-drag group/btn flex items-center justify-center gap-1.5 mt-2 rounded-lg py-[8px] w-full text-[12px] font-bold tracking-wide transition-all duration-200 cursor-pointer"
-        style={{
-          background: profile.is_running
-            ? "rgba(255,255,255,0.06)"
-            : "linear-gradient(135deg, #ff4655 0%, #d32f2f 100%)",
-          color: profile.is_running ? "rgba(255,255,255,0.7)" : "#fff",
-          boxShadow: profile.is_running
-            ? "inset 0 1px 0 0 rgba(255,255,255,0.05)"
-            : "0 2px 8px -1px rgba(255,70,85,0.35), inset 0 1px 0 0 rgba(255,255,255,0.15)",
-          border: profile.is_running
-            ? "1px solid rgba(255,255,255,0.06)"
-            : "1px solid rgba(255,255,255,0.1)",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onPlay(profile);
-        }}
-      >
-        {profile.is_running ? (
-          <>
-            <Square size={11} className="opacity-70" /> Stop
-          </>
-        ) : (
-          <>
-            <Play size={11} className="fill-current" /> Play
-          </>
-        )}
-      </button>
-
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          items={menuItems}
-          onSelect={(id) => {
-            setMenu(null);
-            if (id === "play") onPlay(profile);
-            else if (id === "edit") onEdit(profile);
-            else if (id === "delete") onDelete(profile);
+      {/* Agent Background — full bleed */}
+      {agentBg && (
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url(${agentBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
           }}
-          onClose={() => setMenu(null)}
         />
+      )}
+
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/70 via-transparent to-transparent" />
+
+      {/* Content layer */}
+      <div className="relative z-[2] flex flex-col h-full">
+        {/* Top bar: profile name */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <span
+            className="text-[22px] font-extrabold tracking-tight truncate"
+            style={{
+              fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+              color: '#fff',
+              textShadow: '0 2px 12px rgba(0,0,0,0.7)',
+            }}
+          >
+            {profile.profile_name}
+          </span>
+          {running && (
+            <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+              Running
+            </span>
+          )}
+        </div>
+
+        {/* Spacer — pushes content to bottom */}
+        <div className="flex-1" />
+
+        {/* Bottom section — stats + portrait */}
+        <div className="flex items-end gap-4 px-5 pb-5">
+          {/* Left: Rank + Stats */}
+          <div className="flex-1 min-w-0">
+            {/* Rank icon + rank name + RR */}
+            <div className="flex items-center gap-3 mb-3">
+              <img
+                src={rankIconPath(tierId)}
+                alt={rankName}
+                className="w-16 h-16 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div className="flex flex-col">
+                <span
+                  className="text-[13px] font-semibold leading-tight"
+                  style={{ color: rankColor(tierId) }}
+                >
+                  {rankShort(tierId)}
+                </span>
+                <span
+                  className="text-[28px] font-black leading-none tracking-tight"
+                  style={{ color: '#fff' }}
+                >
+                  {rr}
+                  <span className="text-[14px] font-bold text-white/40 ml-1">RR</span>
+                </span>
+              </div>
+            </div>
+
+            {/* W/L */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[14px] font-bold" style={{ color: '#4ade80' }}>
+                {wins}W
+              </span>
+              <span className="text-white/20">·</span>
+              <span className="text-[14px] font-bold" style={{ color: '#f87171' }}>
+                {losses}L
+              </span>
+              <span className="text-white/20">·</span>
+              <span className="text-[14px] font-bold text-white/60">
+                {winPct}%
+              </span>
+            </div>
+
+            {/* ACS + Agent */}
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-white/40">
+                ACS <span className="text-white/70 font-bold">{avgScore}</span>
+              </span>
+              {topAgent && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span className="text-[12px] font-medium text-white/40">
+                    {topAgent}
+                  </span>
+                </>
+              )}
+              {agentRole && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span className="text-[11px] font-medium text-white/30 uppercase tracking-wider">
+                    {agentRole}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Agent portrait */}
+          {agentPortrait && (
+            <div className="flex-shrink-0">
+              <img
+                src={agentPortrait}
+                alt={topAgent}
+                className="h-[280px] w-auto object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)]"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom toolbar: Play / Edit / Delete */}
+        <div className="flex items-center gap-2 px-5 pb-5 pt-2">
+          <button
+            onClick={handlePlay}
+            disabled={running}
+            className="flex-1 h-11 rounded-lg font-bold text-[15px] transition-all
+                       bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25
+                       hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40
+                       disabled:opacity-40 disabled:cursor-not-allowed
+                       active:scale-[0.97]"
+          >
+            {running ? 'Running' : 'Play'}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(profile); }}
+            className="h-11 w-11 flex items-center justify-center rounded-lg
+                       bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08]
+                       text-white/50 hover:text-white/80 transition-all text-[15px]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/>
+            </svg>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
+            className="h-11 w-11 flex items-center justify-center rounded-lg
+                       bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
+                       text-white/50 hover:text-red-400 transition-all text-[15px]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Running pulse animation */}
+      {running && (
+        <div className="absolute inset-0 z-[3] rounded-2xl pointer-events-none">
+          <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/30 card-pulse" />
+        </div>
       )}
     </div>
   );
-});
+}

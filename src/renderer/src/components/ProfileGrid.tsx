@@ -1,14 +1,14 @@
 import { useState } from "react";
 import type { Profile, ProfileGridCallbacks } from "../types/profile";
-import { ProfileCard } from "./ProfileCard";
-import { SkeletonCard } from "./SkeletonCard";
+import ProfileCard from "./ProfileCard";
+import SkeletonCard from "./SkeletonCard";
 
 interface Props extends ProfileGridCallbacks {
   profiles: Profile[];
   loading: boolean;
 }
 
-export function ProfileGrid({
+export default function ProfileGrid({
   profiles,
   loading,
   onPlay,
@@ -41,28 +41,12 @@ export function ProfileGrid({
   };
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-5 justify-center">
       {loading
-        ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} index={i} />)
+        ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
         : visible.map((p, i) => (
             <div
               key={p.profile_name}
-              draggable
-              onDragStart={() => setDragIndex(i)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setOverIndex(i);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragIndex !== null) move(dragIndex, i);
-                setDragIndex(null);
-                setOverIndex(null);
-              }}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setOverIndex(null);
-              }}
               className={
                 overIndex === i && dragIndex !== null && dragIndex !== i
                   ? "profile-card--drop-target"
@@ -71,11 +55,12 @@ export function ProfileGrid({
             >
               <ProfileCard
                 profile={p}
-                index={i}
-                dragging={dragIndex === i}
+                running={p.is_running}
                 onPlay={onPlay}
                 onDelete={onDelete}
                 onEdit={onEdit}
+                onDragStart={() => setDragIndex(i)}
+                onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
               />
             </div>
           ))}
