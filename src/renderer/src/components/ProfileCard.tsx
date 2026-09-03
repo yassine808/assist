@@ -117,16 +117,13 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               </span>
             </div>
 
-            {/* Avg Combat Score */}
+            {/* ACS */}
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
-                Avg
+                ACS
               </span>
               <span className="text-[13px] font-bold text-white/80">
                 {avgScore}
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
-                ACS
               </span>
             </div>
           </div>
@@ -137,7 +134,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               <img
                 src={agentPortrait}
                 alt={topAgent}
-                className="h-[220px] w-auto object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
+                className="h-[340px] w-auto object-contain object-bottom drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
               {topAgent && (
