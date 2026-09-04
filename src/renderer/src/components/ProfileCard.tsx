@@ -112,8 +112,8 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           className="absolute z-[3] pointer-events-none"
           style={{
             left: -40,
-            bottom: 30,
-            height: '140%',
+            bottom: 60,
+            height: '165%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
