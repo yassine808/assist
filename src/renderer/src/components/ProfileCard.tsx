@@ -85,7 +85,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${agentBg})`,
-            filter: 'saturate(1.15) brightness(0.9)',
+            filter: 'saturate(1.2) brightness(1.1)',
           }}
         />
       )}
@@ -112,8 +112,8 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           className="absolute z-[3] pointer-events-none"
           style={{
             left: -40,
-            bottom: -20,
-            height: '120%',
+            bottom: 0,
+            height: '130%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
