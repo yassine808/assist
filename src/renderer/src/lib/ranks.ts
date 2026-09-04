@@ -1,5 +1,7 @@
 import { VALORANT_TIER_NAMES } from "../types/profile";
 
+const TIER_ICON_BASE = "https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04";
+
 export function rankColor(tier: number): string {
   if (tier <= 0) return "#7a7a85";
   if (tier <= 5) return "#9d9ea3"; // Iron
@@ -18,4 +20,9 @@ export function rankShort(tier: number): string {
   if (tier <= 0) return "UR";
   const seg = name.split(" ");
   return seg[seg.length - 1] ?? "?";
+}
+
+export function rankIconUrl(tier: number): string {
+  if (tier <= 0) return "";
+  return `${TIER_ICON_BASE}/${tier}/largeicon.png`;
 }

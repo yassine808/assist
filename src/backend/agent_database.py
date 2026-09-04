@@ -75,6 +75,9 @@ class AgentDatabase:
         if self._loaded:
             return
         if self._try_load_cache():
+            # If tiers are empty (API failed on first cache write), re-fetch
+            if not self._tiers:
+                self._fetch_and_cache()
             self._loaded = True
             return
         self._fetch_and_cache()
@@ -151,7 +154,7 @@ class AgentDatabase:
                 latest = seasons[-1]
                 for tier in latest.get("tiers", []):
                     tier_num = tier.get("tier", 0)
-                    icon = tier.get("largeIcon", "")
+                    icon = tier.get("largeIcon") or ""
                     if icon:
                         tiers[tier_num] = icon
             return tiers

@@ -1,5 +1,5 @@
 import { Profile } from '../types/profile';
-import { rankColor } from '../lib/ranks';
+import { rankColor, rankIconUrl } from '../lib/ranks';
 import { useProfileLaunch } from '../hooks/useProfileLaunch';
 import '../styles/card-glow.css';
 
@@ -74,9 +74,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           alt={topAgent}
           className="absolute z-[1] pointer-events-none"
           style={{
-            left: -20,
-            bottom: 0,
-            height: '85%',
+            left: -30,
+            bottom: -10,
+            height: '105%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',

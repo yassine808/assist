@@ -418,6 +418,11 @@ class ValorantTracker:
         data[self.KEY_AGENT_STATS] = agent_stats
         data[self.KEY_RECENT_MATCHES] = recent
 
+        # Always resolve rank icon from agent database (ensures it's persisted)
+        tier = data.get(self.KEY_TIER, 0)
+        if self._agent_db and tier:
+            data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
+
         # Resolve agent images from the database
         if self._agent_db and top_agent:
             agent_info = self._agent_db.get_agent(top_agent)
