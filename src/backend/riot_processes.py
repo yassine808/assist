@@ -3,6 +3,8 @@
 Mirrors the original Godot RiotProcesses utility. The blocking helpers
 (kill_all, wait_until_all_dead) must run off the protocol loop so a long kill
 never stalls other requests; call them through the job worker.
+
+Uses taskkill /F /T (force + tree kill) per process for fastest termination.
 """
 
 import subprocess
@@ -12,14 +14,16 @@ PROCESS_NAMES = [
     "RiotClientServices.exe",
     "RiotClientUx.exe",
     "RiotClientUxRender.exe",
+    "VALORANT.exe",
+    "ValorantWin64Shipping.exe",
     "LeagueClient.exe",
     "LeagueClientUx.exe",
     "LeagueClientUxRender.exe",
     "LeagueofLegends.exe",
 ]
 
-KILL_TIMEOUT_S = 10.0
-POLL_INTERVAL_S = 0.25
+KILL_TIMEOUT_S = 8.0
+POLL_INTERVAL_S = 0.2
 
 
 def is_running(process_name):
@@ -29,7 +33,7 @@ def is_running(process_name):
             ["tasklist", "/FI", f"IMAGENAME eq {process_name}", "/NH"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=3,
             creationflags=subprocess.CREATE_NO_WINDOW,
         ).stdout
     except (OSError, subprocess.SubprocessError):
@@ -48,23 +52,24 @@ def are_any_running():
 
 
 def kill_all(names=None):
-    """Send one non-blocking taskkill for every given (or known) process."""
+    """Force-kill every known (or given) process with taskkill /F /T.
+
+    Spawns one taskkill per process name for fastest parallel termination.
+    Each taskkill is non-blocking (Popen) so all kills fire simultaneously.
+    """
     names = names or PROCESS_NAMES
     if not names:
         return
-    arguments = ["/F", "/T"]
     for process_name in names:
-        arguments.append("/IM")
-        arguments.append(process_name)
-    try:
-        subprocess.Popen(
-            ["taskkill"] + arguments,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
-    except OSError:
-        pass
+        try:
+            subprocess.Popen(
+                ["taskkill", "/F", "/T", "/IM", process_name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except OSError:
+            pass
 
 
 def kill_names(names):

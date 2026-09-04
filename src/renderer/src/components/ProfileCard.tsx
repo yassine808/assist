@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Profile } from '../types/profile';
-import { rankColor, rankIconUrl } from '../lib/ranks';
-import { useProfileLaunch } from '../hooks/useProfileLaunch';
+import { rankColor } from '../lib/ranks';
+import { useProfileLaunch, LaunchState } from '../hooks/useProfileLaunch';
 import '../styles/card-glow.css';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -22,11 +22,12 @@ function hexToRgba(hex: string, alpha: number): string {
 interface ProfileCardProps {
   profile: Profile;
   running: boolean;
+  launchState: LaunchState;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, onPlay, onDelete }: ProfileCardProps) {
+export default function ProfileCard({ profile, running, launchState, onPlay, onDelete }: ProfileCardProps) {
   const { launch } = useProfileLaunch();
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
@@ -56,7 +57,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!running) {
+    if (launchState === 'idle') {
       launch(profile.profile_name);
       onPlay(profile);
     }
@@ -74,6 +75,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
     <div
       className={`card group relative overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
         running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
+        launchState === 'launching' ? 'border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]' :
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
       style={{ width: 320, height: 480, backgroundColor: '#0a0e14' }}
@@ -253,14 +255,18 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
         <div className="flex items-center gap-1.5 px-4 pb-4 pt-2">
           <button
             onClick={handlePlay}
-            disabled={running}
-            className="flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
-                       bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25
-                       hover:from-red-500 hover:to-red-600 hover:shadow-red-500/40
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       active:scale-[0.97]"
+            disabled={running || launchState === 'launching'}
+            className={`flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
+                        disabled:opacity-40 disabled:cursor-not-allowed
+                        active:scale-[0.97] ${
+              launchState === 'launched'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-600/25'
+                : launchState === 'launching'
+                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25 animate-pulse'
+                : 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25 hover:from-red-500 hover:to-red-600 hover:shadow-red-500/40'
+            }`}
           >
-            {running ? 'Running' : 'Play'}
+            {running ? 'Running' : launchState === 'launching' ? 'Launching…' : launchState === 'launched' ? 'Launched ✓' : 'Play'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}

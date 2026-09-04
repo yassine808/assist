@@ -8,7 +8,7 @@ import type { Profile } from "../types/profile";
 
 export default function HomeView() {
   const { call, onEvent } = useIPC();
-  const { launch } = useProfileLaunch();
+  const { launch, launchState, launchingProfile } = useProfileLaunch();
   const navigate = useNavigate();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -102,6 +102,8 @@ export default function HomeView() {
       <ProfileGrid
         profiles={profiles}
         loading={loading}
+        launchState={launchState}
+        launchingProfile={launchingProfile}
         onPlay={handlePlay}
         onDelete={handleDelete}
         onReorder={handleReorder}

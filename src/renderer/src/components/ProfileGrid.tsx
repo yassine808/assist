@@ -1,16 +1,21 @@
 import { useState } from "react";
 import type { Profile, ProfileGridCallbacks } from "../types/profile";
+import type { LaunchState } from "../hooks/useProfileLaunch";
 import ProfileCard from "./ProfileCard";
 import SkeletonCard from "./SkeletonCard";
 
 interface Props extends ProfileGridCallbacks {
   profiles: Profile[];
   loading: boolean;
+  launchState?: LaunchState;
+  launchingProfile?: string | null;
 }
 
 export default function ProfileGrid({
   profiles,
   loading,
+  launchState = "idle",
+  launchingProfile = null,
   onPlay,
   onDelete,
   onReorder,
@@ -55,6 +60,7 @@ export default function ProfileGrid({
               <ProfileCard
                 profile={p}
                 running={p.is_running}
+                launchState={launchingProfile === p.profile_name ? launchState : "idle"}
                 onPlay={onPlay}
                 onDelete={onDelete}
                 onDragStart={() => setDragIndex(i)}

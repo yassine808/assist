@@ -1,8 +1,9 @@
 """Background detector that watches for a newly logged-in Riot account.
 
-Used by the "Add Account" flow. Polls the live Riot Client settings file
-(decoded via riot_account_detect.read_live_account) until a brand-new account
-appears, then auto-creates a profile for it and emits a profile_created event.
+Used by the "Add Account" flow. Launches the Riot Client, then polls the live
+Riot Client settings file (decoded via riot_account_detect.read_live_account)
+until a brand-new account appears. When detected, a profile is created
+automatically and a profile_created event is emitted.
 
 The detector owns its own polling thread; start_detection() returns immediately
 and stop_detection() joins the thread.
@@ -73,12 +74,15 @@ class AccountDetector:
             thread.join(timeout=2.0)
 
     def _run(self):
-        self._emit("account_detection_progress", {"status": "waiting", "message": "Waiting for login…"})
+        self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client…"})
         if self.launcher:
             try:
                 self.launcher()
             except Exception as exc:  # noqa: BLE001
                 self._emit("account_detection_progress", {"status": "error", "message": f"Failed to launch Riot Client: {exc}"})
+                return
+
+        self._emit("account_detection_progress", {"status": "waiting", "message": "Waiting for login…"})
 
         started = time.time()
         while not self._stop.is_set():

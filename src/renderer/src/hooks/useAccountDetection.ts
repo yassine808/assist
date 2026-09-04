@@ -22,7 +22,11 @@ export function useAccountDetection(): UseAccountDetection {
 
   useEffect(() => {
     const unsub = onEvent("account_detection_progress", (params) => {
-      setProgress(params as DetectionProgress);
+      const p = params as DetectionProgress;
+      setProgress(p);
+      if (p.status === "created" || p.status === "canceled" || p.status === "error") {
+        setActive(false);
+      }
     });
     return () => {
       unsub?.();
@@ -50,7 +54,7 @@ export function useAccountDetection(): UseAccountDetection {
 
   const start = useCallback(async () => {
     setActive(true);
-    setProgress({ status: "waiting", message: "Waiting for login…" });
+    setProgress({ status: "waiting", message: "Opening Riot Client…" });
     try {
       await call("start_account_detection");
     } catch (e) {

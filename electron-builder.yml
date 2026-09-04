@@ -24,8 +24,14 @@ win:
     - target: nsis
       arch:
         - x64
+    - target: portable
+      arch:
+        - x64
   icon: build/icon.ico
   executableName: RiotSwitcher
+
+portable:
+  artifactName: "${productName}-${version}-portable.exe"
 
 nsis:
   oneClick: false
