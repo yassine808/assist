@@ -49,10 +49,10 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
 
   // Build gradient from agent background colors (4 colors from VALORANT API)
   const c = agentBgColors.length >= 4 ? agentBgColors : ['0f1923ff', '0f1923ff', '0f1923ff', '0f1923ff'];
-  const cardGradient = `radial-gradient(ellipse at 20% 80%, ${hexToRgba(c[0], 0.6)} 0%, transparent 50%),
-                         radial-gradient(ellipse at 80% 20%, ${hexToRgba(c[3], 0.5)} 0%, transparent 50%),
-                         radial-gradient(ellipse at 50% 50%, ${hexToRgba(c[1], 0.3)} 0%, transparent 70%),
-                         linear-gradient(135deg, ${hexToRgba(c[0], 0.9)} 0%, ${hexToRgba(c[1], 0.95)} 50%, ${hexToRgba(c[2], 1)} 100%)`;
+  const cardGradient = `radial-gradient(ellipse at 20% 80%, ${hexToRgba(c[0], 0.35)} 0%, transparent 50%),
+                         radial-gradient(ellipse at 80% 20%, ${hexToRgba(c[3], 0.25)} 0%, transparent 50%),
+                         radial-gradient(ellipse at 50% 50%, ${hexToRgba(c[1], 0.15)} 0%, transparent 70%),
+                         linear-gradient(135deg, ${hexToRgba(c[0], 0.5)} 0%, ${hexToRgba(c[1], 0.6)} 50%, ${hexToRgba(c[2], 0.7)} 100%)`;
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,7 +85,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${agentBg})`,
-            filter: 'saturate(1.2) brightness(1.1)',
+            filter: 'saturate(1.1) brightness(1.25)',
           }}
         />
       )}
@@ -112,8 +112,8 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           className="absolute z-[3] pointer-events-none"
           style={{
             left: -40,
-            bottom: 0,
-            height: '130%',
+            bottom: 30,
+            height: '140%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
@@ -129,16 +129,16 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
         style={{
           background: `linear-gradient(90deg,
             transparent 0%,
-            transparent 25%,
-            rgba(10,14,20,0.4) 40%,
-            rgba(10,14,20,0.75) 55%,
-            rgba(10,14,20,0.95) 75%,
-            rgba(10,14,20,1) 100%)`,
+            transparent 35%,
+            rgba(10,14,20,0.3) 50%,
+            rgba(10,14,20,0.6) 65%,
+            rgba(10,14,20,0.85) 80%,
+            rgba(10,14,20,0.95) 100%)`,
         }}
       />
 
       {/* Bottom vignette for depth */}
-      <div className="absolute inset-0 z-[4] bg-gradient-to-t from-black/90 via-black/20 to-black/30" />
+      <div className="absolute inset-0 z-[4] bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
 
       {/* Top vignette for polish */}
       <div className="absolute inset-0 z-[4] bg-gradient-to-b from-black/50 via-transparent to-transparent" style={{ height: '40%' }} />
