@@ -208,7 +208,13 @@ class ValorantTracker:
             # Empty data for this region — the caller tries the next region.
             return False
 
-        data = self._build_data(mmr)
+        # Read existing top_agent so _build_data can resolve agent background
+        existing_top_agent = ""
+        existing_profile = self._profiles.get(profile_name)
+        if existing_profile:
+            existing_top_agent = str((existing_profile.get("valorant_data") or {}).get("top_agent", ""))
+
+        data = self._build_data(mmr, existing_top_agent=existing_top_agent)
         in_game_name = self._in_game_name(payload)
 
         self._apply(profile_name, puuid, region, in_game_name, data)
@@ -239,7 +245,7 @@ class ValorantTracker:
                 return f"{game_name}#{tag}"
         return ""
 
-    def _build_data(self, mmr):
+    def _build_data(self, mmr, existing_top_agent=""):
         data = {
             self.KEY_TIER: 0,
             self.KEY_RANK_NAME: "Unranked",
@@ -302,6 +308,16 @@ class ValorantTracker:
         # Resolve rank icon from agent database
         if self._agent_db and tier:
             data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
+
+        # Resolve agent background/role from existing top_agent (if known)
+        if self._agent_db and existing_top_agent:
+            agent_info = self._agent_db.get_agent(existing_top_agent)
+            if agent_info:
+                data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
+                data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
+                data[self.KEY_AGENT_BG] = agent_info.get("background", "")
+                data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
+
         return data
 
     def _apply(self, profile_name, puuid, region, in_game_name, data):
