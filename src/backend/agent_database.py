@@ -50,6 +50,14 @@ class AgentDatabase:
         agent = self.get_agent(name)
         return agent.get("fullPortrait") if agent else None
 
+    def get_background_url(self, name):
+        agent = self.get_agent(name)
+        return agent.get("background") if agent else None
+
+    def get_background_gradient_colors(self, name):
+        agent = self.get_agent(name)
+        return agent.get("backgroundGradientColors", []) if agent else []
+
     def get_role(self, name):
         agent = self.get_agent(name)
         return agent.get("role", {}).get("name") if agent else None
@@ -129,6 +137,8 @@ class AgentDatabase:
                     "uuid": agent.get("uuid", ""),
                     "displayName": name,
                     "fullPortrait": agent.get("fullPortrait", ""),
+                    "background": agent.get("background", ""),
+                    "backgroundGradientColors": agent.get("backgroundGradientColors", []),
                     "role": {
                         "name": agent.get("role", {}).get("displayName", ""),
                     },

@@ -31,6 +31,8 @@ export interface ValorantData {
   recent_matches: RecentMatch[];
   agent_portrait: string;
   agent_role: string;
+  agent_bg: string;
+  agent_bg_colors: string[];
   rank_icon: string;
   player_card_bg: string;
 }

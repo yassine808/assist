@@ -57,6 +57,8 @@ class ValorantTracker:
     KEY_RECENT_MATCHES = "recent_matches"
     KEY_AGENT_PORTRAIT = "agent_portrait"
     KEY_AGENT_ROLE = "agent_role"
+    KEY_AGENT_BG = "agent_bg"
+    KEY_AGENT_BG_COLORS = "agent_bg_colors"
     KEY_RANK_ICON = "rank_icon"
     KEY_PLAYER_CARD_BG = "player_card_bg"
 
@@ -429,6 +431,8 @@ class ValorantTracker:
             if agent_info:
                 data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
                 data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
+                data[self.KEY_AGENT_BG] = agent_info.get("background", "")
+                data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
 
         # Try to get the equipped player card from the local Riot client
         card_url = get_equipped_card_url()

@@ -10,6 +10,14 @@ const ROLE_COLORS: Record<string, string> = {
   Sentinel: '#ffc107',
 };
 
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '').replace(/ff$/i, '');
+  const r = parseInt(h.substring(0, 2), 16) || 0;
+  const g = parseInt(h.substring(2, 4), 16) || 0;
+  const b = parseInt(h.substring(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 interface ProfileCardProps {
   profile: Profile;
   running: boolean;
@@ -31,9 +39,18 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
   const agentPortrait = vd?.agent_portrait ?? '';
   const agentRole = vd?.agent_role ?? '';
   const rankIcon = vd?.rank_icon ?? '';
+  const agentBg = vd?.agent_bg ?? '';
+  const agentBgColors = vd?.agent_bg_colors ?? [];
   const playerCardBg = vd?.player_card_bg ?? '';
 
   const roleColor = ROLE_COLORS[agentRole] ?? '#00d4ff';
+
+  // Build gradient from agent background colors (4 colors from VALORANT API)
+  const c = agentBgColors.length >= 4 ? agentBgColors : ['0f1923ff', '0f1923ff', '0f1923ff', '0f1923ff'];
+  const cardGradient = `radial-gradient(ellipse at 20% 80%, ${hexToRgba(c[0], 0.6)} 0%, transparent 50%),
+                         radial-gradient(ellipse at 80% 20%, ${hexToRgba(c[3], 0.5)} 0%, transparent 50%),
+                         radial-gradient(ellipse at 50% 50%, ${hexToRgba(c[1], 0.3)} 0%, transparent 70%),
+                         linear-gradient(135deg, ${hexToRgba(c[0], 0.9)} 0%, ${hexToRgba(c[1], 0.95)} 50%, ${hexToRgba(c[2], 1)} 100%)`;
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,27 +69,37 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
       style={{ width: 320, height: 480, backgroundColor: '#0a0e14' }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
-      {/* Background — player card or role gradient */}
-      {playerCardBg ? (
+      {/* Layer 0: Agent background art (full bleed, covers entire card) */}
+      {agentBg && (
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${playerCardBg})` }}
-        />
-      ) : (
-        <div
-          className="absolute inset-0 z-0"
           style={{
-            background: `linear-gradient(135deg, ${roleColor}18 0%, transparent 50%, ${roleColor}0a 100%)`,
+            backgroundImage: `url(${agentBg})`,
+            filter: 'saturate(1.15) brightness(0.9)',
           }}
         />
       )}
 
-      {/* Agent Portrait — left side, large */}
+      {/* Layer 1: Gradient overlay from agent's backgroundGradientColors */}
+      <div
+        className="absolute inset-0 z-[1]"
+        style={{ background: agentBg ? cardGradient : 'transparent' }}
+      />
+
+      {/* Layer 2: Player card art as secondary background (if available) */}
+      {playerCardBg && (
+        <div
+          className="absolute inset-0 z-[2] bg-cover bg-center opacity-30"
+          style={{ backgroundImage: `url(${playerCardBg})` }}
+        />
+      )}
+
+      {/* Agent Portrait — left side, large, dramatic positioning */}
       {agentPortrait && (
         <img
           src={agentPortrait}
           alt={topAgent}
-          className="absolute z-[1] pointer-events-none"
+          className="absolute z-[3] pointer-events-none"
           style={{
             left: -30,
             bottom: -10,
@@ -80,31 +107,42 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
-            filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.6))',
+            filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.7))',
           }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
       )}
 
-      {/* Dark overlay for text readability — stronger on right */}
+      {/* Layer 4: Darkness for text readability — stronger gradient on right */}
       <div
-        className="absolute inset-0 z-[2]"
+        className="absolute inset-0 z-[4]"
         style={{
-          background: 'linear-gradient(90deg, transparent 0%, transparent 35%, rgba(10,14,20,0.7) 55%, rgba(10,14,20,0.95) 75%, rgba(10,14,20,1) 100%)',
+          background: `linear-gradient(90deg,
+            transparent 0%,
+            transparent 25%,
+            rgba(10,14,20,0.4) 40%,
+            rgba(10,14,20,0.75) 55%,
+            rgba(10,14,20,0.95) 75%,
+            rgba(10,14,20,1) 100%)`,
         }}
       />
-      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+
+      {/* Bottom vignette for depth */}
+      <div className="absolute inset-0 z-[4] bg-gradient-to-t from-black/90 via-black/20 to-black/30" />
+
+      {/* Top vignette for polish */}
+      <div className="absolute inset-0 z-[4] bg-gradient-to-b from-black/50 via-transparent to-transparent" style={{ height: '40%' }} />
 
       {/* Content layer */}
-      <div className="relative z-[3] flex flex-col h-full">
-        {/* Username — right-aligned over dark bg */}
+      <div className="relative z-[5] flex flex-col h-full">
+        {/* Username — right-aligned */}
         <div className="flex items-center justify-end px-5 pt-5 pb-2">
           <span
             className="text-[20px] font-bold tracking-wide truncate text-right"
             style={{
               fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
               color: '#fff',
-              textShadow: '0 2px 16px rgba(0,0,0,0.8)',
+              textShadow: '0 2px 20px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.8)',
             }}
           >
             {profile.profile_name}
@@ -114,7 +152,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section — stats right side */}
+        {/* Bottom section — stats */}
         <div className="flex flex-col items-end px-5 pb-2 gap-1">
           {/* Rank icon + RR */}
           <div className="flex items-center gap-2.5">
@@ -122,7 +160,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               <img
                 src={rankIcon}
                 alt="Rank"
-                className="w-[52px] h-[52px] drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]"
+                className="w-[52px] h-[52px] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
@@ -131,7 +169,10 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
             <div className="flex flex-col items-end">
               <span
                 className="text-[28px] font-black leading-none tracking-tight"
-                style={{ color: rankColor(tierId) }}
+                style={{
+                  color: rankColor(tierId),
+                  textShadow: `0 0 20px ${rankColor(tierId)}40, 0 2px 8px rgba(0,0,0,0.8)`,
+                }}
               >
                 {rr}
               </span>
@@ -143,15 +184,15 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
           {/* W/L */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[13px] font-bold" style={{ color: '#4ade80' }}>
+            <span className="text-[13px] font-bold" style={{ color: '#4ade80', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {wins}W
             </span>
             <span className="text-white/20">·</span>
-            <span className="text-[13px] font-bold" style={{ color: '#f87171' }}>
+            <span className="text-[13px] font-bold" style={{ color: '#f87171', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {losses}L
             </span>
             <span className="text-white/20">·</span>
-            <span className="text-[13px] font-bold text-white/60">
+            <span className="text-[13px] font-bold text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {winPct}%
             </span>
           </div>
@@ -161,7 +202,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
             <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
               ACS
             </span>
-            <span className="text-[13px] font-bold text-white/80">
+            <span className="text-[13px] font-bold text-white/80" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {avgScore}
             </span>
           </div>
@@ -173,6 +214,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
               style={{
                 fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
                 color: roleColor,
+                textShadow: `0 0 12px ${roleColor}60, 0 1px 4px rgba(0,0,0,0.8)`,
               }}
             >
               {topAgent}
@@ -219,7 +261,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
       {/* Running pulse animation */}
       {running && (
-        <div className="absolute inset-0 z-[4] rounded-2xl pointer-events-none">
+        <div className="absolute inset-0 z-[6] rounded-2xl pointer-events-none">
           <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/30 card-pulse" />
         </div>
       )}
