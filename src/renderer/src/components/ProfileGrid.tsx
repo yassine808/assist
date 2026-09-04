@@ -13,7 +13,6 @@ export default function ProfileGrid({
   loading,
   onPlay,
   onDelete,
-  onEdit,
   onReorder,
 }: Props) {
   const [order, setOrder] = useState<string[] | null>(null);
@@ -58,7 +57,6 @@ export default function ProfileGrid({
                 running={p.is_running}
                 onPlay={onPlay}
                 onDelete={onDelete}
-                onEdit={onEdit}
                 onDragStart={() => setDragIndex(i)}
                 onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
               />

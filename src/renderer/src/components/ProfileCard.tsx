@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Profile } from '../types/profile';
 import { rankColor, rankIconUrl } from '../lib/ranks';
 import { useProfileLaunch } from '../hooks/useProfileLaunch';
@@ -23,10 +24,9 @@ interface ProfileCardProps {
   running: boolean;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
-  onEdit: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit }: ProfileCardProps) {
+export default function ProfileCard({ profile, running, onPlay, onDelete }: ProfileCardProps) {
   const { launch } = useProfileLaunch();
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
@@ -45,6 +45,8 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
   const roleColor = ROLE_COLORS[agentRole] ?? '#00d4ff';
 
+  const [copied, setCopied] = useState(false);
+
   // Build gradient from agent background colors (4 colors from VALORANT API)
   const c = agentBgColors.length >= 4 ? agentBgColors : ['0f1923ff', '0f1923ff', '0f1923ff', '0f1923ff'];
   const cardGradient = `radial-gradient(ellipse at 20% 80%, ${hexToRgba(c[0], 0.6)} 0%, transparent 50%),
@@ -58,6 +60,14 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
       launch(profile);
       onPlay(profile);
     }
+  };
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(profile.profile_name).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (
@@ -94,16 +104,16 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
         />
       )}
 
-      {/* Agent Portrait — left side, large, dramatic positioning */}
+      {/* Agent Portrait — left side, bigger, dramatic positioning */}
       {agentPortrait && (
         <img
           src={agentPortrait}
           alt={topAgent}
           className="absolute z-[3] pointer-events-none"
           style={{
-            left: -30,
-            bottom: -10,
-            height: '105%',
+            left: -40,
+            bottom: -20,
+            height: '120%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
@@ -135,10 +145,10 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
 
       {/* Content layer */}
       <div className="relative z-[5] flex flex-col h-full">
-        {/* Username — right-aligned */}
-        <div className="flex items-center justify-end px-5 pt-5 pb-2">
+        {/* Username — centered with copy button on right */}
+        <div className="flex items-center justify-center gap-2 px-5 pt-5 pb-2">
           <span
-            className="text-[20px] font-bold tracking-wide truncate text-right"
+            className="text-[20px] font-bold tracking-wide truncate text-center"
             style={{
               fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
               color: '#fff',
@@ -147,6 +157,23 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           >
             {profile.profile_name}
           </span>
+          <button
+            onClick={handleCopy}
+            className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded
+                       bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
+                       text-white/50 hover:text-white/90 transition-all"
+            title="Copy username"
+          >
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Spacer */}
@@ -222,28 +249,18 @@ export default function ProfileCard({ profile, running, onPlay, onDelete, onEdit
           )}
         </div>
 
-        {/* Buttons — pinned to very bottom */}
+        {/* Buttons — Play (red VALORANT theme) + Delete */}
         <div className="flex items-center gap-1.5 px-4 pb-4 pt-2">
           <button
             onClick={handlePlay}
             disabled={running}
             className="flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
-                       bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25
-                       hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40
+                       bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25
+                       hover:from-red-500 hover:to-red-600 hover:shadow-red-500/40
                        disabled:opacity-40 disabled:cursor-not-allowed
                        active:scale-[0.97]"
           >
             {running ? 'Running' : 'Play'}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(profile); }}
-            className="h-9 w-9 flex items-center justify-center rounded-lg
-                       bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08]
-                       text-white/50 hover:text-white/80 transition-all text-[13px]"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"/>
-            </svg>
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}

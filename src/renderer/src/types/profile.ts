@@ -80,6 +80,5 @@ export const VALORANT_TIER_NAMES: Record<number, string> = {
 export interface ProfileGridCallbacks {
   onPlay: (profile: Profile) => void;
   onDelete: (profile: Profile) => void;
-  onEdit: (profile: Profile) => void;
   onReorder: (names: string[]) => Promise<void> | void;
 }

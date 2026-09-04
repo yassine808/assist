@@ -67,13 +67,6 @@ export default function HomeView() {
     }
   }, [confirmDelete, call, load]);
 
-  const handleEdit = useCallback(
-    (p: Profile) => {
-      navigate(`/settings?profile=${encodeURIComponent(p.profile_name)}`);
-    },
-    [navigate]
-  );
-
   const handleReorder = useCallback(
     async (names: string[]) => {
       try {
@@ -111,7 +104,6 @@ export default function HomeView() {
         loading={loading}
         onPlay={handlePlay}
         onDelete={handleDelete}
-        onEdit={handleEdit}
         onReorder={handleReorder}
       />
 
