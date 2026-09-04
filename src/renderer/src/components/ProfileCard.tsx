@@ -72,7 +72,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
 
   return (
     <div
-      className={`card group relative overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
+      className={`card group relative rounded-2xl border transition-all duration-200 select-none cursor-default ${
         running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
@@ -82,7 +82,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
       {/* Layer 0: Agent background art (full bleed, covers entire card) */}
       {agentBg && (
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center"
+          className="absolute inset-0 z-0 bg-cover bg-center overflow-hidden rounded-2xl"
           style={{
             backgroundImage: `url(${agentBg})`,
             filter: 'saturate(1.1) brightness(1.25)',
@@ -111,9 +111,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           alt={topAgent}
           className="absolute z-[3] pointer-events-none"
           style={{
-            left: -40,
-            bottom: 60,
-            height: '165%',
+            left: -30,
+            bottom: -10,
+            height: '115%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
