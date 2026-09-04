@@ -111,9 +111,9 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           alt={topAgent}
           className="absolute z-[3] pointer-events-none"
           style={{
-            left: -30,
+            left: -40,
             bottom: 0,
-            height: 400,
+            height: '110%',
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'bottom',
