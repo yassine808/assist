@@ -111,11 +111,11 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
           alt={topAgent}
           className="absolute z-[3] pointer-events-none"
           style={{
-            left: -40,
+            left: -20,
             bottom: 0,
-            height: '110%',
-            width: 'auto',
-            objectFit: 'contain',
+            width: 380,
+            height: 'auto',
+            objectFit: 'cover',
             objectPosition: 'bottom',
             filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.7))',
           }}
