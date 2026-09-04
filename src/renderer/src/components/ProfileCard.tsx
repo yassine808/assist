@@ -57,7 +57,7 @@ export default function ProfileCard({ profile, running, onPlay, onDelete }: Prof
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!running) {
-      launch(profile);
+      launch(profile.profile_name);
       onPlay(profile);
     }
   };
