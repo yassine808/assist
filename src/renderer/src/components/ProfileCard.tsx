@@ -189,47 +189,54 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-1.5 px-3 pb-3 pt-1">
+        <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1">
+          {/* Large START button */}
           <button
             onClick={handlePlay}
             disabled={running || launchState === "launching"}
-            className={`flex-1 h-7 rounded-lg font-bold text-[11px] transition-all
+            className={`w-full h-10 rounded font-black text-[16px] uppercase tracking-[0.2em] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
-                        active:scale-[0.97] ${
+                        active:scale-[0.98] ${
               launchState === "launched"
-                ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-600/25"
+                ? "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/30"
                 : launchState === "launching"
-                ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25 animate-pulse"
-                : "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25 hover:from-red-500 hover:to-red-600 hover:shadow-red-500/40"
+                ? "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 animate-pulse"
+                : "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 hover:from-red-400 hover:to-red-600 hover:shadow-red-500/50"
             }`}
+            style={{ fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif" }}
           >
-            {running ? "Running" : launchState === "launching" ? "Launching…" : launchState === "launched" ? "Launched ✓" : "Play"}
+            {running ? "RUNNING" : launchState === "launching" ? "LAUNCHING…" : launchState === "launched" ? "LAUNCHED ✓" : "START"}
           </button>
-          {onModifyCard && (
+          {/* Two small buttons row */}
+          <div className="flex gap-1.5">
+            {onModifyCard && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }}
+                className="flex-1 h-7 flex items-center justify-center gap-1 rounded
+                           bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
+                           text-white/50 hover:text-white/90 transition-all text-[10px] font-semibold uppercase tracking-wider"
+                title="Customize playercard"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="17" r="2.5"/><circle cx="6" cy="12" r="2.5"/>
+                  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.02-.23-.27-.38-.62-.38-1.01 0-.75.6-1.35 1.35-1.35H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9.94-10-9.94Z"/>
+                </svg>
+                CUSTOMIZE
+              </button>
+            )}
             <button
-              onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }}
-              className="h-7 w-7 flex items-center justify-center rounded-lg
-                         bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
-                         text-white/50 hover:text-white/90 transition-all"
-              title="Change playercard"
+              onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
+              className="flex-1 h-7 flex items-center justify-center gap-1 rounded
+                         bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
+                         text-white/50 hover:text-red-400 transition-all text-[10px] font-semibold uppercase tracking-wider"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="17" r="2.5"/><circle cx="6" cy="12" r="2.5"/>
-                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.02-.23-.27-.38-.62-.38-1.01 0-.75.6-1.35 1.35-1.35H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9.94-10-9.94Z"/>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
               </svg>
+              DELETE
             </button>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
-            className="h-7 w-7 flex items-center justify-center rounded-lg
-                       bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
-                       text-white/50 hover:text-red-400 transition-all"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-            </svg>
-          </button>
+          </div>
         </div>
       </div>
 
