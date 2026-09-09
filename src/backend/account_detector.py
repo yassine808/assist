@@ -15,6 +15,7 @@ import time
 import riot_account_detect as rad
 
 POLL_INTERVAL_S = 1.5
+RELAUNCH_WAIT_S = 8  # wait for Riot Client to fully restart after kill
 DETECTION_TIMEOUT_S = 300  # give up after 5 minutes of no new login
 
 
@@ -162,7 +163,7 @@ class AccountDetector:
                 if not rad.is_account_new(account, profiles_list):
                     self._handle_already_added(rad.display_uid(account))
                     started = time.time()
-                    self._stop.wait(POLL_INTERVAL_S)
+                    self._stop.wait(RELAUNCH_WAIT_S)
                     continue
                 if not self._handle_new_account(account, rad.display_uid(account)):
                     return
