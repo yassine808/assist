@@ -19,7 +19,7 @@ export function rankShort(tier: number): string {
   const name = VALORANT_TIER_NAMES[tier] ?? "Unranked";
   if (tier <= 0) return "UR";
   const seg = name.split(" ");
-  return seg[seg.length - 1] ?? "?";
+  return seg.at(-1) ?? "?";
 }
 
 export function rankIconUrl(tier: number): string {

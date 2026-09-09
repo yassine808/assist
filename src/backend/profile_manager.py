@@ -32,6 +32,8 @@ import json
 import os
 import threading
 
+NAME_REQUIRED = "name is required"
+
 
 class ProfileManager:
     def __init__(self, path):
@@ -90,7 +92,7 @@ class ProfileManager:
 
     def update(self, name, updates):
         if not name:
-            raise ValueError("name is required")
+            raise ValueError(NAME_REQUIRED)
         with self._lock:
             for i, p in enumerate(self._profiles):
                 if p.get("profile_name") == name:
@@ -103,7 +105,7 @@ class ProfileManager:
 
     def delete(self, name):
         if not name:
-            raise ValueError("name is required")
+            raise ValueError(NAME_REQUIRED)
         with self._lock:
             before = len(self._profiles)
             self._profiles = [p for p in self._profiles if p.get("profile_name") != name]
@@ -139,7 +141,7 @@ class ProfileManager:
         `region` update the profile identity when non-empty.
         """
         if not name:
-            raise ValueError("name is required")
+            raise ValueError(NAME_REQUIRED)
         with self._lock:
             for i, p in enumerate(self._profiles):
                 if p.get("profile_name") != name:
@@ -199,7 +201,10 @@ class ProfileManager:
         with self._lock:
             payload = json.dumps(self._profiles, indent=2, ensure_ascii=False).encode("utf-8")
 
-        # Derive key from passkey using PBKDF2
+        # Derive key from passkey using PBKDF2.
+        # NOTE: The salt is intentionally fixed (not random) so that encrypted
+        # profiles can be decrypted across different sessions and machines.
+        # A random salt would break import/export round-trip compatibility.
         salt = b"riotswitcher-export-v1"
         dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
         key = base64.urlsafe_b64encode(dk)
@@ -224,7 +229,7 @@ class ProfileManager:
 
         from cryptography.fernet import Fernet, InvalidToken
 
-        # Derive same key
+        # Derive same key (salt must match export_profiles exactly).
         salt = b"riotswitcher-export-v1"
         dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
         key = base64.urlsafe_b64encode(dk)

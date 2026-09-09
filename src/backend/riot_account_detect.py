@@ -40,6 +40,24 @@ def live_settings_path():
     return os.path.join(LOCALAPPDATA, LIVE_SETTINGS_REL)
 
 
+def _populate_account_fields(result, payload):
+    """Populate result dict from JWT payload fields."""
+    acct = payload.get("acct") if isinstance(payload.get("acct"), dict) else {}
+    if str(payload.get("sub", "")):
+        result["puuid"] = str(payload["sub"])
+    if str(acct.get("game_name", "")):
+        result["game_name"] = str(acct["game_name"])
+    if str(acct.get("tag_line", "")):
+        result["tag_line"] = str(acct["tag_line"])
+
+    lol = payload.get("lol") if isinstance(payload.get("lol"), list) else []
+    if lol and isinstance(lol[0], dict):
+        if str(lol[0].get("uname", "")):
+            result["uname"] = str(lol[0]["uname"])
+        if str(lol[0].get("cpid", "")):
+            result["riot_region"] = str(lol[0]["cpid"])
+
+
 def read_live_account():
     """Read and decode the currently logged-in Riot account.
 
@@ -64,21 +82,7 @@ def read_live_account():
         return {}
 
     result = {}
-    acct = payload.get("acct") if isinstance(payload.get("acct"), dict) else {}
-    if str(payload.get("sub", "")):
-        result["puuid"] = str(payload["sub"])
-    if str(acct.get("game_name", "")):
-        result["game_name"] = str(acct["game_name"])
-    if str(acct.get("tag_line", "")):
-        result["tag_line"] = str(acct["tag_line"])
-
-    lol = payload.get("lol") if isinstance(payload.get("lol"), list) else []
-    if lol and isinstance(lol[0], dict):
-        if str(lol[0].get("uname", "")):
-            result["uname"] = str(lol[0]["uname"])
-        if str(lol[0].get("cpid", "")):
-            result["riot_region"] = str(lol[0]["cpid"])
-
+    _populate_account_fields(result, payload)
     return result
 
 
@@ -118,7 +122,7 @@ def _decode_jwt_payload(token):
     payload += "=" * ((4 - len(payload) % 4) % 4)
     try:
         raw = base64.b64decode(payload)
-    except Exception:  # noqa: BLE001
+    except (ValueError, TypeError):
         return {}
     try:
         data = json.loads(raw.decode("utf-8"))

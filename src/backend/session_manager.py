@@ -101,21 +101,23 @@ class SessionManager:
             os.makedirs(profile_dir, exist_ok=True)
             all_success = True
             for file_def in FILES_TO_SWITCH:
-                source = self._resolve_path(file_def, riot_install_dir)
-                if not source:
-                    continue
-                dest = os.path.join(profile_dir, file_def["filename"])
-                if file_def.get("is_dir"):
-                    if not os.path.isdir(source):
-                        continue
-                    if self._copy_dir_atomic(source, dest) != 0:
-                        all_success = False
-                else:
-                    if not os.path.isfile(source):
-                        continue
-                    if self._copy_file_atomic(source, dest) != 0:
-                        all_success = False
+                if not self._backup_one_file(file_def, profile_dir, riot_install_dir):
+                    all_success = False
         return all_success
+
+    def _backup_one_file(self, file_def, profile_dir, riot_install_dir):
+        """Backup a single file/directory. Returns True on success or skip."""
+        source = self._resolve_path(file_def, riot_install_dir)
+        if not source:
+            return True
+        dest = os.path.join(profile_dir, file_def["filename"])
+        if file_def.get("is_dir"):
+            if not os.path.isdir(source):
+                return True
+            return self._copy_dir_atomic(source, dest) == 0
+        if not os.path.isfile(source):
+            return True
+        return self._copy_file_atomic(source, dest) == 0
 
     def restore_session(self, directory_name, riot_install_dir):
         """Write a profile's backed-up files over the live Riot Client files.
@@ -129,24 +131,28 @@ class SessionManager:
         with self._lock:
             all_success = True
             for file_def in FILES_TO_SWITCH:
-                dest = self._resolve_path(file_def, riot_install_dir)
-                if not dest:
-                    continue
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                source = os.path.join(profile_dir, file_def["filename"])
-                if file_def.get("is_dir"):
-                    if os.path.isdir(source):
-                        if self._copy_dir_atomic(source, dest) != 0:
-                            all_success = False
-                    elif os.path.isdir(dest) and self._remove_dir_recursive(dest) != 0:
-                        all_success = False
-                else:
-                    if os.path.isfile(source):
-                        if self._copy_file_atomic(source, dest) != 0:
-                            all_success = False
-                    elif os.path.isfile(dest) and not self._remove_file(dest):
-                        all_success = False
+                if not self._restore_one_file(file_def, profile_dir, riot_install_dir):
+                    all_success = False
         return all_success
+
+    def _restore_one_file(self, file_def, profile_dir, riot_install_dir):
+        """Restore a single file/directory from backup. Returns True on success."""
+        dest = self._resolve_path(file_def, riot_install_dir)
+        if not dest:
+            return True
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        source = os.path.join(profile_dir, file_def["filename"])
+        if file_def.get("is_dir"):
+            if os.path.isdir(source):
+                return self._copy_dir_atomic(source, dest) == 0
+            if os.path.isdir(dest):
+                return self._remove_dir_recursive(dest) == 0
+            return True
+        if os.path.isfile(source):
+            return self._copy_file_atomic(source, dest) == 0
+        if os.path.isfile(dest):
+            return self._remove_file(dest)
+        return True
 
     def delete_profile_dir(self, directory_name):
         """Remove a profile's backup directory."""

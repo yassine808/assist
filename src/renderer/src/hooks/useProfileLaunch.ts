@@ -60,7 +60,7 @@ export function useProfileLaunch(): UseProfileLaunch {
           step?: string;
           pid?: number;
         }>("launch_profile", { name });
-        if (result && result.ok === false) {
+        if (result?.ok === false) {
           const msg = result.error || "Launch failed";
           setProgress({
             step: result.step || "launch",

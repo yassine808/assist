@@ -91,11 +91,12 @@ export default function SettingsView() {
   const sourceProfile = String(config.SharedSettingsSourceProfile ?? "");
   const sourceName = sourceDir || sourceProfile;
 
+  const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
+
   const cards = [
     {
       title: "Riot Client",
       rows: (
-        <>
           <SettingDropdown
             label="Launch Product"
             description="Auto-launch VALORANT or only the Riot Client"
@@ -106,7 +107,6 @@ export default function SettingsView() {
             ]}
             onChange={(v) => update("LaunchProduct", v)}
           />
-        </>
       ),
     },
     {
@@ -140,14 +140,12 @@ export default function SettingsView() {
     {
       title: "Appear Offline",
       rows: (
-        <>
           <SettingToggle
             label="Appear Offline"
             description="Mask your presence while Riot Client is running"
             checked={!!config.AppearOffline}
             onChange={(v) => update("AppearOffline", v)}
           />
-        </>
       ),
     },
     {
@@ -210,7 +208,7 @@ export default function SettingsView() {
                     <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
-                {exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export"}
+                {exportLabel}
               </button>
             </div>
           </div>

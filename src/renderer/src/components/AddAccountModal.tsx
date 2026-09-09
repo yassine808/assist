@@ -18,7 +18,7 @@ type ModalPhase =
   | "created"        // profile created successfully
   | "error";         // something went wrong
 
-export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAccountModalProps) {
+export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
   const { call } = useIPC();
   const { active, progress, start, stop, confirmSave } = useAccountDetection();
   const [phase, setPhase] = useState<ModalPhase>("checking");
@@ -26,35 +26,33 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
   const hasChecked = useRef(false);
   const prevOpen = useRef(false);
 
-  // Handle open/close transitions
+  const checkForAccount = useCallback(async () => {
+    setPhase("checking");
+    setSuggestedAccount(null);
+    hasChecked.current = false;
+
+    try {
+      const result = await call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account");
+      if (result?.found && result.is_new) {
+        setSuggestedAccount({ display: result.display, account: result.account });
+        setPhase("suggest");
+      } else {
+        setPhase("opening");
+      }
+    } catch {
+      setPhase("opening");
+    }
+  }, [call]);
+
   useEffect(() => {
     if (open && !prevOpen.current) {
-      // Just opened — reset state and check for account
-      setPhase("checking");
-      setSuggestedAccount(null);
-      hasChecked.current = false;
-
-      let mounted = true;
-      void call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account")
-        .then((result) => {
-          if (!mounted) return;
-          if (result?.found && result.is_new) {
-            setSuggestedAccount({ display: result.display, account: result.account });
-            setPhase("suggest");
-          } else {
-            setPhase("opening");
-          }
-        })
-        .catch(() => {
-          if (mounted) setPhase("opening");
-        });
+      void checkForAccount();
       prevOpen.current = true;
-      return () => { mounted = false; };
     }
     if (!open) {
       prevOpen.current = false;
     }
-  }, [open, call]);
+  }, [open, checkForAccount]);
 
   // Start detection when phase becomes "opening"
   useEffect(() => {
@@ -64,12 +62,14 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
   }, [phase, active, start]);
 
   // Derive phase from progress — use useMemo to avoid setState in effect
-  const progressPhase = progress?.status === "waiting" ? "waiting"
-    : progress?.status === "confirm_save" ? "confirm_save"
-    : progress?.status === "already_added" ? "already_added"
-    : progress?.status === "created" ? "created"
-    : progress?.status === "error" ? "error"
-    : null;
+  const phaseFromStatus: Partial<Record<string, ModalPhase>> = {
+    waiting: "waiting",
+    confirm_save: "confirm_save",
+    already_added: "already_added",
+    created: "created",
+    error: "error",
+  };
+  const progressPhase = progress?.status ? (phaseFromStatus[progress.status] ?? null) : null;
 
   const effectivePhase = progressPhase ?? phase;
 
@@ -112,12 +112,15 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={handleClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={handleClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClose(); }}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div
         className="relative w-[380px] rounded-xl bg-[#12161f] border border-white/10 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.stopPropagation()}
         style={{ animation: "fadeIn 0.2s ease-out" }}
       >
         <button

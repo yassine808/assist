@@ -7,7 +7,7 @@ interface ImportExportModalProps {
   onImported?: () => void;
 }
 
-export default function ImportExportModal({ open, onClose, onImported }: ImportExportModalProps) {
+export default function ImportExportModal({ open, onClose, onImported }: Readonly<ImportExportModalProps>) {
   const { call } = useIPC();
   const [exportPasskey, setExportPasskey] = useState("");
   const [importPasskey, setImportPasskey] = useState("");
@@ -72,11 +72,22 @@ export default function ImportExportModal({ open, onClose, onImported }: ImportE
 
   if (!open) return null;
 
+  const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClose(); }}
+      role="button"
+      tabIndex={0}
+    >
       <div
         className="w-[420px] rounded-xl bg-[#12161f] border border-white/10 p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="button"
+        tabIndex={0}
         style={{ animation: "fadeIn 0.2s ease-out" }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -113,7 +124,7 @@ export default function ImportExportModal({ open, onClose, onImported }: ImportE
                     <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
-                {exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export"}
+                {exportLabel}
               </button>
             </div>
           </div>

@@ -16,6 +16,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import presence_constants as pc
 
+CHAT_HOST_KEY = "chat.host"
+CHAT_PORT_KEY = "chat.port"
+
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel
     sys.stderr.write(' '.join(str(a) for a in args) + '\n')
@@ -99,10 +102,15 @@ class ConfigProxy:
     def _handle_request(self, raw_path, headers, respond, body=b""):
         # Sanitize path: strip absolute URL scheme/host if proxy-style.
         path = raw_path
-        if path.startswith("http://") or path.startswith("https://"):
+        if path.startswith(("http://", "https://")):
             scheme_end = path.find("://") + 3
             slash_pos = path.find("/", scheme_end)
             path = path[slash_pos:] if slash_pos != -1 else "/"
+
+        # Validate path: reject directory traversal and null bytes.
+        if "\x00" in path or ".." in path:
+            respond.send_error(400, "Bad Request")
+            return
 
         target_url = pc.RIOT_CLIENT_CONFIG_BASE_URL + path
         print(f"[Presence/ConfigProxy] Intercepted {raw_path} -> Forwarding to {target_url}")
@@ -130,7 +138,7 @@ class ConfigProxy:
         except urllib.error.HTTPError as exc:
             response_code = exc.code
             raw = exc.read()
-        except (urllib.error.URLError, OSError) as exc:
+        except urllib.error.URLError as exc:
             print(f"[Presence/ConfigProxy] Upstream request failed: {exc}")
             respond.send_error(502, "Bad Gateway")
             return
@@ -162,10 +170,10 @@ class ConfigProxy:
         # 1. Extract original regional chat host before patching.
         orig_host = ""
         orig_port = pc.DEFAULT_RIOT_CHAT_PORT
-        if isinstance(config.get("chat.host"), str):
-            orig_host = config["chat.host"]
-        if isinstance(config.get("chat.port"), (int, float)):
-            orig_port = int(config["chat.port"])
+        if isinstance(config.get(CHAT_HOST_KEY), str):
+            orig_host = config[CHAT_HOST_KEY]
+        if isinstance(config.get(CHAT_PORT_KEY), (int, float)):
+            orig_port = int(config[CHAT_PORT_KEY])
 
         if (
             orig_host
@@ -177,15 +185,15 @@ class ConfigProxy:
                 self._chat_host_callback(orig_host, orig_port)
 
         # 2. Patch top-level chat properties to point to the local proxy.
-        config["chat.host"] = pc.DECEIVE_LOCALHOST_DOMAIN
-        config["chat.port"] = self._target_chat_port
+        config[CHAT_HOST_KEY] = pc.DECEIVE_LOCALHOST_DOMAIN
+        config[CHAT_PORT_KEY] = self._target_chat_port
         config["chat.allow_bad_cert.enabled"] = True
         config["chat.use_tls.enabled"] = True
 
         # 3. Patch chat affinities to force local connection.
         affinities = config.get("chat.affinities")
         if isinstance(affinities, dict):
-            for key in list(affinities.keys()):
+            for key in affinities.keys():
                 affinities[key] = pc.DECEIVE_LOCALHOST_DOMAIN
 
         print(f"[Presence/ConfigProxy] Successfully patched Riot Client Config with local ChatProxy port {self._target_chat_port}.")

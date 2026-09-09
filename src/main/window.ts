@@ -1,5 +1,5 @@
 import { BrowserWindow } from "electron";
-import { join } from "path";
+import { join } from "node:path";
 import { PythonBridge } from "./python-bridge";
 
 interface WindowCallbacks {

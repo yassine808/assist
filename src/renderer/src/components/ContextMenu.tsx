@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, items, onSelect, onClose }: Props) {
+export function ContextMenu({ x, y, items, onSelect, onClose }: Readonly<Props>) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

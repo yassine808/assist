@@ -19,6 +19,12 @@ export default function AddAccountView() {
   const isConfirming = progress?.status === "confirm_save";
   const isAlreadyAdded = progress?.status === "already_added";
 
+  const subtitleText = isConfirming
+    ? "A new account was detected. Do you want to save it?"
+    : isAlreadyAdded
+      ? "This account is already added. Opening login to switch\u2026"
+      : "The Riot Client is opening. Log in with the account you want to add.";
+
   // Auto-start detection when the page loads (run once on mount)
   useEffect(() => {
     if (!active && !isCreated && !isError) {
@@ -48,11 +54,7 @@ export default function AddAccountView() {
 
         <h1 className="text-2xl font-bold text-white mb-2">Add Account</h1>
         <p className="text-white/50 text-sm mb-6">
-          {isConfirming
-            ? "A new account was detected. Do you want to save it?"
-            : isAlreadyAdded
-              ? "This account is already added. Opening login to switch\u2026"
-              : "The Riot Client is opening. Log in with the account you want to add."}
+          {subtitleText}
         </p>
 
         <div className="rounded-md bg-bg-card border border-white/10 p-5">

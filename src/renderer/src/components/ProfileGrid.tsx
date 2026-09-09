@@ -10,7 +10,6 @@ interface Props {
   launchingProfile?: string | null;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
-  onReorder?: (names: string[]) => Promise<void> | void;
   onModifyCard?: (p: Profile) => void;
 }
 
@@ -22,7 +21,7 @@ export default function ProfileGrid({
   onPlay,
   onDelete,
   onModifyCard,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <div className="flex flex-wrap gap-5">
       {loading

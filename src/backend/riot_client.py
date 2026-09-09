@@ -47,7 +47,8 @@ RIOT_GAME_REG_KEYS = [
 ]
 
 COMMON_DRIVES = ["D:", "C:", "E:", "F:", "G:"]
-COMMON_INSTALL_PATH = r"/Riot Games/Riot Client"
+RIOT_CLIENT_DIR_NAME = "Riot Client"
+COMMON_INSTALL_PATH = r"/Riot Games/" + RIOT_CLIENT_DIR_NAME
 
 # Riot Client installs JSON carries the associated-game install path; the
 # client's own folder is a sibling of those games under <drive>/Riot Games/.
@@ -130,7 +131,7 @@ class RiotClientManager:
             if location:
                 # Game install -> parent Riot Games dir -> sibling Riot Client.
                 parent = os.path.dirname(location.replace("\\", "/"))
-                candidate = os.path.join(parent, "Riot Client").replace("\\", "/")
+                candidate = os.path.join(parent, RIOT_CLIENT_DIR_NAME).replace("\\", "/")
                 if self._is_client_dir(candidate):
                     return candidate
 
@@ -141,7 +142,7 @@ class RiotClientManager:
 
         # 4. Common drive locations.
         for drive in COMMON_DRIVES:
-            candidate = f"{drive}/Riot Games/Riot Client"
+            candidate = f"{drive}/Riot Games/{RIOT_CLIENT_DIR_NAME}"
             if self._is_client_dir(candidate):
                 return candidate
 
@@ -200,11 +201,11 @@ class RiotClientManager:
         for p in paths:
             if not p:
                 continue
-            if p.lower().endswith("riot client"):
+            if p.lower().endswith(RIOT_CLIENT_DIR_NAME.lower()):
                 candidates.append(p)
                 continue
             parent = os.path.dirname(p)
-            candidates.append(os.path.join(parent, "Riot Client").replace("\\", "/"))
+            candidates.append(os.path.join(parent, RIOT_CLIENT_DIR_NAME).replace("\\", "/"))
         return candidates
 
     def _client_dirs_from_metadata_yaml(self):
@@ -222,9 +223,9 @@ class RiotClientManager:
                             path = parts[1].strip().strip('"').strip("'")
                             path = path.replace("\\", "/").rstrip("/")
                             paths.append(path)
-                            if not path.lower().endswith("riot client"):
+                            if not path.lower().endswith(RIOT_CLIENT_DIR_NAME.lower()):
                                 parent = os.path.dirname(path)
-                                paths.append(os.path.join(parent, "Riot Client").replace("\\", "/"))
+                                paths.append(os.path.join(parent, RIOT_CLIENT_DIR_NAME).replace("\\", "/"))
         except OSError:
             pass
         return paths
@@ -359,8 +360,8 @@ _CLIENT_PLATFORM_B64 = (
     "dGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9"
 )
 _SSL_CTX = ssl.create_default_context()
-_SSL_CTX.check_hostname = False
-_SSL_CTX.verify_mode = ssl.CERT_NONE
+_SSL_CTX.check_hostname = True
+_SSL_CTX.verify_mode = ssl.CERT_REQUIRED
 
 
 def _read_lockfile():

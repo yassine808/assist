@@ -46,7 +46,7 @@ class _BridgeSession(threading.Thread):
             client_ssl = self._server_ssl_ctx.wrap_socket(
                 self._client_sock, server_side=True
             )
-        except (ssl.SSLError, OSError):
+        except Exception:  # noqa: BLE001
             self._close_both()
             return
 
@@ -57,7 +57,7 @@ class _BridgeSession(threading.Thread):
             upstream_ssl = self._client_ssl_ctx.wrap_socket(
                 upstream_sock, server_hostname=self._upstream_host
             )
-        except (ssl.SSLError, OSError, ValueError):
+        except Exception:  # noqa: BLE001
             client_ssl.close()
             self._close_sock(upstream_sock)
             return
@@ -95,7 +95,7 @@ class _BridgeSession(threading.Thread):
                 filtered = xmpp_filter.filter_outbound(data)
                 if filtered:
                     dst.sendall(filtered)
-        except (ssl.SSLError, OSError, ValueError):
+        except Exception:  # noqa: BLE001
             pass
         finally:
             self._should_stop.set()
@@ -107,7 +107,7 @@ class _BridgeSession(threading.Thread):
                 if not data:
                     break
                 dst.sendall(data)
-        except (ssl.SSLError, OSError, ValueError):
+        except Exception:  # noqa: BLE001
             pass
         finally:
             self._should_stop.set()
@@ -146,15 +146,17 @@ class ChatProxy:
 
         key_pem, cert_pem = crypto_helper.CryptoHelper.get_server_tls_options()
         self._server_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self._server_ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         try:
             self._server_ssl_ctx.load_cert_chain(
                 certfile=_to_temp(cert_pem, "cert.pem"),
                 keyfile=_to_temp(key_pem, "key.pem"),
             )
-        except (ssl.SSLError, OSError) as exc:
+        except Exception as exc:  # noqa: BLE001
             return False, str(exc)
 
         self._client_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self._client_ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         self._client_ssl_ctx.check_hostname = False
         self._client_ssl_ctx.verify_mode = ssl.CERT_NONE
 

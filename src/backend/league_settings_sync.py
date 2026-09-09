@@ -42,11 +42,14 @@ CONFIG_KEY_SOURCE_DIR = "SharedSettingsSourceDirectory"
 CONFIG_KEY_SOURCE_NAME_LEGACY = "SharedSettingsSourceProfile"
 CONFIG_KEY_READONLY = "EnforceReadOnlySettings"
 
+FILE_PERSISTED_SETTINGS = "PersistedSettings.json"
+FILE_ITEM_SETS = "ItemSets.json"
+
 SHARED_FILES = [
     "game.cfg",
-    "PersistedSettings.json",
+    FILE_PERSISTED_SETTINGS,
     "input.ini",
-    "ItemSets.json",
+    FILE_ITEM_SETS,
 ]
 
 SHARED_DIRS = [
@@ -106,6 +109,29 @@ class LeagueSettingsSync:
     # Source resolution
     # ------------------------------------------------------------------ #
 
+    def _is_safe_path(self, path, *allowed_bases):
+        """Return True if *path* resolves inside one of *allowed_bases*."""
+        try:
+            resolved = os.path.realpath(path)
+            for base in allowed_bases:
+                if resolved.startswith(os.path.realpath(base)):
+                    return True
+        except (OSError, ValueError):
+            pass
+        return False
+
+    def _resolve_profile_by_dir_name(self, directory_name, all_profiles):
+        """Find a profile matching *directory_name* and return a result dict."""
+        for profile in all_profiles:
+            if str(profile.get("directory_name", "") or "") == directory_name:
+                return {
+                    "is_valid": True,
+                    "directory_name": directory_name,
+                    "display_name": profile.get("profile_name", directory_name),
+                    "profile_dir": os.path.join(self._shared_dir, "..", "profiles", directory_name),
+                }
+        return None
+
     def resolve_source_profile(self):
         """Resolve the configured source profile.
 
@@ -117,14 +143,9 @@ class LeagueSettingsSync:
         all_profiles = self._profiles.load() or []
 
         if configured_dir:
-            for profile in all_profiles:
-                if str(profile.get("directory_name", "") or "") == configured_dir:
-                    return {
-                        "is_valid": True,
-                        "directory_name": configured_dir,
-                        "display_name": profile.get("profile_name", configured_dir),
-                        "profile_dir": os.path.join(self._shared_dir, "..", "profiles", configured_dir),
-                    }
+            match = self._resolve_profile_by_dir_name(configured_dir, all_profiles)
+            if match:
+                return match
             return {
                 "is_valid": False,
                 "directory_name": "",
@@ -134,17 +155,9 @@ class LeagueSettingsSync:
             }
 
         if legacy_name:
-            for profile in all_profiles:
-                if str(profile.get("profile_name", "") or "") == legacy_name:
-                    dir_name = str(profile.get("directory_name", "") or "")
-                    if dir_name:
-                        self._config.set(CONFIG_KEY_SOURCE_DIR, dir_name)
-                        return {
-                            "is_valid": True,
-                            "directory_name": dir_name,
-                            "display_name": legacy_name,
-                            "profile_dir": os.path.join(self._shared_dir, "..", "profiles", dir_name),
-                        }
+            result = self._resolve_profile_by_legacy_name(legacy_name, all_profiles)
+            if result:
+                return result
             return {
                 "is_valid": False,
                 "directory_name": "",
@@ -160,6 +173,21 @@ class LeagueSettingsSync:
             "profile_dir": "",
             "error_message": "No source profile configured.",
         }
+
+    def _resolve_profile_by_legacy_name(self, legacy_name, all_profiles):
+        """Look up *legacy_name* in profile_name and migrate to directory_name."""
+        for profile in all_profiles:
+            if str(profile.get("profile_name", "") or "") == legacy_name:
+                dir_name = str(profile.get("directory_name", "") or "")
+                if dir_name:
+                    self._config.set(CONFIG_KEY_SOURCE_DIR, dir_name)
+                    return {
+                        "is_valid": True,
+                        "directory_name": dir_name,
+                        "display_name": legacy_name,
+                        "profile_dir": os.path.join(self._shared_dir, "..", "profiles", dir_name),
+                    }
+        return None
 
     # ------------------------------------------------------------------ #
     # Validation & hashing
@@ -188,7 +216,7 @@ class LeagueSettingsSync:
             return False
         has_cfg = os.path.isfile(os.path.join(dir_path, "game.cfg"))
         has_json = self.validate_persisted_settings_file(
-            os.path.join(dir_path, "PersistedSettings.json")
+            os.path.join(dir_path, FILE_PERSISTED_SETTINGS)
         )
         has_input = os.path.isfile(os.path.join(dir_path, "input.ini"))
         return bool(has_cfg or has_json or has_input)
@@ -205,14 +233,16 @@ class LeagueSettingsSync:
 
     def settings_dir_differs_from_master(self, dir_path):
         """True when tracked files in dir_path differ from the master snapshot."""
-        if not self.has_valid_settings(self.master_dir()):
+        if not dir_path or not os.path.isdir(dir_path):
+            return True
+        if not self._is_safe_path(dir_path, self._shared_dir, os.path.dirname(self._shared_dir)):
             return True
         meta = self.get_snapshot_metadata()
         file_hashes = meta.get("file_hashes", {}) or {}
         if not file_hashes:
             return True
         for filename in file_hashes:
-            if filename == "ItemSets.json":
+            if filename == FILE_ITEM_SETS:
                 continue
             candidate = os.path.join(dir_path, filename)
             if not os.path.isfile(candidate):
@@ -272,11 +302,12 @@ class LeagueSettingsSync:
     def _capture_master_snapshot_unlocked(self, source_dir, source_dir_name, source_display_name):
         if not source_dir or not os.path.isdir(source_dir):
             return CAPTURE_SOURCE_NOT_FOUND
-
+        if not self._is_safe_path(source_dir, os.path.dirname(self._shared_dir)):
+            return CAPTURE_SOURCE_NOT_FOUND
         if not self.has_valid_settings(source_dir):
             return CAPTURE_INVALID_SOURCE_FILES
 
-        persisted_path = os.path.join(source_dir, "PersistedSettings.json")
+        persisted_path = os.path.join(source_dir, FILE_PERSISTED_SETTINGS)
         if os.path.isfile(persisted_path) and not self.validate_persisted_settings_file(persisted_path):
             return CAPTURE_CORRUPT_PERSISTED_SETTINGS
 
@@ -287,33 +318,13 @@ class LeagueSettingsSync:
         except OSError:
             return CAPTURE_STAGING_FAILED
 
-        file_hashes = {}
-        file_sizes = {}
-        files_present = []
-
-        for filename in SHARED_FILES:
-            src = os.path.join(source_dir, filename)
-            if not os.path.isfile(src):
-                continue
-            dst = os.path.join(staging_dir, filename)
-            try:
-                shutil.copy2(src, dst)
-            except OSError:
-                self._remove_dir_recursive(staging_dir)
-                return CAPTURE_STAGING_FAILED
-            file_hashes[filename] = _sha256(dst)
-            file_sizes[filename] = os.path.getsize(dst)
-            files_present.append(filename)
-
-        for dirname in SHARED_DIRS:
-            src_sub = os.path.join(source_dir, dirname)
-            if os.path.isdir(src_sub):
-                self._copy_dir_recursive(src_sub, os.path.join(staging_dir, dirname))
-                files_present.append(dirname)
+        file_hashes, file_sizes, files_present = self._copy_shared_files_to_staging(source_dir, staging_dir)
+        if file_hashes is None:
+            return CAPTURE_STAGING_FAILED
+        self._copy_shared_dirs_to_staging(source_dir, staging_dir, files_present)
 
         prev_meta = self.get_snapshot_metadata()
         next_gen = int(prev_meta.get("generation", 0) or 0) + 1
-
         metadata = {
             "schema_version": SCHEMA_VERSION,
             "source_directory": source_dir_name,
@@ -325,7 +336,6 @@ class LeagueSettingsSync:
             "file_hashes": file_hashes,
             "file_sizes": file_sizes,
         }
-
         try:
             with open(os.path.join(staging_dir, METADATA_FILENAME), "w", encoding="utf-8") as fh:
                 json.dump(metadata, fh, indent="\t")
@@ -339,6 +349,44 @@ class LeagueSettingsSync:
             self._remove_dir_recursive(staging_dir)
             return CAPTURE_STAGING_FAILED
 
+        copy_ok = self._promote_staging_to_master(staging_dir, files_present)
+        self._remove_dir_recursive(staging_dir)
+        return CAPTURE_SUCCESS if copy_ok else CAPTURE_STAGING_FAILED
+
+    def _copy_shared_files_to_staging(self, source_dir, staging_dir):
+        """Copy SHARED_FILES from source_dir to staging_dir.
+
+        Returns (file_hashes, file_sizes, files_present) or
+        (None, None, []) when a copy fails so the caller can abort.
+        """
+        file_hashes = {}
+        file_sizes = {}
+        files_present = []
+        for filename in SHARED_FILES:
+            src = os.path.join(source_dir, filename)
+            if not os.path.isfile(src):
+                continue
+            dst = os.path.join(staging_dir, filename)
+            try:
+                shutil.copy2(src, dst)
+            except OSError:
+                self._remove_dir_recursive(staging_dir)
+                return None, None, []
+            file_hashes[filename] = _sha256(dst)
+            file_sizes[filename] = os.path.getsize(dst)
+            files_present.append(filename)
+        return file_hashes, file_sizes, files_present
+
+    def _copy_shared_dirs_to_staging(self, source_dir, staging_dir, files_present):
+        """Copy SHARED_DIRS from source_dir into staging_dir."""
+        for dirname in SHARED_DIRS:
+            src_sub = os.path.join(source_dir, dirname)
+            if os.path.isdir(src_sub):
+                self._copy_dir_recursive(src_sub, os.path.join(staging_dir, dirname))
+                files_present.append(dirname)
+
+    def _promote_staging_to_master(self, staging_dir, files_present):
+        """Copy staged files into the master directory. Returns True on success."""
         copy_ok = True
         for fn in files_present:
             if fn in SHARED_FILES:
@@ -359,7 +407,6 @@ class LeagueSettingsSync:
                     os.path.join(staging_dir, fn),
                     os.path.join(self.master_dir(), fn),
                 )
-
         meta_src = os.path.join(staging_dir, METADATA_FILENAME)
         meta_dst = os.path.join(self.master_dir(), METADATA_FILENAME)
         if os.path.isfile(meta_dst):
@@ -368,18 +415,15 @@ class LeagueSettingsSync:
             shutil.copy2(meta_src, meta_dst)
         except OSError:
             copy_ok = False
-
-        self._remove_dir_recursive(staging_dir)
-
-        if not copy_ok:
-            return CAPTURE_STAGING_FAILED
-        return CAPTURE_SUCCESS
+        return copy_ok
 
     def copy_settings(self, source_dir, dest_dir):
         """Copy shared files/dirs from source_dir into dest_dir (merging dirs)."""
         if not source_dir or not os.path.isdir(source_dir):
             return False
         if not dest_dir:
+            return False
+        if not self._is_safe_path(source_dir, self._shared_dir, os.path.dirname(self._shared_dir)):
             return False
         try:
             os.makedirs(dest_dir, exist_ok=True)
@@ -469,6 +513,8 @@ class LeagueSettingsSync:
 
         if not league_config_dir or not os.path.isdir(league_config_dir):
             return APPLY_DEPLOY_FAILED
+        if not self._is_safe_path(league_config_dir, os.path.dirname(self._shared_dir)):
+            return APPLY_DEPLOY_FAILED
 
         source_info = self.resolve_source_profile()
         if not source_info["is_valid"]:
@@ -493,11 +539,26 @@ class LeagueSettingsSync:
 
         file_hashes = meta.get("file_hashes", {}) or {}
 
+        self._clear_readonly_for_deploy(league_config_dir)
+        if not self._copy_files_to_league(league_config_dir):
+            return APPLY_DEPLOY_FAILED
+        self._copy_dirs_to_league(league_config_dir)
+        if not self._verify_deployed_hashes(league_config_dir, file_hashes):
+            return APPLY_HASH_MISMATCH
+        if enforce_readonly:
+            self._set_readonly_protection(league_config_dir)
+
+        return APPLY_SUCCESS
+
+    def _clear_readonly_for_deploy(self, league_config_dir):
+        """Strip readonly flags before deploying new files."""
         for filename in SHARED_FILES:
             target_file = os.path.join(league_config_dir, filename)
             if os.path.isfile(target_file):
                 self._set_file_readonly_windows(target_file, False)
 
+    def _copy_files_to_league(self, league_config_dir):
+        """Copy SHARED_FILES from master to league config dir. Returns True on success."""
         for filename in SHARED_FILES:
             src = os.path.join(self.master_dir(), filename)
             if not os.path.isfile(src):
@@ -508,37 +569,42 @@ class LeagueSettingsSync:
                 try:
                     os.remove(dst)
                 except OSError:
-                    return APPLY_DEPLOY_FAILED
+                    return False
             try:
                 shutil.copy2(src, dst)
             except OSError:
-                return APPLY_DEPLOY_FAILED
+                return False
+        return True
 
+    def _copy_dirs_to_league(self, league_config_dir):
+        """Copy SHARED_DIRS from master to league config dir."""
         for dirname in SHARED_DIRS:
             src_dir = os.path.join(self.master_dir(), dirname)
             if os.path.isdir(src_dir):
                 self._copy_dir_recursive(src_dir, os.path.join(league_config_dir, dirname))
 
+    def _verify_deployed_hashes(self, league_config_dir, file_hashes):
+        """Verify deployed file hashes match the snapshot. Returns True if all match."""
         for filename in file_hashes:
-            if filename == "ItemSets.json":
+            if filename == FILE_ITEM_SETS:
                 continue
             deployed_file = os.path.join(league_config_dir, filename)
             if not os.path.isfile(deployed_file):
-                return APPLY_DEPLOY_VERIFICATION_FAILED
+                return False
             if _sha256(deployed_file) != str(file_hashes[filename]):
-                return APPLY_HASH_MISMATCH
+                return False
+        return True
 
-        if enforce_readonly:
-            for filename in SHARED_FILES:
-                protected_file = os.path.join(league_config_dir, filename)
-                if os.path.isfile(protected_file):
-                    self._set_file_readonly_windows(protected_file, True)
-            for dirname in SHARED_DIRS:
-                protected_dir = os.path.join(league_config_dir, dirname)
-                if os.path.isdir(protected_dir):
-                    self._set_dir_readonly_windows(protected_dir, True)
-
-        return APPLY_SUCCESS
+    def _set_readonly_protection(self, league_config_dir):
+        """Mark shared files and dirs as readonly on Windows."""
+        for filename in SHARED_FILES:
+            protected_file = os.path.join(league_config_dir, filename)
+            if os.path.isfile(protected_file):
+                self._set_file_readonly_windows(protected_file, True)
+        for dirname in SHARED_DIRS:
+            protected_dir = os.path.join(league_config_dir, dirname)
+            if os.path.isdir(protected_dir):
+                self._set_dir_readonly_windows(protected_dir, True)
 
     def cleanup_readonly_flags(self, league_config_dir):
         if not league_config_dir or not os.path.isdir(league_config_dir):
@@ -624,22 +690,30 @@ class LeagueSettingsSync:
         if not _WIN:
             return ""
         for reg_key in REG_KEYS:
-            try:
-                proc = subprocess.run(
-                    ["reg", "query", reg_key, "/v", "InstallLocation"],
-                    capture_output=True, text=True, timeout=15,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                continue
-            if proc.returncode != 0:
-                continue
-            for line in proc.stdout.splitlines():
-                if "InstallLocation" in line and "REG_SZ" in line:
-                    parts = line.split("REG_SZ", 1)
-                    if len(parts) >= 2:
-                        directory = parts[1].strip()
-                        if os.path.isdir(directory):
-                            return directory
+            directory = self._query_registry_install_location(reg_key)
+            if directory:
+                return directory
+        return ""
+
+    @staticmethod
+    def _query_registry_install_location(reg_key):
+        """Query a single registry key for InstallLocation. Returns the path or ''."""
+        try:
+            proc = subprocess.run(
+                ["reg", "query", reg_key, "/v", "InstallLocation"],
+                capture_output=True, text=True, timeout=15,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+        if proc.returncode != 0:
+            return ""
+        for line in proc.stdout.splitlines():
+            if "InstallLocation" in line and "REG_SZ" in line:
+                parts = line.split("REG_SZ", 1)
+                if len(parts) >= 2:
+                    directory = parts[1].strip()
+                    if os.path.isdir(directory):
+                        return directory
         return ""
 
     def league_config_dir(self, league_dir):

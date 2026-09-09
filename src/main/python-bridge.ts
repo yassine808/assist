@@ -1,6 +1,6 @@
-import { ChildProcess, spawn } from "child_process";
-import { join } from "path";
-import { EventEmitter } from "events";
+import { ChildProcess, spawn } from "node:child_process";
+import { join } from "node:path";
+import { EventEmitter } from "node:events";
 import { app } from "electron";
 /**
  * Spawns the Python backend as a child process and communicates via
@@ -22,8 +22,8 @@ let nextId = 1;
 export class PythonBridge extends EventEmitter {
   private process: ChildProcess | null = null;
   private buffer = "";
-  private pending = new Map<number, PendingCall>();
-  private callTimeout = 30_000;
+  private readonly pending = new Map<number, PendingCall>();
+  private readonly callTimeout = 30_000;
 
   start(): void {
     // In dev, the source backend lives at <projectRoot>/src/backend/main.py and

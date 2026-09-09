@@ -97,7 +97,7 @@ class ValorantTracker:
         if not puuid:
             return
         region = str(profile.get("valorant_region", ""))
-        self._enqueue("mmr", profile_name, puuid, region, [])
+        self._enqueue("mmr", profile_name, puuid, region)
 
     def refresh_all(self):
         """Queue a rank refresh for every profile that has a PUUID."""
@@ -146,14 +146,13 @@ class ValorantTracker:
     # Internal
     # ------------------------------------------------------------------
 
-    def _enqueue(self, kind, profile_name, puuid, region, tried_regions):
+    def _enqueue(self, kind, profile_name, puuid, region):
         with self._queue_lock:
             self._jobs.append({
                 "kind": kind,
                 "profile_name": profile_name,
                 "puuid": puuid,
                 "region": region,
-                "tried_regions": tried_regions,
             })
         self.start()
 
@@ -184,24 +183,22 @@ class ValorantTracker:
             region = self.RIOT_TO_HENRIK_REGION.get(region, region)
 
         if region:
-            if self._try_mmr(profile_name, puuid, region, job["tried_regions"]):
+            if self._try_mmr(profile_name, puuid, region):
                 return
             # Region was set but API returned empty — try fallback regions.
             for candidate in self.REGION_PROBE_ORDER:
-                if candidate == region or candidate in job.get("tried_regions", []):
+                if candidate == region:
                     continue
-                if self._try_mmr(profile_name, puuid, candidate, job["tried_regions"]):
+                if self._try_mmr(profile_name, puuid, candidate):
                     return
             return
 
         # No region stored — probe the common regions in order.
         for candidate in self.REGION_PROBE_ORDER:
-            if candidate in job.get("tried_regions", []):
-                continue
-            if self._try_mmr(profile_name, puuid, candidate, job["tried_regions"]):
+            if self._try_mmr(profile_name, puuid, candidate):
                 return
 
-    def _try_mmr(self, profile_name, puuid, region, tried_regions):
+    def _try_mmr(self, profile_name, puuid, region):
         """Perform a single MMR fetch. Returns True if data was applied (which
         means the region is correct), False otherwise."""
         try:
@@ -229,7 +226,7 @@ class ValorantTracker:
         # Rank landed with a definite region — follow up with matches fetch so
         # the card can show most-played agent and average combat score. Reuses
         # the same queue so everything stays within the rate cap.
-        self._enqueue("matches", profile_name, puuid, region, [])
+        self._enqueue("matches", profile_name, puuid, region)
         return True
 
     def _handle_matches_job(self, job):
@@ -261,10 +258,6 @@ class ValorantTracker:
             self.KEY_WINS: 0,
             self.KEY_LOSSES: 0,
             self.KEY_GAMES: 0,
-            # NOTE: KEY_LAST_PLAYED_MS intentionally omitted — the MMR payload
-            # has no last-match timestamp, so a 0 would wipe the profile's
-            # tracked "last used" time. ProfileManager.update_valorant_data
-            # preserves the prior value.
             self.KEY_LAST_UPDATED_MS: int(time.time() * 1000),
             self.KEY_ACT_ID: "",
         }
@@ -273,36 +266,9 @@ class ValorantTracker:
         if not isinstance(payload, dict):
             return data
 
-        tier = 0
-        tier_name = ""
-        rr = 0
-        wins = 0
-        games = 0
-        peak_name = ""
-        act_id = ""
-
-        current = payload.get("current")
-        if isinstance(current, dict):
-            tier_info = current.get("tier")
-            if isinstance(tier_info, dict):
-                tier = int(tier_info.get("id", 0) or 0)
-                tier_name = str(tier_info.get("name", "") or "")
-            rr = int(current.get("rr", 0) or 0)
-            # v3 `current` only has tier/rr/last_change/elo/placement — no wins.
-            # W/L comes only from `seasonal`.
-
-        peak = payload.get("peak")
-        if isinstance(peak, dict) and isinstance(peak.get("tier"), dict):
-            peak_name = str(peak["tier"].get("name", "") or "")
-
-        seasonal = payload.get("seasonal")
-        if isinstance(seasonal, list) and seasonal:
-            latest = seasonal[0]
-            wins = int(latest.get("wins", 0) or 0)
-            games = int(latest.get("games", 0) or 0)
-            season_info = latest.get("season")
-            if isinstance(season_info, dict):
-                act_id = str(season_info.get("id", "") or "")
+        tier, tier_name, rr = self._extract_tier_info(payload)
+        peak_name = self._extract_peak_name(payload)
+        wins, games, act_id = self._extract_seasonal_stats(payload)
 
         data[self.KEY_TIER] = tier
         data[self.KEY_RANK_NAME] = tier_name if tier_name else self._rank_name_from_tier(tier)
@@ -312,21 +278,62 @@ class ValorantTracker:
         data[self.KEY_GAMES] = max(0, games)
         data[self.KEY_PEAK_RANK] = peak_name
         data[self.KEY_ACT_ID] = act_id
-        # Resolve rank icon from agent database
+
         if self._agent_db and tier:
             data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
 
-        # Resolve agent background/role from existing top_agent (if known)
         if self._agent_db and existing_top_agent:
             agent_info = self._agent_db.get_agent(existing_top_agent)
             if agent_info:
-                data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
-                data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
-                data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
-                data[self.KEY_AGENT_BG] = agent_info.get("background", "")
-                data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
+                self._apply_agent_images(data, agent_info)
 
         return data
+
+    @staticmethod
+    def _extract_tier_info(payload):
+        """Extract (tier, tier_name, rr) from the current season payload."""
+        tier = 0
+        tier_name = ""
+        rr = 0
+        current = payload.get("current")
+        if isinstance(current, dict):
+            tier_info = current.get("tier")
+            if isinstance(tier_info, dict):
+                tier = int(tier_info.get("id", 0) or 0)
+                tier_name = str(tier_info.get("name", "") or "")
+            rr = int(current.get("rr", 0) or 0)
+        return tier, tier_name, rr
+
+    @staticmethod
+    def _extract_peak_name(payload):
+        peak = payload.get("peak")
+        if isinstance(peak, dict) and isinstance(peak.get("tier"), dict):
+            return str(peak["tier"].get("name", "") or "")
+        return ""
+
+    @staticmethod
+    def _extract_seasonal_stats(payload):
+        """Extract (wins, games, act_id) from the seasonal data."""
+        wins = 0
+        games = 0
+        act_id = ""
+        seasonal = payload.get("seasonal")
+        if isinstance(seasonal, list) and seasonal:
+            latest = seasonal[0]
+            wins = int(latest.get("wins", 0) or 0)
+            games = int(latest.get("games", 0) or 0)
+            season_info = latest.get("season")
+            if isinstance(season_info, dict):
+                act_id = str(season_info.get("id", "") or "")
+        return wins, games, act_id
+
+    def _apply_agent_images(self, data, agent_info):
+        """Populate agent image keys from agent_info dict."""
+        data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
+        data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
+        data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
+        data[self.KEY_AGENT_BG] = agent_info.get("background", "")
+        data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
 
     def _apply(self, profile_name, puuid, region, in_game_name, data):
         self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
@@ -354,81 +361,103 @@ class ValorantTracker:
         recent = []
 
         for match in payload:
-            if not isinstance(match, dict):
+            result = self._process_single_match(
+                match, puuid, agent_games, agent_wins,
+                score_sum, score_count, recent,
+            )
+            if result is not None:
+                score_sum, score_count = result
+
+        top_agent = self._compute_top_agent(agent_games)
+        agent_stats = self._build_agent_stats_list(agent_games, agent_wins)
+
+        data[self.KEY_TOP_AGENT] = top_agent
+        data[self.KEY_AVG_COMBAT_SCORE] = int(round(score_sum / max(1, score_count))) if score_count > 0 else 0
+        data[self.KEY_AGENT_STATS] = agent_stats
+        data[self.KEY_RECENT_MATCHES] = recent
+
+        tier = data.get(self.KEY_TIER, 0)
+        if self._agent_db and tier:
+            data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
+
+        if self._agent_db and top_agent:
+            agent_info = self._agent_db.get_agent(top_agent)
+            if agent_info:
+                self._apply_agent_images(data, agent_info)
+
+        self._resolve_player_card(data)
+
+        self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
+        if self._on_update:
+            self._on_update(profile_name, data)
+
+    def _process_single_match(self, match, puuid, agent_games, agent_wins,
+                              score_sum, score_count, recent):
+        """Process one match dict. Returns (score_sum, score_count) or None."""
+        if not isinstance(match, dict):
+            return None
+        metadata = match.get("metadata", {})
+        map_name = str(metadata.get("map", "") or "")
+
+        players_obj = match.get("players", {})
+        all_players = []
+        if isinstance(players_obj, dict):
+            all_players = players_obj.get("all_players", [])
+        elif isinstance(players_obj, list):
+            all_players = players_obj
+
+        for player in all_players:
+            if not isinstance(player, dict):
                 continue
-            metadata = match.get("metadata", {})
-            map_name = str(metadata.get("map", "") or "")
-            rounds_played = int(metadata.get("rounds_played", 0) or 0)
+            if str(player.get("puuid", "")).lower() != puuid:
+                continue
 
-            # Find our player in all_players
-            players_obj = match.get("players", {})
-            all_players = []
-            if isinstance(players_obj, dict):
-                all_players = players_obj.get("all_players", [])
-            elif isinstance(players_obj, list):
-                all_players = players_obj
+            agent_name = self._player_agent_name(player)
+            stats = player.get("stats", {}) if isinstance(player.get("stats"), dict) else {}
+            score = int(stats.get("score", 0) or 0)
+            kills = int(stats.get("kills", 0) or 0)
+            deaths = int(stats.get("deaths", 0) or 0)
+            assists = int(stats.get("assists", 0) or 0)
 
-            for player in all_players:
-                if not isinstance(player, dict):
-                    continue
-                if str(player.get("puuid", "")).lower() != puuid:
-                    continue
+            player_team = str(player.get("team", "") or "").lower()
+            result = self._determine_match_result(match, player_team)
 
-                agent_name = self._player_agent_name(player)
-                stats = player.get("stats", {}) if isinstance(player.get("stats"), dict) else {}
-                score = int(stats.get("score", 0) or 0)
-                kills = int(stats.get("kills", 0) or 0)
-                deaths = int(stats.get("deaths", 0) or 0)
-                assists = int(stats.get("assists", 0) or 0)
+            if agent_name:
+                agent_games[agent_name] = agent_games.get(agent_name, 0) + 1
+                if result == "win":
+                    agent_wins[agent_name] = agent_wins.get(agent_name, 0) + 1
 
-                # Determine win/loss from team
-                player_team = str(player.get("team", "") or "").lower()
-                result = "draw"
-                if player_team and rounds_played:
-                    # Check scoreboards for the other team
-                    teams_score = match.get("teams", {})
-                    if isinstance(teams_score, dict):
-                        red = teams_score.get("red", {})
-                        blue = teams_score.get("blue", {})
-                        if isinstance(red, dict) and isinstance(blue, dict):
-                            red_wins = int(red.get("rounds_won", 0) or 0)
-                            blue_wins = int(blue.get("rounds_won", 0) or 0)
-                            if player_team == "red":
-                                result = "win" if red_wins > blue_wins else "loss" if blue_wins > red_wins else "draw"
-                            elif player_team == "blue":
-                                result = "win" if blue_wins > red_wins else "loss" if red_wins > blue_wins else "draw"
+            if score > 0:
+                score_sum += score
+                score_count += 1
 
-                if agent_name:
-                    agent_games[agent_name] = agent_games.get(agent_name, 0) + 1
-                    if result == "win":
-                        agent_wins[agent_name] = agent_wins.get(agent_name, 0) + 1
+            if len(recent) < 10:
+                recent.append({
+                    "agent": agent_name,
+                    "map": map_name,
+                    "result": result,
+                    "score": score,
+                    "kills": kills,
+                    "deaths": deaths,
+                    "assists": assists,
+                })
+            return score_sum, score_count
+        return None
 
-                if score > 0:
-                    score_sum += score
-                    score_count += 1
-
-                # Build recent match entry (keep last 10)
-                if len(recent) < 10:
-                    recent.append({
-                        "agent": agent_name,
-                        "map": map_name,
-                        "result": result,
-                        "score": score,
-                        "kills": kills,
-                        "deaths": deaths,
-                        "assists": assists,
-                    })
-                break
-
-        # Compute top agent
+    @staticmethod
+    def _compute_top_agent(agent_games):
+        """Return the agent name with the most games played."""
         top_agent = ""
         top_count = 0
         for agent_name, count in agent_games.items():
             if count > top_count:
                 top_count = count
                 top_agent = agent_name
+        return top_agent
 
-        # Build agent stats list
+    @staticmethod
+    def _build_agent_stats_list(agent_games, agent_wins):
+        """Build a sorted list of agent stat dicts."""
         agent_stats = []
         for agent_name in sorted(agent_games, key=lambda a: agent_games[a], reverse=True):
             games = agent_games[agent_name]
@@ -438,40 +467,17 @@ class ValorantTracker:
                 "games": games,
                 "winrate": round(wins / max(1, games) * 100),
             })
+        return agent_stats
 
-        data[self.KEY_TOP_AGENT] = top_agent
-        data[self.KEY_AVG_COMBAT_SCORE] = int(round(score_sum / max(1, score_count))) if score_count > 0 else 0
-        data[self.KEY_AGENT_STATS] = agent_stats
-        data[self.KEY_RECENT_MATCHES] = recent
-
-        # Always resolve rank icon from agent database (ensures it's persisted)
-        tier = data.get(self.KEY_TIER, 0)
-        if self._agent_db and tier:
-            data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
-
-        # Resolve agent images from the database
-        if self._agent_db and top_agent:
-            agent_info = self._agent_db.get_agent(top_agent)
-            if agent_info:
-                data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
-                data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
-                data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
-                data[self.KEY_AGENT_BG] = agent_info.get("background", "")
-                data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
-
-        # Try to get the equipped player card from the local Riot client
+    def _resolve_player_card(self, data):
+        """Set the player card background in *data*."""
         card_url = get_equipped_card_url()
         if card_url:
             data[self.KEY_PLAYER_CARD_BG] = card_url
         elif not data.get(self.KEY_PLAYER_CARD_BG):
-            # No equipped card and no existing card — use a random playercard
             random_card = self._get_random_playercard_url()
             if random_card:
                 data[self.KEY_PLAYER_CARD_BG] = random_card
-
-        self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
-        if self._on_update:
-            self._on_update(profile_name, data)
 
     @staticmethod
     def _player_agent_name(player):
@@ -489,6 +495,32 @@ class ValorantTracker:
         if isinstance(agent_obj, str) and agent_obj:
             return agent_obj
         return ""
+
+    @staticmethod
+    def _determine_match_result(match, player_team):
+        """Return 'win', 'loss', or 'draw' based on team scoreboard."""
+        if not player_team:
+            return "draw"
+        teams_score = match.get("teams", {})
+        if not isinstance(teams_score, dict):
+            return "draw"
+        red = teams_score.get("red", {})
+        blue = teams_score.get("blue", {})
+        if not (isinstance(red, dict) and isinstance(blue, dict)):
+            return "draw"
+        red_wins = int(red.get("rounds_won", 0) or 0)
+        blue_wins = int(blue.get("rounds_won", 0) or 0)
+        if player_team == "red":
+            if red_wins > blue_wins:
+                return "win"
+            if blue_wins > red_wins:
+                return "loss"
+        elif player_team == "blue":
+            if blue_wins > red_wins:
+                return "win"
+            if red_wins > blue_wins:
+                return "loss"
+        return "draw"
 
     @staticmethod
     def _rank_name_from_tier(tier):
@@ -514,7 +546,7 @@ class ValorantTracker:
         global _RANDOM_CARDS
         with _RANDOM_CARDS_LOCK:
             if _RANDOM_CARDS:
-                card = random.choice(_RANDOM_CARDS)
+                card = random.choice(_RANDOM_CARDS)  # SonarCloud: safe — used for UI shuffle only
                 return card.get("largeArt", "")
 
         # Fetch the list from the API
@@ -534,7 +566,7 @@ class ValorantTracker:
             with _RANDOM_CARDS_LOCK:
                 _RANDOM_CARDS = cards
             if cards:
-                return random.choice(cards).get("largeArt", "")
+                return random.choice(cards).get("largeArt", "")  # SonarCloud: safe — used for UI shuffle only
         except Exception:  # noqa: BLE001
             pass
         return ""

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Profile } from "../types/profile";
+import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
-import { VALORANT_TIER_NAMES } from "../types/profile";
 import { useProfileLaunch, LaunchState } from "../hooks/useProfileLaunch";
 import "../styles/card-glow.css";
 
@@ -14,7 +13,7 @@ interface ProfileCardProps {
   onModifyCard?: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, launchState, onPlay, onDelete, onModifyCard }: ProfileCardProps) {
+export default function ProfileCard({ profile, running, launchState, onPlay, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
   const { launch } = useProfileLaunch();
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
@@ -44,13 +43,38 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
     });
   };
 
+  let cardBorderClass: string;
+  if (running) {
+    cardBorderClass = "card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]";
+  } else if (launchState === "launching") {
+    cardBorderClass = "border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]";
+  } else {
+    cardBorderClass = "border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]";
+  }
+
+  let startButtonClass: string;
+  if (launchState === "launched") {
+    startButtonClass = "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/30";
+  } else if (launchState === "launching") {
+    startButtonClass = "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 animate-pulse";
+  } else {
+    startButtonClass = "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 hover:from-red-400 hover:to-red-600 hover:shadow-red-500/50";
+  }
+
+  let startButtonText: string;
+  if (running) {
+    startButtonText = "RUNNING";
+  } else if (launchState === "launching") {
+    startButtonText = "LAUNCHING…";
+  } else if (launchState === "launched") {
+    startButtonText = "LAUNCHED ✓";
+  } else {
+    startButtonText = "START";
+  }
+
   return (
     <div
-      className={`card group relative overflow-hidden rounded-xl border transition-all duration-200 select-none cursor-default ${
-        running ? "card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]" :
-        launchState === "launching" ? "border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]" :
-        "border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
-      }`}
+      className={`card group relative overflow-hidden rounded-xl border transition-all duration-200 select-none cursor-default ${cardBorderClass}`}
       style={{ width: 220, height: 525, backgroundColor: "#0a0e14" }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
@@ -226,16 +250,10 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
             disabled={running || launchState === "launching"}
             className={`w-full h-12 rounded font-black text-[18px] uppercase tracking-[0.25em] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
-                        active:scale-[0.98] ${
-              launchState === "launched"
-                ? "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/30"
-                : launchState === "launching"
-                ? "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 animate-pulse"
-                : "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 hover:from-red-400 hover:to-red-600 hover:shadow-red-500/50"
-            }`}
+                        active:scale-[0.98] ${startButtonClass}`}
             style={{ fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif" }}
           >
-            {running ? "RUNNING" : launchState === "launching" ? "LAUNCHING…" : launchState === "launched" ? "LAUNCHED ✓" : "START"}
+            {startButtonText}
           </button>
         </div>
       </div>

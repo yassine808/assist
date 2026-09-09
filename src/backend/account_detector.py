@@ -86,85 +86,87 @@ class AccountDetector:
         self._pending_decision = accepted
         self._confirm_event.set()
 
+    def _try_kill(self):
+        """Kill existing Riot processes, ignoring errors."""
+        if not self.killer:
+            return
+        try:
+            self.killer()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _try_launch(self):
+        """Launch the Riot Client. Returns False on failure."""
+        if not self.launcher:
+            return True
+        try:
+            self.launcher()
+        except Exception as exc:  # noqa: BLE001
+            self._emit("account_detection_progress", {"status": "error", "message": f"Failed to launch Riot Client: {exc}"})
+            return False
+        return True
+
+    def _handle_already_added(self, display):
+        """Re-launch client when a known account is detected."""
+        self._emit("account_detection_progress", {
+            "status": "already_added",
+            "message": f"{display} is already added. Opening login\u2026",
+            "display": display,
+        })
+        self._try_kill()
+        self._try_launch()
+
+    def _handle_new_account(self, account, display):
+        """Prompt user and handle save/decline for a newly detected account."""
+        self._pending_account = account
+        self._pending_decision = None
+        self._confirm_event.clear()
+
+        self._emit("account_detection_progress", {
+            "status": "confirm_save",
+            "message": f"New account detected: {display}",
+            "display": display,
+        })
+
+        self._confirm_event.wait()
+
+        if self._stop.is_set():
+            return False
+        if self._pending_decision:
+            self._finish(account)
+            return False
+        # User declined
+        self._emit("account_detection_progress", {
+            "status": "waiting",
+            "message": "Waiting for login\u2026",
+        })
+        return True  # continue polling
+
     def _run(self):
         self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client\u2026"})
-        # Kill existing Riot processes first so we get a fresh login screen
-        if self.killer:
-            try:
-                self.killer()
-            except Exception:  # noqa: BLE001
-                pass
-        if self.launcher:
-            try:
-                self.launcher()
-            except Exception as exc:  # noqa: BLE001
-                self._emit("account_detection_progress", {"status": "error", "message": f"Failed to launch Riot Client: {exc}"})
-                return
+        self._try_kill()
+        if not self._try_launch():
+            return
 
         self._emit("account_detection_progress", {"status": "waiting", "message": "Waiting for login\u2026"})
 
         started = time.time()
         while not self._stop.is_set():
-            elapsed = time.time() - started
-            if elapsed > DETECTION_TIMEOUT_S:
+            if time.time() - started > DETECTION_TIMEOUT_S:
                 self._emit("account_detection_progress", {"status": "canceled", "message": "Login timed out"})
                 return
 
             account = rad.read_live_account()
             if account:
                 profiles_list = self.profiles.load()
-                already_added = not rad.is_account_new(account, profiles_list)
-
-                if already_added:
-                    # Account is already saved -> kill + re-launch client with empty login
-                    display = rad.display_uid(account)
-                    self._emit("account_detection_progress", {
-                        "status": "already_added",
-                        "message": f"{display} is already added. Opening login\u2026",
-                        "display": display,
-                    })
-                    if self.killer:
-                        try:
-                            self.killer()
-                        except Exception:  # noqa: BLE001
-                            pass
-                    if self.launcher:
-                        try:
-                            self.launcher()
-                        except Exception:  # noqa: BLE001
-                            pass
-                    started = time.time()  # reset timeout for the new login attempt
+                if not rad.is_account_new(account, profiles_list):
+                    self._handle_already_added(rad.display_uid(account))
+                    started = time.time()
                     self._stop.wait(POLL_INTERVAL_S)
                     continue
-
-                # New account -> ask user for confirmation
-                display = rad.display_uid(account)
-                self._pending_account = account
-                self._pending_decision = None
-                self._confirm_event.clear()
-
-                self._emit("account_detection_progress", {
-                    "status": "confirm_save",
-                    "message": f"New account detected: {display}",
-                    "display": display,
-                })
-
-                # Block until user responds or detection is stopped
-                self._confirm_event.wait()
-
-                if self._stop.is_set():
+                if not self._handle_new_account(account, rad.display_uid(account)):
                     return
-
-                if self._pending_decision:
-                    self._finish(account)
-                    return
-                else:
-                    # User declined -> wait for them to switch accounts
-                    self._emit("account_detection_progress", {
-                        "status": "waiting",
-                        "message": "Waiting for login\u2026",
-                    })
-                    started = time.time()
+                started = time.time()
 
             self._stop.wait(POLL_INTERVAL_S)
 

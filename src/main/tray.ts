@@ -1,5 +1,5 @@
 import { Tray, Menu, nativeImage } from "electron";
-import { join } from "path";
+import { join } from "node:path";
 
 interface TrayCallbacks {
   onShow: () => void;
@@ -11,8 +11,7 @@ export function createAppTray(iconPath: string, callbacks: TrayCallbacks): Tray 
   if (!icon.isEmpty()) {
     const resized = icon.resize({ width: 16, height: 16 });
     if (!resized.isEmpty()) {
-      // keep reference to the resized image
-      void resized;
+      // resized image is kept in scope
     }
   }
 

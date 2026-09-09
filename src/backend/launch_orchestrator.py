@@ -57,6 +57,71 @@ class LaunchOrchestrator:
     # Main entry point
     # ------------------------------------------------------------------
 
+    def _kill_riot_processes(self):
+        """Kill all Riot processes and wait for exit. Returns (ok, error)."""
+        self._emit("kill", "started", "Stopping Riot processes")
+        rp.kill_all()
+        if not rp.wait_until_all_dead():
+            self._emit("kill", "failed", "Timed out waiting for processes to exit")
+            return False, "Timeout waiting for Riot processes to exit"
+        self._emit("kill", "done", "Riot processes stopped")
+        return True, ""
+
+    def _save_current_session(self, current_active, profile_name, install_dir):
+        """Save the currently-active profile's session if switching away."""
+        if not current_active or current_active == profile_name:
+            return
+        self._emit("save", "started", f"Saving session for {current_active}")
+        cur_dir = self._profile_dir_name(current_active)
+        saved = self.sessions.save_session(cur_dir, install_dir)
+        self._emit("save", "done" if saved else "failed", "Session saved" if saved else "Session save incomplete")
+
+    def _restore_target_session(self, target_dir, install_dir):
+        """Restore the target profile's session files. Returns (ok, error)."""
+        self._emit("restore", "started", f"Restoring session for {target_dir}")
+        restored = self.sessions.restore_session(target_dir, install_dir)
+        if not restored:
+            self._emit("restore", "failed", "Session restore failed")
+            return False, "Failed to restore session files"
+        self._emit("restore", "done", "Session restored")
+        return True, ""
+
+    def _sync_league_settings(self):
+        """Optionally sync League settings if enabled."""
+        if not self.league or not bool(self.config.get("SyncGameSettings", False)):
+            return
+        self._emit("league", "started", "Syncing League settings")
+        try:
+            self.league.apply_master_snapshot_to_league(
+                self._league_config_dir(),
+                bool(self.config.get("EnforceReadOnlySettings", True)),
+            )
+            self._emit("league", "done", "League settings synced")
+        except Exception as exc:  # noqa: BLE001
+            self._emit("league", "failed", f"League sync failed: {exc}")
+
+    def _start_presence_proxy(self):
+        """Optionally start the Appear Offline proxy if enabled."""
+        if self.presence is None:
+            return
+        from deceive.presence_constants import CONFIG_KEY_APPEAR_OFFLINE
+        if not bool(self.config.get(CONFIG_KEY_APPEAR_OFFLINE, False)):
+            return
+        self._emit("presence", "started", "Starting Appear Offline proxy")
+        try:
+            self.presence.start_proxy()
+            self._emit("presence", "done", "Appear Offline proxy started")
+        except Exception as exc:  # noqa: BLE001
+            self._emit("presence", "failed", f"Presence proxy failed: {exc}")
+
+    def _launch_client(self, profile_name):
+        """Launch the Riot Client. Returns result dict."""
+        self._emit("launch", "started", "Launching Riot Client")
+        self.config.set("LastRunningProfile", profile_name)
+        pid = self.riot.launch_client()
+        self._emit("launch", "done", "Riot Client launched", pid=pid)
+        return {"ok": True, "pid": pid, "profile": profile_name}
+
     def switch_to(self, profile_name):
         """Run the full switch sequence and return a summary dict."""
         self._emit("switch", "started", f"Switching to {profile_name}")
@@ -66,58 +131,19 @@ class LaunchOrchestrator:
         current_active = str(self.config.get("LastRunningProfile", "") or "")
 
         try:
-            self._emit("kill", "started", "Stopping Riot processes")
-            rp.kill_all()
-            if not rp.wait_until_all_dead():
-                self._emit("kill", "failed", "Timed out waiting for processes to exit")
-                return {"ok": False, "step": "kill", "error": "Timeout waiting for Riot processes to exit"}
-            self._emit("kill", "done", "Riot processes stopped")
+            ok, error = self._kill_riot_processes()
+            if not ok:
+                return {"ok": False, "step": "kill", "error": error}
 
-            # Save the currently-active profile's session first, so switching
-            # away from it later can restore this exact state.
-            if current_active and current_active != profile_name:
-                self._emit("save", "started", f"Saving session for {current_active}")
-                cur_dir = self._profile_dir_name(current_active)
-                saved = self.sessions.save_session(cur_dir, install_dir)
-                self._emit("save", "done" if saved else "failed", "Session saved" if saved else "Session save incomplete")
+            self._save_current_session(current_active, profile_name, install_dir)
 
-            # Restore the target profile's session files.
-            self._emit("restore", "started", f"Restoring session for {profile_name}")
-            restored = self.sessions.restore_session(target_dir, install_dir)
-            if not restored:
-                self._emit("restore", "failed", "Session restore failed")
-                return {"ok": False, "step": "restore", "error": "Failed to restore session files"}
-            self._emit("restore", "done", "Session restored")
+            ok, error = self._restore_target_session(target_dir, install_dir)
+            if not ok:
+                return {"ok": False, "step": "restore", "error": error}
 
-            # Optional League settings sync.
-            if self.league and bool(self.config.get("SyncGameSettings", False)):
-                self._emit("league", "started", "Syncing League settings")
-                try:
-                    self.league.apply_master_snapshot_to_league(
-                        self._league_config_dir(),
-                        bool(self.config.get("EnforceReadOnlySettings", True)),
-                    )
-                    self._emit("league", "done", "League settings synced")
-                except Exception as exc:  # noqa: BLE001
-                    self._emit("league", "failed", f"League sync failed: {exc}")
-
-            # Optional Appear Offline proxy.
-            if self.presence is not None:
-                from deceive.presence_constants import CONFIG_KEY_APPEAR_OFFLINE
-                if bool(self.config.get(CONFIG_KEY_APPEAR_OFFLINE, False)):
-                    self._emit("presence", "started", "Starting Appear Offline proxy")
-                    try:
-                        self.presence.start_proxy()
-                        self._emit("presence", "done", "Appear Offline proxy started")
-                    except Exception as exc:  # noqa: BLE001
-                        self._emit("presence", "failed", f"Presence proxy failed: {exc}")
-
-            # Launch.
-            self._emit("launch", "started", "Launching Riot Client")
-            self.config.set("LastRunningProfile", profile_name)
-            pid = self.riot.launch_client()
-            self._emit("launch", "done", "Riot Client launched", pid=pid)
-            return {"ok": True, "pid": pid, "profile": profile_name}
+            self._sync_league_settings()
+            self._start_presence_proxy()
+            return self._launch_client(profile_name)
 
         except RiotClientError as exc:
             self._emit("launch", "failed", str(exc))

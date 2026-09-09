@@ -77,19 +77,6 @@ export default function HomeView() {
     setEditingCard(p);
   }, []);
 
-  const handleReorder = useCallback(
-    async (names: string[]) => {
-      try {
-        const result = await call<Profile[]>("reorder_profiles", { names });
-        if (result) setProfiles(result);
-      } catch (e) {
-        console.error("reorder failed", e);
-        void load();
-      }
-    },
-    [call, load]
-  );
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
@@ -123,7 +110,6 @@ export default function HomeView() {
         launchingProfile={launchingProfile}
         onPlay={handlePlay}
         onDelete={handleDelete}
-        onReorder={handleReorder}
         onModifyCard={handleModifyCard}
       />
 
@@ -141,10 +127,16 @@ export default function HomeView() {
         <div
           className="fixed inset-0 z-40 flex items-center justify-center bg-black/60"
           onClick={() => setConfirmDelete(null)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setConfirmDelete(null); }}
+          role="button"
+          tabIndex={0}
         >
           <div
             className="w-[340px] rounded-lg bg-bg-card border border-white/10 p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            role="button"
+            tabIndex={0}
           >
             <h3 className="text-white font-bold text-base mb-2">
               Delete profile?
