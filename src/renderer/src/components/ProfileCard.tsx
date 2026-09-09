@@ -143,9 +143,9 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
             <img
               src={rankIcon}
               alt={rankName}
-              className="w-[64px] h-[64px] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
+              className="w-[64px] h-[64px] rank-glow"
               style={{
-                filter: `drop-shadow(0 0 16px ${rankColor(tierId)}40)`,
+                ["--rank-color" as string]: `${rankColor(tierId)}60`,
               }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />

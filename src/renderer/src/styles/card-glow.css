@@ -35,6 +35,20 @@
   animation: card-pulse 1.5s ease-in-out infinite;
 }
 
+/* ── Rank glow pulse ── */
+@keyframes rank-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px var(--rank-color)) drop-shadow(0 0 20px var(--rank-color));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px var(--rank-color)) drop-shadow(0 0 36px var(--rank-color)) drop-shadow(0 0 50px var(--rank-color));
+  }
+}
+
+.rank-glow {
+  animation: rank-glow 2.5s ease-in-out infinite;
+}
+
 /* ── Play button shimmer ── */
 .card .play-btn {
   position: relative;
