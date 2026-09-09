@@ -51,17 +51,19 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         launchState === "launching" ? "border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]" :
         "border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
       }`}
-      style={{ width: 260, height: 390, backgroundColor: "#0a0e14" }}
+      style={{ width: 300, height: 440, backgroundColor: "#0a0e14" }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
       {/* Full playercard art background */}
       {playerCardBg ? (
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center"
+        <img
+          src={playerCardBg}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover z-0"
           style={{
-            backgroundImage: `url(${playerCardBg})`,
             filter: "saturate(1.05) brightness(0.95)",
           }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
       ) : (
         <div
@@ -141,17 +143,17 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
             <img
               src={rankIcon}
               alt={rankName}
-              className="w-[72px] h-[72px] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
+              className="w-[88px] h-[88px] drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
               style={{
                 filter: `drop-shadow(0 0 16px ${rankColor(tierId)}40)`,
               }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            <div className="w-[72px] h-[72px] rounded-full bg-white/5 border border-white/10" />
+            <div className="w-[88px] h-[88px] rounded-full bg-white/5 border border-white/10" />
           )}
           <span
-            className="text-[13px] font-bold uppercase tracking-widest"
+            className="text-[14px] font-bold uppercase tracking-widest"
             style={{
               color: rankColor(tierId),
               textShadow: `0 0 20px ${rankColor(tierId)}50, 0 2px 8px rgba(0,0,0,0.9)`,
@@ -161,13 +163,13 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           </span>
           {rr > 0 && (
             <span
-              className="text-[20px] font-black leading-none"
+              className="text-[22px] font-black leading-none"
               style={{
                 color: "#fff",
                 textShadow: "0 0 16px rgba(0,0,0,0.8)",
               }}
             >
-              {rr} <span className="text-[10px] font-bold text-white/50">RR</span>
+              {rr} <span className="text-[11px] font-bold text-white/50">RR</span>
             </span>
           )}
         </div>
@@ -177,21 +179,21 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
 
         {/* Stats row at bottom */}
         <div className="flex items-center justify-center gap-3 px-4 pb-1">
-          <span className="text-[11px] font-bold" style={{ color: "#4ade80", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+          <span className="text-[12px] font-bold" style={{ color: "#4ade80", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
             {wins}W
           </span>
           <span className="text-white/20">·</span>
-          <span className="text-[11px] font-bold" style={{ color: "#f87171", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+          <span className="text-[12px] font-bold" style={{ color: "#f87171", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
             {losses}L
           </span>
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-1 px-3 pb-3 pt-1">
+        <div className="flex items-center gap-1.5 px-3 pb-3 pt-1">
           <button
             onClick={handlePlay}
             disabled={running || launchState === "launching"}
-            className={`flex-1 h-8 rounded-lg font-bold text-[12px] transition-all
+            className={`flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
                         active:scale-[0.97] ${
               launchState === "launched"
@@ -206,12 +208,12 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           {onModifyCard && (
             <button
               onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }}
-              className="h-8 w-8 flex items-center justify-center rounded-lg
+              className="h-9 w-9 flex items-center justify-center rounded-lg
                          bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
                          text-white/50 hover:text-white/90 transition-all"
               title="Change playercard"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="17" r="2.5"/><circle cx="6" cy="12" r="2.5"/>
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.02-.23-.27-.38-.62-.38-1.01 0-.75.6-1.35 1.35-1.35H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9.94-10-9.94Z"/>
               </svg>
@@ -219,11 +221,11 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
-            className="h-8 w-8 flex items-center justify-center rounded-lg
+            className="h-9 w-9 flex items-center justify-center rounded-lg
                        bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
                        text-white/50 hover:text-red-400 transition-all"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
             </svg>
