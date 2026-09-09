@@ -248,10 +248,13 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           <button
             onClick={handlePlay}
             disabled={running || launchState === "launching"}
-            className={`w-full h-12 rounded font-black text-[18px] uppercase tracking-[0.25em] transition-all
+            className={`w-full h-13 rounded font-black text-[22px] uppercase tracking-[0.3em] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
                         active:scale-[0.98] ${startButtonClass}`}
-            style={{ fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif" }}
+            style={{
+              fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif",
+              textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            }}
           >
             {startButtonText}
           </button>
