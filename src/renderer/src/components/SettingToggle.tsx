@@ -15,9 +15,9 @@ export function SettingToggle({
 }: SettingToggleProps) {
   return (
     <label
-      className={`flex items-center justify-between gap-4 py-3 ${
-        disabled ? "opacity-50 pointer-events-none" : ""
-      }`}
+      className={`flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-md
+                  transition-colors duration-150 hover:bg-white/[0.03]
+                  ${disabled ? "opacity-50 pointer-events-none" : ""}`}
     >
       <div>
         <div className="text-sm font-medium text-white">{label}</div>

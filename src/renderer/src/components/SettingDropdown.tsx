@@ -19,7 +19,8 @@ export function SettingDropdown({
   onChange,
 }: SettingDropdownProps) {
   return (
-    <label className="flex items-center justify-between gap-4 py-3">
+    <label className="flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-md
+                      transition-colors duration-150 hover:bg-white/[0.03]">
       <div>
         <div className="text-sm font-medium text-white">{label}</div>
         {description && (
@@ -29,7 +30,9 @@ export function SettingDropdown({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="shrink-0 rounded-md border border-white/10 bg-bg-dark px-3 py-1.5 text-sm text-white focus:outline-none focus:border-riot-red/60"
+        className="shrink-0 rounded-md border border-white/10 bg-bg-dark px-3 py-1.5 text-sm text-white
+                   transition-colors duration-150 hover:border-white/20
+                   focus:outline-none focus:border-riot-red/60"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>

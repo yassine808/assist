@@ -18,6 +18,7 @@ export default function SettingsView() {
   const [importResult, setImportResult] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,6 +48,8 @@ export default function SettingsView() {
         a.click();
         URL.revokeObjectURL(url);
         setExportPasskey("");
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 2000);
       }
     } catch (e) {
       console.error("export failed", e);
@@ -198,9 +201,16 @@ export default function SettingsView() {
                 onClick={() => void handleExport()}
                 disabled={!exportPasskey || exporting}
                 className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                           inline-flex items-center gap-1.5"
               >
-                {exporting ? "Exporting…" : "Export"}
+                {exporting && <span className="spinner-icon" />}
+                {exportSuccess && (
+                  <svg className="checkmark-icon" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export"}
               </button>
             </div>
           </div>
@@ -233,13 +243,15 @@ export default function SettingsView() {
                 onClick={() => void handleImport()}
                 disabled={!importPasskey || !importFile || importing}
                 className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                           inline-flex items-center gap-1.5"
               >
+                {importing && <span className="spinner-icon" />}
                 {importing ? "Importing…" : "Import"}
               </button>
             </div>
             {importResult && (
-              <p className={`text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
+              <p key={importResult} className={`result-message text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
                 {importResult}
               </p>
             )}
@@ -256,7 +268,9 @@ export default function SettingsView() {
         {cards.map((card, index) => (
           <section
             key={card.title}
-            className="view-card rounded-md bg-bg-card border border-white/10 p-4"
+            className="view-card rounded-md bg-bg-card border border-white/10 p-4
+                       transition-[border-color,box-shadow] duration-200 ease-out
+                       hover:border-riot-red/40 hover:shadow-[0_0_20px_rgba(255,70,85,0.08)]"
             style={{ animationDelay: `${index * 60}ms` }}
           >
             <h2 className="text-sm font-semibold uppercase tracking-wide text-white/40 mb-1">

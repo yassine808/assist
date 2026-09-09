@@ -12,20 +12,27 @@
   inset: 0;
   border-radius: inherit;
   opacity: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0) 50%
-  );
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      var(--card-accent, rgba(255, 70, 85, 0.12)) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0) 50%
+    );
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
 .profile-card:hover {
-  transform: translateY(-4px) scale(1.01);
+  transform: translateY(-4px) scale(1.02);
   box-shadow:
-    0 8px 24px -4px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 12px 32px -4px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 24px -6px var(--card-accent, rgba(255, 70, 85, 0.2));
   border-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -69,4 +76,57 @@
     0 0 0 2px rgba(255, 70, 85, 0.35),
     0 0 16px -2px rgba(255, 70, 85, 0.2);
   transform: scale(1.02);
+}
+
+/* ── Card entrance animation ── */
+.profile-card {
+  animation: card-enter 0.35s ease-out both;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Play button shimmer ── */
+.profile-card .play-btn,
+.profile-card [class*="play"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-card .play-btn::after,
+.profile-card [class*="play"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: none;
+  pointer-events: none;
+}
+
+.profile-card:hover .play-btn::after,
+.profile-card:hover [class*="play"]::after {
+  animation: btn-shimmer 0.8s ease-out 0.15s 1;
+}
+
+@keyframes btn-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
