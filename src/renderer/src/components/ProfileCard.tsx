@@ -51,7 +51,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         launchState === "launching" ? "border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]" :
         "border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
       }`}
-      style={{ width: 300, height: 440, backgroundColor: "#0a0e14" }}
+      style={{ width: 280, height: 670, backgroundColor: "#0a0e14" }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
       {/* Full playercard art background */}
@@ -135,7 +135,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         </div>
 
         {/* Spacer pushes rank to center */}
-        <div className="flex-1" />
+        <div className="flex-[1.8]" />
 
         {/* Rank centered - the hero of the card */}
         <div className="flex flex-col items-center gap-1 px-4 pb-1">
@@ -175,7 +175,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         </div>
 
         {/* Spacer */}
-        <div className="flex-[0.6]" />
+        <div className="flex-[1.2]" />
 
         {/* Stats row at bottom */}
         <div className="flex items-center justify-center gap-3 px-4 pb-1">
