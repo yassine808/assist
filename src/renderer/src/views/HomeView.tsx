@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
+import ImportExportModal from "../components/ImportExportModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
 import type { Profile } from "../types/profile";
@@ -17,6 +18,7 @@ export default function HomeView() {
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
   const [closing, setClosing] = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -127,6 +129,13 @@ export default function HomeView() {
             )}
           </button>
           <button
+            onClick={() => setShowImportExport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-white/70 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] hover:text-white transition-all"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            Import / Export
+          </button>
+          <button
             onClick={() => navigate("/add-account")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
           >
@@ -198,6 +207,12 @@ export default function HomeView() {
           onApplied={() => void load()}
         />
       )}
+
+      <ImportExportModal
+        open={showImportExport}
+        onClose={() => setShowImportExport(false)}
+        onImported={() => void load()}
+      />
     </div>
   );
 }

@@ -19,10 +19,11 @@ DETECTION_TIMEOUT_S = 300  # give up after 5 minutes of no new login
 
 
 class AccountDetector:
-    def __init__(self, profiles, on_event=None, launcher=None, on_profile_created=None):
+    def __init__(self, profiles, on_event=None, launcher=None, on_profile_created=None, killer=None):
         self.profiles = profiles
         self.on_event = on_event
         self.launcher = launcher
+        self.killer = killer  # called before launcher() to ensure fresh client
         self._on_profile_created = on_profile_created
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -87,6 +88,12 @@ class AccountDetector:
 
     def _run(self):
         self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client\u2026"})
+        # Kill existing Riot processes first so we get a fresh login screen
+        if self.killer:
+            try:
+                self.killer()
+            except Exception:  # noqa: BLE001
+                pass
         if self.launcher:
             try:
                 self.launcher()
@@ -109,13 +116,18 @@ class AccountDetector:
                 already_added = not rad.is_account_new(account, profiles_list)
 
                 if already_added:
-                    # Account is already saved -> re-launch client with empty login
+                    # Account is already saved -> kill + re-launch client with empty login
                     display = rad.display_uid(account)
                     self._emit("account_detection_progress", {
                         "status": "already_added",
                         "message": f"{display} is already added. Opening login\u2026",
                         "display": display,
                     })
+                    if self.killer:
+                        try:
+                            self.killer()
+                        except Exception:  # noqa: BLE001
+                            pass
                     if self.launcher:
                         try:
                             self.launcher()

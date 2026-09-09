@@ -86,6 +86,7 @@ def main():
     detector = AccountDetector(
         profiles, on_event=_handle_event, launcher=riot.launch_client,
         on_profile_created=lambda name: tracker.refresh_profile(name),
+        killer=riot.kill_all,
     )
 
 
