@@ -169,6 +169,16 @@ def main():
         protocol.send_event("valorant_data_updated", {"profile_name": profile_name})
         return {"ok": True}
 
+    def _check_current_account():
+        """Check if a new (unsaved) account is currently logged into Riot Client."""
+        account = rad.read_live_account()
+        if not account:
+            return {"found": False, "display": "", "is_new": False}
+        display = rad.display_uid(account)
+        profiles_list = profiles.load()
+        is_new = rad.is_account_new(account, profiles_list)
+        return {"found": True, "display": display, "is_new": is_new, "account": account}
+
     handlers = {
         "ping": lambda p: "pong",
         "get_profiles": lambda p: profiles.load(),
@@ -197,6 +207,7 @@ def main():
         "stop_profile": lambda p: orchestrator.stop(),
         # Live account detection
         "read_live_account": lambda p: rad.read_live_account(),
+        "check_current_account": lambda p: _check_current_account(),
         "detect_live_account_new": lambda p: rad.is_account_new(
             p.get("account") or {}, profiles.load()
         ),

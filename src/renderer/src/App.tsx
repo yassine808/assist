@@ -3,7 +3,6 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import HomeView from "./views/HomeView";
 import SettingsView from "./views/SettingsView";
-import AddAccountView from "./views/AddAccountView";
 
 export default function App() {
   const location = useLocation();
@@ -18,7 +17,6 @@ export default function App() {
             <Routes location={location}>
               <Route path="/" element={<HomeView />} />
               <Route path="/settings" element={<SettingsView />} />
-              <Route path="/add-account" element={<AddAccountView />} />
             </Routes>
           </div>
         </main>

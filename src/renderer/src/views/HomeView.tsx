@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
 import ImportExportModal from "../components/ImportExportModal";
+import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
 import type { Profile } from "../types/profile";
@@ -11,7 +11,6 @@ import type { Profile } from "../types/profile";
 export default function HomeView() {
   const { call, onEvent } = useIPC();
   const { launch, launchState, launchingProfile } = useProfileLaunch();
-  const navigate = useNavigate();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +18,7 @@ export default function HomeView() {
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
   const [closing, setClosing] = useState(false);
   const [showImportExport, setShowImportExport] = useState(false);
+  const [showAddAccount, setShowAddAccount] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -136,7 +136,7 @@ export default function HomeView() {
             Import / Export
           </button>
           <button
-            onClick={() => navigate("/add-account")}
+            onClick={() => setShowAddAccount(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
           >
             <Plus size={13} /> Add Account
@@ -212,6 +212,12 @@ export default function HomeView() {
         open={showImportExport}
         onClose={() => setShowImportExport(false)}
         onImported={() => void load()}
+      />
+
+      <AddAccountModal
+        open={showAddAccount}
+        onClose={() => setShowAddAccount(false)}
+        onAccountAdded={() => void load()}
       />
     </div>
   );
