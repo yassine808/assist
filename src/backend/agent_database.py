@@ -46,6 +46,10 @@ class AgentDatabase:
         self._ensure_loaded()
         return self._agents.get(name.lower())
 
+    def get_display_icon_url(self, name):
+        agent = self.get_agent(name)
+        return agent.get("displayIcon") if agent else None
+
     def get_portrait_url(self, name):
         agent = self.get_agent(name)
         return agent.get("fullPortrait") if agent else None
@@ -136,6 +140,7 @@ class AgentDatabase:
                 result[name.lower()] = {
                     "uuid": agent.get("uuid", ""),
                     "displayName": name,
+                    "displayIcon": agent.get("displayIcon", ""),
                     "fullPortrait": agent.get("fullPortrait", ""),
                     "background": agent.get("background", ""),
                     "backgroundGradientColors": agent.get("backgroundGradientColors", []),

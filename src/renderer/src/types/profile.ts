@@ -30,6 +30,7 @@ export interface ValorantData {
   agent_stats: AgentStat[];
   recent_matches: RecentMatch[];
   agent_portrait: string;
+  agent_display_icon: string;
   agent_role: string;
   agent_bg: string;
   agent_bg_colors: string[];

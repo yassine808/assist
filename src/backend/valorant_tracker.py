@@ -62,6 +62,7 @@ class ValorantTracker:
     KEY_AGENT_STATS = "agent_stats"
     KEY_RECENT_MATCHES = "recent_matches"
     KEY_AGENT_PORTRAIT = "agent_portrait"
+    KEY_AGENT_DISPLAY_ICON = "agent_display_icon"
     KEY_AGENT_ROLE = "agent_role"
     KEY_AGENT_BG = "agent_bg"
     KEY_AGENT_BG_COLORS = "agent_bg_colors"
@@ -320,6 +321,7 @@ class ValorantTracker:
             agent_info = self._agent_db.get_agent(existing_top_agent)
             if agent_info:
                 data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
+                data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
                 data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
                 data[self.KEY_AGENT_BG] = agent_info.get("background", "")
                 data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
@@ -452,6 +454,7 @@ class ValorantTracker:
             agent_info = self._agent_db.get_agent(top_agent)
             if agent_info:
                 data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
+                data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
                 data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
                 data[self.KEY_AGENT_BG] = agent_info.get("background", "")
                 data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
