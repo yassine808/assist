@@ -190,24 +190,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
 
         {/* Buttons */}
         <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1">
-          {/* Large START button */}
-          <button
-            onClick={handlePlay}
-            disabled={running || launchState === "launching"}
-            className={`w-full h-10 rounded font-black text-[16px] uppercase tracking-[0.2em] transition-all
-                        disabled:opacity-40 disabled:cursor-not-allowed
-                        active:scale-[0.98] ${
-              launchState === "launched"
-                ? "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/30"
-                : launchState === "launching"
-                ? "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 animate-pulse"
-                : "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 hover:from-red-400 hover:to-red-600 hover:shadow-red-500/50"
-            }`}
-            style={{ fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif" }}
-          >
-            {running ? "RUNNING" : launchState === "launching" ? "LAUNCHING…" : launchState === "launched" ? "LAUNCHED ✓" : "START"}
-          </button>
-          {/* Two small buttons row */}
+          {/* Two small buttons row — up top */}
           <div className="flex gap-1.5">
             {onModifyCard && (
               <button
@@ -237,6 +220,23 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
               DELETE
             </button>
           </div>
+          {/* Large START button — at the bottom */}
+          <button
+            onClick={handlePlay}
+            disabled={running || launchState === "launching"}
+            className={`w-full h-12 rounded font-black text-[18px] uppercase tracking-[0.25em] transition-all
+                        disabled:opacity-40 disabled:cursor-not-allowed
+                        active:scale-[0.98] ${
+              launchState === "launched"
+                ? "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-600/30"
+                : launchState === "launching"
+                ? "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 animate-pulse"
+                : "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-lg shadow-red-600/30 hover:from-red-400 hover:to-red-600 hover:shadow-red-500/50"
+            }`}
+            style={{ fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif" }}
+          >
+            {running ? "RUNNING" : launchState === "launching" ? "LAUNCHING…" : launchState === "launched" ? "LAUNCHED ✓" : "START"}
+          </button>
         </div>
       </div>
 
