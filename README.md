@@ -94,17 +94,17 @@ graph TB
 ## Features
 
 ### Account Management
-- **Instant account switching** — swap Riot Client session files without re-login
+- **Instant account switching** — swap Riot Client session files without re-login (auto-kills running processes)
 - **Auto-detect new accounts** — detects when a new Riot account logs in and offers to save it
-- **Profile cards** — see rank, RR, wins/losses, ACS, top agent, and playercard art for each account
+- **Profile cards** — Valorant lobby-style cards with full playercard art, rank icon, agent icon, RR, wins/losses
 - **Drag-and-drop reorder** — arrange profiles however you like
 - **Playercard picker** — choose from 3000+ VALORANT playercards or let the system auto-detect your equipped card
 
 ### VALORANT Integration
 - **Live rank tracking** — fetches MMR, RR, peak rank, win rate from HenrikDev API
-- **Agent stats** — top agent, ACS, per-agent performance breakdown
+- **Agent stats** — top agent icon, ACS, per-agent performance breakdown
 - **Recent match history** — last 30 competitive games with detailed stats
-- **Agent visuals** — agent portraits, backgrounds, and role-colored accents
+- **Agent visuals** — agent display icons, portraits, backgrounds, and role-colored accents
 
 ### Cross-Platform Features
 - **League of Legends settings sync** — share hotkeys, video, audio, and interface settings across profiles
@@ -112,7 +112,7 @@ graph TB
 - **Import/Export** — encrypted backup of all profiles, transferable across PCs with a passkey
 
 ### System
-- **Close Game** — kill VALORANT + Riot Client cleanly
+- **Auto-kill on launch** — kills VALORANT + Riot Client automatically when switching profiles
 - **Close/Minimize to tray** — keep RiotSwitcher running in the background
 - **Auto-detect Riot Client** — finds install directory from registry, JSON, and metadata
 
@@ -408,37 +408,36 @@ sequenceDiagram
 | 17 | `get_riot_client_status` | Get Riot Client status |
 | 18 | `kill_riot_processes` | Kill all Riot processes |
 | 19 | `stop_riot_client` | Kill and wait for Riot Client |
-| 20 | `close_all` | Kill VALORANT then Riot Client |
-| 21 | `launch_riot_client` | Spawn Riot Client |
-| 22 | `launch_profile` | Full profile switch sequence |
-| 23 | `stop_profile` | Stop profile switch |
-| 24 | `read_live_account` | Read current logged-in account |
-| 25 | `check_current_account` | Check if current account is new |
-| 26 | `detect_live_account_new` | Check if account is new vs saved |
-| 27 | `start_account_detection` | Start background account detection |
-| 28 | `stop_account_detection` | Stop account detection |
-| 29 | `account_detection_state` | Check if detection is running |
-| 30 | `confirm_account_save` | Accept/decline saving detected account |
-| 31 | `save_session` | Backup session files for a profile |
-| 32 | `restore_session` | Restore session files from backup |
-| 33 | `has_session` | Check if profile has saved session |
-| 34 | `league_find_dir` | Detect League install directory |
-| 35 | `league_capture` | Capture League settings snapshot |
-| 36 | `league_apply` | Deploy settings to League Config |
-| 37 | `league_refresh` | Validate master snapshot |
-| 38 | `league_dir_differs` | Compare live vs master settings |
-| 39 | `league_cleanup_readonly` | Remove read-only flags |
-| 40 | `league_resolve_source` | Get source profile info |
-| 41 | `league_get_metadata` | Get snapshot metadata |
-| 42 | `presence_start` | Start Appear Offline proxy |
-| 43 | `presence_stop` | Stop Appear Offline proxy |
-| 44 | `presence_state` | Get proxy state |
-| 45 | `presence_get_ports` | Get proxy port info |
-| 46 | `presence_get_launch_args` | Get Riot launch args with proxy |
-| 47 | `export_profiles` | Encrypt and export profiles |
-| 48 | `import_profiles` | Decrypt and import profiles |
-| 49 | `get_playercards` | Fetch all playercards |
-| 50 | `set_playercard` | Set profile playercard |
+| 20 | `launch_riot_client` | Spawn Riot Client |
+| 21 | `launch_profile` | Full profile switch sequence |
+| 22 | `stop_profile` | Stop profile switch |
+| 23 | `read_live_account` | Read current logged-in account |
+| 24 | `check_current_account` | Check if current account is new |
+| 25 | `detect_live_account_new` | Check if account is new vs saved |
+| 26 | `start_account_detection` | Start background account detection |
+| 27 | `stop_account_detection` | Stop account detection |
+| 28 | `account_detection_state` | Check if detection is running |
+| 29 | `confirm_account_save` | Accept/decline saving detected account |
+| 30 | `save_session` | Backup session files for a profile |
+| 31 | `restore_session` | Restore session files from backup |
+| 32 | `has_session` | Check if profile has saved session |
+| 33 | `league_find_dir` | Detect League install directory |
+| 34 | `league_capture` | Capture League settings snapshot |
+| 35 | `league_apply` | Deploy settings to League Config |
+| 36 | `league_refresh` | Validate master snapshot |
+| 37 | `league_dir_differs` | Compare live vs master settings |
+| 38 | `league_cleanup_readonly` | Remove read-only flags |
+| 39 | `league_resolve_source` | Get source profile info |
+| 40 | `league_get_metadata` | Get snapshot metadata |
+| 41 | `presence_start` | Start Appear Offline proxy |
+| 42 | `presence_stop` | Stop Appear Offline proxy |
+| 43 | `presence_state` | Get proxy state |
+| 44 | `presence_get_ports` | Get proxy port info |
+| 45 | `presence_get_launch_args` | Get Riot launch args with proxy |
+| 46 | `export_profiles` | Encrypt and export profiles |
+| 47 | `import_profiles` | Decrypt and import profiles |
+| 48 | `get_playercards` | Fetch all playercards |
+| 49 | `set_playercard` | Set profile playercard |
 
 ---
 
@@ -568,7 +567,7 @@ graph LR
 ```
 
 When you click **Play**, RiotSwitcher:
-1. Kills the running Riot Client
+1. Auto-kills any running Riot Client / VALORANT processes
 2. Backs up the current live session files into the current profile's directory
 3. Copies the target profile's saved session files over the live files
 4. Relaunches the Riot Client — it starts with the target account already logged in
