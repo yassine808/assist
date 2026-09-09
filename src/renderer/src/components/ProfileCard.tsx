@@ -102,7 +102,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
       {/* Layer 2: Player card art */}
       {playerCardBg && (
         <div
-          className="absolute inset-0 z-[2] bg-cover bg-center opacity-30"
+          className="absolute inset-0 z-[2] bg-cover bg-center opacity-50"
           style={{ backgroundImage: `url(${playerCardBg})` }}
         />
       )}

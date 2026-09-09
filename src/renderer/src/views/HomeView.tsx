@@ -16,6 +16,7 @@ export default function HomeView() {
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
+  const [closing, setClosing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +74,24 @@ export default function HomeView() {
     setEditingCard(p);
   }, []);
 
+  const handleClose = useCallback(async () => {
+    setClosing(true);
+    try {
+      await call("close_all");
+    } catch (e) {
+      console.error("close failed", e);
+      setClosing(false);
+    }
+  }, [call]);
+
+  useEffect(() => {
+    const unsub = onEvent("close_complete", () => {
+      setClosing(false);
+      void load();
+    });
+    return () => { unsub?.(); };
+  }, [onEvent, load]);
+
   const handleReorder = useCallback(
     async (names: string[]) => {
       try {
@@ -96,6 +115,17 @@ export default function HomeView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleClose}
+            disabled={closing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-white/70 bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08] hover:text-red-400 transition-all disabled:opacity-40"
+          >
+            {closing ? (
+              <><span className="spinner-icon" /> Closing…</>
+            ) : (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> Close Game</>
+            )}
+          </button>
           <button
             onClick={() => navigate("/add-account")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"

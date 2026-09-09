@@ -14,6 +14,7 @@ from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
 from account_detector import AccountDetector
 from agent_database import AgentDatabase
+from riot_processes import close_valorant_then_client
 
 
 def _pid_is_running(pid):
@@ -147,6 +148,15 @@ def main():
         except Exception:  # noqa: BLE001
             return []
 
+    def _close_all():
+        """Kill VALORANT first, then Riot Client — fast close."""
+        import threading
+        def _do_close():
+            ok = close_valorant_then_client()
+            protocol.send_event("close_complete", {"ok": ok})
+        threading.Thread(target=_do_close, daemon=True).start()
+        return {"ok": True}
+
     def _set_playercard(profile_name, card_url):
         """Set a custom playercard background for a profile."""
         prof = profiles.get(profile_name)
@@ -155,6 +165,7 @@ def main():
         vd = prof.get("valorant_data", {}) or {}
         vd["player_card_bg"] = card_url
         profiles.update(profile_name, {"valorant_data": vd})
+        protocol.send_event("valorant_data_updated", {"profile_name": profile_name})
         return {"ok": True}
 
     handlers = {
@@ -179,6 +190,7 @@ def main():
         "get_riot_client_status": lambda p: riot.status(),
         "kill_riot_processes": lambda p: (riot.kill_all(), None)[1],
         "stop_riot_client": lambda p: (riot.stop_and_wait(), None)[1],
+        "close_all": lambda p: _close_all(),
         "launch_riot_client": lambda p: riot.launch_client(),
         "launch_profile": lambda p: orchestrator.switch_to(p.get("name") or ""),
         "stop_profile": lambda p: orchestrator.stop(),
