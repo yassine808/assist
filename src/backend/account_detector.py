@@ -28,6 +28,8 @@ class AccountDetector:
         self._stop = threading.Event()
         self._thread = None
         self._display_name_counter = 1
+        self._pending_account = None
+        self._confirm_event = threading.Event()
 
     def _emit(self, name, data):
         if self.on_event:
@@ -68,13 +70,23 @@ class AccountDetector:
     def stop_detection(self):
         """Signal the polling loop to stop and wait for it to exit."""
         self._stop.set()
+        self._confirm_event.set()  # unblock any waiting confirmation
         with self._lock:
             thread = self._thread
         if thread and thread.is_alive():
             thread.join(timeout=2.0)
 
+    def confirm_save(self, accepted):
+        """User responded to the save-account confirmation prompt.
+
+        accepted=True  -> create the profile from the pending account.
+        accepted=False -> discard and continue detection (or stop).
+        """
+        self._pending_decision = accepted
+        self._confirm_event.set()
+
     def _run(self):
-        self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client…"})
+        self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client\u2026"})
         if self.launcher:
             try:
                 self.launcher()
@@ -82,7 +94,7 @@ class AccountDetector:
                 self._emit("account_detection_progress", {"status": "error", "message": f"Failed to launch Riot Client: {exc}"})
                 return
 
-        self._emit("account_detection_progress", {"status": "waiting", "message": "Waiting for login…"})
+        self._emit("account_detection_progress", {"status": "waiting", "message": "Waiting for login\u2026"})
 
         started = time.time()
         while not self._stop.is_set():
@@ -92,9 +104,55 @@ class AccountDetector:
                 return
 
             account = rad.read_live_account()
-            if account and rad.is_account_new(account, self.profiles.load()):
-                self._finish(account)
-                return
+            if account:
+                profiles_list = self.profiles.load()
+                already_added = not rad.is_account_new(account, profiles_list)
+
+                if already_added:
+                    # Account is already saved -> re-launch client with empty login
+                    display = rad.display_uid(account)
+                    self._emit("account_detection_progress", {
+                        "status": "already_added",
+                        "message": f"{display} is already added. Opening login\u2026",
+                        "display": display,
+                    })
+                    if self.launcher:
+                        try:
+                            self.launcher()
+                        except Exception:  # noqa: BLE001
+                            pass
+                    started = time.time()  # reset timeout for the new login attempt
+                    self._stop.wait(POLL_INTERVAL_S)
+                    continue
+
+                # New account -> ask user for confirmation
+                display = rad.display_uid(account)
+                self._pending_account = account
+                self._pending_decision = None
+                self._confirm_event.clear()
+
+                self._emit("account_detection_progress", {
+                    "status": "confirm_save",
+                    "message": f"New account detected: {display}",
+                    "display": display,
+                })
+
+                # Block until user responds or detection is stopped
+                self._confirm_event.wait()
+
+                if self._stop.is_set():
+                    return
+
+                if self._pending_decision:
+                    self._finish(account)
+                    return
+                else:
+                    # User declined -> wait for them to switch accounts
+                    self._emit("account_detection_progress", {
+                        "status": "waiting",
+                        "message": "Waiting for login\u2026",
+                    })
+                    started = time.time()
 
             self._stop.wait(POLL_INTERVAL_S)
 

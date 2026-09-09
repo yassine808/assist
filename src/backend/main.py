@@ -157,6 +157,7 @@ def main():
         "start_account_detection": lambda p: detector.start_detection(),
         "stop_account_detection": lambda p: (detector.stop_detection(), None)[1],
         "account_detection_state": lambda p: detector.is_running(),
+        "confirm_account_save": lambda p: detector.confirm_save(bool(p.get("accept", True))),
         # Session file swap
         "save_session": lambda p: _swap_profile(p.get("name"), True),
         "restore_session": lambda p: _swap_profile(p.get("name"), False),

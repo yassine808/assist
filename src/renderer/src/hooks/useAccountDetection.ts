@@ -13,6 +13,7 @@ export interface UseAccountDetection {
   progress: DetectionProgress | null;
   start: () => Promise<void>;
   stop: () => Promise<void>;
+  confirmSave: (accept: boolean) => Promise<void>;
 }
 
 export function useAccountDetection(): UseAccountDetection {
@@ -48,13 +49,13 @@ export function useAccountDetection(): UseAccountDetection {
       setActive(false);
     });
     return () => {
-      unsub?.();
+      unsub();
     };
   }, [onEvent]);
 
   const start = useCallback(async () => {
     setActive(true);
-    setProgress({ status: "waiting", message: "Opening Riot Client…" });
+    setProgress({ status: "waiting", message: "Opening Riot Client\u2026" });
     try {
       await call("start_account_detection");
     } catch (e) {
@@ -73,5 +74,13 @@ export function useAccountDetection(): UseAccountDetection {
     setProgress(null);
   }, [call]);
 
-  return { active, progress, start, stop };
+  const confirmSave = useCallback(async (accept: boolean) => {
+    try {
+      await call("confirm_account_save", { accept });
+    } catch {
+      /* ignore */
+    }
+  }, [call]);
+
+  return { active, progress, start, stop, confirmSave };
 }
