@@ -59,7 +59,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         <img
           src={playerCardBg}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover z-0"
+          className="absolute inset-0 w-full h-full object-contain z-0"
           style={{
             filter: "saturate(1.05) brightness(0.95)",
           }}
@@ -106,7 +106,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
             />
           )}
           <span
-            className="text-[15px] font-bold tracking-wide truncate text-center"
+            className="text-[18px] font-bold tracking-wide truncate text-center"
             style={{
               fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
               color: "#fff",
