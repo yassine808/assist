@@ -124,6 +124,39 @@ def main():
             return sessions.save_session(directory_name, install_dir)
         return sessions.restore_session(directory_name, install_dir)
 
+    def _fetch_playercards():
+        """Fetch all playercards from valorant-api.com."""
+        import urllib.request as _urllib_req
+        try:
+            req = _urllib_req.Request(
+                "https://valorant-api.com/v1/playercards",
+                headers={"User-Agent": "RiotSwitcher/2.0"},
+            )
+            with _urllib_req.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            cards = []
+            for card in data.get("data", []):
+                large_art = card.get("largeArt", "")
+                if large_art:
+                    cards.append({
+                        "uuid": card.get("uuid", ""),
+                        "displayName": card.get("displayName", ""),
+                        "largeArt": large_art,
+                    })
+            return cards
+        except Exception:  # noqa: BLE001
+            return []
+
+    def _set_playercard(profile_name, card_url):
+        """Set a custom playercard background for a profile."""
+        prof = profiles.get(profile_name)
+        if not prof:
+            raise ValueError(f"Profile '{profile_name}' not found")
+        vd = prof.get("valorant_data", {}) or {}
+        vd["player_card_bg"] = card_url
+        profiles.update(profile_name, {"valorant_data": vd})
+        return {"ok": True}
+
     handlers = {
         "ping": lambda p: "pong",
         "get_profiles": lambda p: profiles.load(),
@@ -195,6 +228,20 @@ def main():
         },
         "presence_get_launch_args": lambda p: presence.get_launch_args(
             riot.build_launch_args()
+        ),
+        # Import / Export profiles
+        "export_profiles": lambda p: {
+            "data": list(profiles.export_profiles(p.get("passkey", "")))
+        },
+        "import_profiles": lambda p: profiles.import_profiles(
+            p.get("passkey", ""),
+            bytes(p.get("data", [])),
+            merge=bool(p.get("merge", True)),
+        ),
+        # Playercards
+        "get_playercards": lambda p: _fetch_playercards(),
+        "set_playercard": lambda p: _set_playercard(
+            p.get("name", ""), p.get("card_url", "")
         ),
     }
 

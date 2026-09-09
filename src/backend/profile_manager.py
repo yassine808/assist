@@ -176,3 +176,96 @@ class ProfileManager:
             self._profiles = ordered
             self._write()
             return list(self._profiles)
+
+    # ------------------------------------------------------------------
+    # Import / Export with encryption
+    # ------------------------------------------------------------------
+
+    def export_profiles(self, passkey):
+        """Export all profiles encrypted with the given passkey.
+
+        Uses PBKDF2-HMAC-SHA256 to derive a Fernet key from the passkey,
+        then encrypts the JSON-serialized profile list.
+
+        Returns the encrypted bytes (ready to write to a file).
+        """
+        if not passkey:
+            raise ValueError("passkey is required")
+        from cryptography.fernet import Fernet
+        import hashlib
+        import base64
+
+        with self._lock:
+            payload = json.dumps(self._profiles, indent=2, ensure_ascii=False).encode("utf-8")
+
+        # Derive key from passkey using PBKDF2
+        salt = b"riotswitcher-export-v1"
+        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
+        key = base64.urlsafe_b64encode(dk)
+        fernet = Fernet(key)
+        return fernet.encrypt(payload)
+
+    def import_profiles(self, passkey, encrypted_data, merge=True):
+        """Import profiles from encrypted data.
+
+        Args:
+            passkey: The decryption passkey.
+            encrypted_data: The encrypted bytes from export_profiles.
+            merge: If True, add profiles that don't already exist.
+                   If False, replace all profiles.
+
+        Returns a dict with counts: {"imported": int, "skipped": int, "total": int}
+        """
+        if not passkey:
+            raise ValueError("passkey is required")
+        from cryptography.fernet import Fernet, InvalidToken
+        import hashlib
+        import base64
+
+        # Derive same key
+        salt = b"riotswitcher-export-v1"
+        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
+        key = base64.urlsafe_b64encode(dk)
+        fernet = Fernet(key)
+
+        try:
+            decrypted = fernet.decrypt(encrypted_data)
+        except InvalidToken:
+            raise ValueError("Wrong passkey or corrupted data")
+
+        imported_profiles = json.loads(decrypted.decode("utf-8"))
+        if not isinstance(imported_profiles, list):
+            raise ValueError("Invalid profile data format")
+
+        with self._lock:
+            if not merge:
+                self._profiles = imported_profiles
+                self._write()
+                return {"imported": len(imported_profiles), "skipped": 0, "total": len(imported_profiles)}
+
+            existing_puuids = {
+                str(p.get("valorant_puuid", ""))
+                for p in self._profiles
+                if p.get("valorant_puuid")
+            }
+            existing_names = {p.get("profile_name", "") for p in self._profiles}
+
+            imported = 0
+            skipped = 0
+            for profile in imported_profiles:
+                puuid = str(profile.get("valorant_puuid", ""))
+                name = profile.get("profile_name", "")
+
+                # Skip if already exists by PUUID or name
+                if (puuid and puuid in existing_puuids) or name in existing_names:
+                    skipped += 1
+                    continue
+
+                self._profiles.append(profile)
+                if puuid:
+                    existing_puuids.add(puuid)
+                existing_names.add(name)
+                imported += 1
+
+            self._write()
+            return {"imported": imported, "skipped": skipped, "total": len(imported_profiles)}

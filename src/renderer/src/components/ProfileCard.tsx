@@ -25,9 +25,10 @@ interface ProfileCardProps {
   launchState: LaunchState;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
+  onModifyCard?: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, launchState, onPlay, onDelete }: ProfileCardProps) {
+export default function ProfileCard({ profile, running, launchState, onPlay, onDelete, onModifyCard }: ProfileCardProps) {
   const { launch } = useProfileLaunch();
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
@@ -251,7 +252,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           )}
         </div>
 
-        {/* Buttons — Play (red VALORANT theme) + Delete */}
+        {/* Buttons — Play (red VALORANT theme) + Modify Card + Delete */}
         <div className="flex items-center gap-1.5 px-4 pb-4 pt-2">
           <button
             onClick={handlePlay}
@@ -268,6 +269,20 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           >
             {running ? 'Running' : launchState === 'launching' ? 'Launching…' : launchState === 'launched' ? 'Launched ✓' : 'Play'}
           </button>
+          {onModifyCard && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }}
+              className="h-9 w-9 flex items-center justify-center rounded-lg
+                         bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
+                         text-white/50 hover:text-white/90 transition-all"
+              title="Change playercard"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="17" r="2.5"/><circle cx="6" cy="12" r="2.5"/>
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.02-.23-.27-.38-.62-.38-1.01 0-.75.6-1.35 1.35-1.35H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9.94-10-9.94Z"/>
+              </svg>
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
             className="h-9 w-9 flex items-center justify-center rounded-lg

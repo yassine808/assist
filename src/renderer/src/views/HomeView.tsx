@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileGrid from "../components/ProfileGrid";
+import PlayerCardPicker from "../components/PlayerCardPicker";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
 import type { Profile } from "../types/profile";
@@ -14,6 +15,7 @@ export default function HomeView() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
+  const [editingCard, setEditingCard] = useState<Profile | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +69,10 @@ export default function HomeView() {
     }
   }, [confirmDelete, call, load]);
 
+  const handleModifyCard = useCallback((p: Profile) => {
+    setEditingCard(p);
+  }, []);
+
   const handleReorder = useCallback(
     async (names: string[]) => {
       try {
@@ -107,6 +113,7 @@ export default function HomeView() {
         onPlay={handlePlay}
         onDelete={handleDelete}
         onReorder={handleReorder}
+        onModifyCard={handleModifyCard}
       />
 
       {!loading && profiles.length === 0 && (
@@ -151,6 +158,15 @@ export default function HomeView() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingCard && (
+        <PlayerCardPicker
+          profileName={editingCard.profile_name}
+          currentCardUrl={editingCard.valorant_data?.player_card_bg ?? ""}
+          onClose={() => setEditingCard(null)}
+          onApplied={() => void load()}
+        />
       )}
     </div>
   );

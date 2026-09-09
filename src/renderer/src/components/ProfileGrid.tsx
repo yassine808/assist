@@ -1,14 +1,18 @@
 import { useState } from "react";
-import type { Profile, ProfileGridCallbacks } from "../types/profile";
+import type { Profile } from "../types/profile";
 import type { LaunchState } from "../hooks/useProfileLaunch";
 import ProfileCard from "./ProfileCard";
 import SkeletonCard from "./SkeletonCard";
 
-interface Props extends ProfileGridCallbacks {
+interface Props {
   profiles: Profile[];
   loading: boolean;
   launchState?: LaunchState;
   launchingProfile?: string | null;
+  onPlay: (p: Profile) => void;
+  onDelete: (p: Profile) => void;
+  onReorder: (names: string[]) => Promise<void> | void;
+  onModifyCard?: (p: Profile) => void;
 }
 
 export default function ProfileGrid({
@@ -19,6 +23,7 @@ export default function ProfileGrid({
   onPlay,
   onDelete,
   onReorder,
+  onModifyCard,
 }: Props) {
   const [order, setOrder] = useState<string[] | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -63,8 +68,7 @@ export default function ProfileGrid({
                 launchState={launchingProfile === p.profile_name ? launchState : "idle"}
                 onPlay={onPlay}
                 onDelete={onDelete}
-                onDragStart={() => setDragIndex(i)}
-                onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
+                onModifyCard={onModifyCard}
               />
             </div>
           ))}

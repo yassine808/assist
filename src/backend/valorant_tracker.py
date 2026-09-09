@@ -16,6 +16,7 @@ Design notes:
   * Auto-refresh runs every 120 seconds (2 minutes) while the app is open.
 """
 
+import json
 import random
 import threading
 import time
@@ -25,6 +26,11 @@ from henrik_client import HenrikClient, HenrikError
 from riot_client import get_equipped_card_url
 
 AUTO_REFRESH_INTERVAL_S = 120
+
+# Cached list of playercard UUIDs for random fallback.
+_RANDOM_CARDS = []
+_RANDOM_CARDS_LOCK = threading.Lock()
+_PLAYERCARDS_API = "https://valorant-api.com/v1/playercards"
 
 # Any profile not in `names` is appended at the end in existing relative order.
 
@@ -454,6 +460,11 @@ class ValorantTracker:
         card_url = get_equipped_card_url()
         if card_url:
             data[self.KEY_PLAYER_CARD_BG] = card_url
+        elif not data.get(self.KEY_PLAYER_CARD_BG):
+            # No equipped card and no existing card — use a random playercard
+            random_card = self._get_random_playercard_url()
+            if random_card:
+                data[self.KEY_PLAYER_CARD_BG] = random_card
 
         self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
         if self._on_update:
@@ -491,3 +502,36 @@ class ValorantTracker:
             27: "Radiant",
         }
         return names.get(tier, "Unranked")
+
+    def _get_random_playercard_url(self):
+        """Fetch a random playercard largeArt URL from valorant-api.com.
+
+        Caches the card list on first call so subsequent random picks are free.
+        """
+        global _RANDOM_CARDS
+        with _RANDOM_CARDS_LOCK:
+            if _RANDOM_CARDS:
+                card = random.choice(_RANDOM_CARDS)
+                return card.get("largeArt", "")
+
+        # Fetch the list from the API
+        import urllib.request
+        try:
+            req = urllib.request.Request(
+                _PLAYERCARDS_API,
+                headers={"User-Agent": "RiotSwitcher/2.0"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            cards = []
+            for card in data.get("data", []):
+                large_art = card.get("largeArt", "")
+                if large_art:
+                    cards.append({"uuid": card.get("uuid", ""), "largeArt": large_art})
+            with _RANDOM_CARDS_LOCK:
+                _RANDOM_CARDS = cards
+            if cards:
+                return random.choice(cards).get("largeArt", "")
+        except Exception:  # noqa: BLE001
+            pass
+        return ""

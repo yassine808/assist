@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useIPC } from "../hooks/useIPC";
@@ -12,6 +12,13 @@ export default function SettingsView() {
   const { call } = useIPC();
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [exportPasskey, setExportPasskey] = useState("");
+  const [importPasskey, setImportPasskey] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<string>("");
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void call<ConfigState>("get_config").then((c) => setConfig(c ?? {}));
@@ -25,6 +32,57 @@ export default function SettingsView() {
     },
     [call]
   );
+
+  const handleExport = useCallback(async () => {
+    if (!exportPasskey) return;
+    setExporting(true);
+    try {
+      const result = await call<{ data: number[] }>("export_profiles", { passkey: exportPasskey });
+      if (result?.data) {
+        const blob = new Blob([new Uint8Array(result.data)], { type: "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `riotswitcher-profiles-${new Date().toISOString().slice(0, 10)}.rsprofile`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportPasskey("");
+      }
+    } catch (e) {
+      console.error("export failed", e);
+    } finally {
+      setExporting(false);
+    }
+  }, [call, exportPasskey]);
+
+  const handleImport = useCallback(async () => {
+    if (!importPasskey || !importFile) return;
+    setImporting(true);
+    setImportResult("");
+    try {
+      const arrayBuffer = await importFile.arrayBuffer();
+      const data = Array.from(new Uint8Array(arrayBuffer));
+      const result = await call<{ imported: number; skipped: number; total: number }>(
+        "import_profiles",
+        { passkey: importPasskey, data, merge: true }
+      );
+      if (result) {
+        setImportResult(
+          `Imported ${result.imported} of ${result.total} profiles` +
+          (result.skipped > 0 ? ` (${result.skipped} already existed)` : "")
+        );
+        setImportPasskey("");
+        setImportFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        // Refresh profiles list
+        void call<Profile[]>("get_profiles").then((p) => setProfiles(p ?? []));
+      }
+    } catch (e) {
+      setImportResult("Import failed: " + String(e));
+    } finally {
+      setImporting(false);
+    }
+  }, [call, importPasskey, importFile]);
 
   const sourceDir = String(config.SharedSettingsSourceDirectory ?? "");
   const sourceProfile = String(config.SharedSettingsSourceProfile ?? "");
@@ -111,12 +169,82 @@ export default function SettingsView() {
             value={String(config.Language ?? "en")}
             options={[
               { value: "en", label: "English" },
-              { value: "zh", label: "中文" },
-              { value: "fr", label: "Français" },
+              { value: "zh", label: "\u4E2D\u6587" },
+              { value: "fr", label: "Fran\u00E7ais" },
             ]}
             onChange={(v) => update("Language", v)}
           />
         </>
+      ),
+    },
+    {
+      title: "Import / Export Profiles",
+      rows: (
+        <div className="py-2 space-y-4">
+          {/* Export */}
+          <div>
+            <p className="text-white/70 text-sm font-medium mb-1.5">Export</p>
+            <p className="text-white/40 text-xs mb-2">Encrypt and download all profiles as a backup file</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="password"
+                placeholder="Encryption passkey"
+                value={exportPasskey}
+                onChange={(e) => setExportPasskey(e.target.value)}
+                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
+                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
+              />
+              <button
+                onClick={() => void handleExport()}
+                disabled={!exportPasskey || exporting}
+                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
+                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {exporting ? "Exporting…" : "Export"}
+              </button>
+            </div>
+          </div>
+
+          {/* Import */}
+          <div>
+            <p className="text-white/70 text-sm font-medium mb-1.5">Import</p>
+            <p className="text-white/40 text-xs mb-2">Restore profiles from a backup file (duplicates are skipped)</p>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".rsprofile"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                className="flex-1 text-xs text-white/50 file:mr-2 file:py-1 file:px-2 file:rounded-md
+                           file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white/70
+                           hover:file:bg-white/20 file:cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="password"
+                placeholder="Decryption passkey"
+                value={importPasskey}
+                onChange={(e) => setImportPasskey(e.target.value)}
+                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
+                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
+              />
+              <button
+                onClick={() => void handleImport()}
+                disabled={!importPasskey || !importFile || importing}
+                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
+                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {importing ? "Importing…" : "Import"}
+              </button>
+            </div>
+            {importResult && (
+              <p className={`text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
+                {importResult}
+              </p>
+            )}
+          </div>
+        </div>
       ),
     },
   ];
