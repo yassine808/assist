@@ -74,15 +74,15 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
 
   return (
     <div
-      className={`card group relative overflow-hidden rounded-2xl border transition-all duration-200 select-none cursor-default ${
+      className={`card group relative overflow-hidden rounded-xl border transition-all duration-200 select-none cursor-default ${
         running ? 'card-running border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.25)]' :
         launchState === 'launching' ? 'border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.25)]' :
         'border-white/[0.08] hover:border-white/[0.18] hover:shadow-[0_8px_40px_rgba(0,0,0,0.45)]'
       }`}
-      style={{ width: 320, height: 480, backgroundColor: '#0a0e14' }}
+      style={{ width: 280, height: 400, backgroundColor: '#0a0e14' }}
       onDoubleClick={() => handlePlay({ stopPropagation: () => {} } as React.MouseEvent)}
     >
-      {/* Layer 0: Agent background art (full bleed, covers entire card) */}
+      {/* Layer 0: Agent background art */}
       {agentBg && (
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
@@ -93,13 +93,13 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         />
       )}
 
-      {/* Layer 1: Gradient overlay from agent's backgroundGradientColors */}
+      {/* Layer 1: Gradient overlay */}
       <div
         className="absolute inset-0 z-[1]"
         style={{ background: agentBg ? cardGradient : 'transparent' }}
       />
 
-      {/* Layer 2: Player card art as secondary background (if available) */}
+      {/* Layer 2: Player card art */}
       {playerCardBg && (
         <div
           className="absolute inset-0 z-[2] bg-cover bg-center opacity-30"
@@ -107,7 +107,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         />
       )}
 
-      {/* Agent Portrait — left side, bigger, dramatic positioning */}
+      {/* Agent Portrait */}
       {agentPortrait && (
         <img
           src={agentPortrait}
@@ -116,7 +116,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           style={{
             left: -20,
             bottom: 0,
-            width: 380,
+            width: 340,
             height: 'auto',
             objectFit: 'cover',
             objectPosition: 'bottom',
@@ -126,32 +126,32 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         />
       )}
 
-      {/* Layer 4: Darkness for text readability — stronger gradient on right */}
+      {/* Darkness for text readability */}
       <div
         className="absolute inset-0 z-[4]"
         style={{
           background: `linear-gradient(90deg,
             transparent 0%,
-            transparent 35%,
-            rgba(10,14,20,0.3) 50%,
-            rgba(10,14,20,0.6) 65%,
-            rgba(10,14,20,0.85) 80%,
+            transparent 30%,
+            rgba(10,14,20,0.3) 45%,
+            rgba(10,14,20,0.6) 60%,
+            rgba(10,14,20,0.85) 75%,
             rgba(10,14,20,0.95) 100%)`,
         }}
       />
 
-      {/* Bottom vignette for depth */}
+      {/* Bottom vignette */}
       <div className="absolute inset-0 z-[4] bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
 
-      {/* Top vignette for polish */}
+      {/* Top vignette */}
       <div className="absolute inset-0 z-[4] bg-gradient-to-b from-black/50 via-transparent to-transparent" style={{ height: '40%' }} />
 
       {/* Content layer */}
       <div className="relative z-[5] flex flex-col h-full">
-        {/* Username — centered with copy button on right */}
-        <div className="flex items-center justify-center gap-2 px-5 pt-5 pb-2">
+        {/* Username */}
+        <div className="flex items-center justify-center gap-1.5 px-4 pt-4 pb-1">
           <span
-            className="text-[20px] font-bold tracking-wide truncate text-center"
+            className="text-[17px] font-bold tracking-wide truncate text-center"
             style={{
               fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
               color: '#fff',
@@ -162,17 +162,17 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           </span>
           <button
             onClick={handleCopy}
-            className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded
+            className="flex-shrink-0 h-5 w-5 flex items-center justify-center rounded
                        bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
                        text-white/50 hover:text-white/90 transition-all"
             title="Copy username"
           >
             {copied ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
               </svg>
             )}
@@ -182,23 +182,23 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section — stats */}
-        <div className="flex flex-col items-end px-5 pb-2 gap-1">
+        {/* Stats section */}
+        <div className="flex flex-col items-end px-4 pb-2 gap-0.5">
           {/* Rank icon + RR */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {rankIcon ? (
               <img
                 src={rankIcon}
                 alt="Rank"
-                className="w-[52px] h-[52px] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
+                className="w-[44px] h-[44px] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
-              <div className="w-[52px] h-[52px] rounded-full bg-white/10" />
+              <div className="w-[44px] h-[44px] rounded-full bg-white/10" />
             )}
             <div className="flex flex-col items-end">
               <span
-                className="text-[28px] font-black leading-none tracking-tight"
+                className="text-[24px] font-black leading-none tracking-tight"
                 style={{
                   color: rankColor(tierId),
                   textShadow: `0 0 20px ${rankColor(tierId)}40, 0 2px 8px rgba(0,0,0,0.8)`,
@@ -206,33 +206,33 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
               >
                 {rr}
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-white/30">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-white/30">
                 RR
               </span>
             </div>
           </div>
 
           {/* W/L */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[13px] font-bold" style={{ color: '#4ade80', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          <div className="flex items-center gap-1">
+            <span className="text-[12px] font-bold" style={{ color: '#4ade80', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {wins}W
             </span>
             <span className="text-white/20">·</span>
-            <span className="text-[13px] font-bold" style={{ color: '#f87171', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+            <span className="text-[12px] font-bold" style={{ color: '#f87171', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {losses}L
             </span>
             <span className="text-white/20">·</span>
-            <span className="text-[13px] font-bold text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+            <span className="text-[12px] font-bold text-white/60" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {winPct}%
             </span>
           </div>
 
           {/* ACS */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-medium uppercase tracking-wider text-white/30">
               ACS
             </span>
-            <span className="text-[13px] font-bold text-white/80" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+            <span className="text-[12px] font-bold text-white/80" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
               {avgScore}
             </span>
           </div>
@@ -240,7 +240,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           {/* Agent name */}
           {topAgent && (
             <span
-              className="text-[13px] font-semibold tracking-wide"
+              className="text-[12px] font-semibold tracking-wide"
               style={{
                 fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
                 color: roleColor,
@@ -252,12 +252,12 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           )}
         </div>
 
-        {/* Buttons — Play (red VALORANT theme) + Modify Card + Delete */}
-        <div className="flex items-center gap-1.5 px-4 pb-4 pt-2">
+        {/* Buttons */}
+        <div className="flex items-center gap-1 px-3 pb-3 pt-1.5">
           <button
             onClick={handlePlay}
             disabled={running || launchState === 'launching'}
-            className={`flex-1 h-9 rounded-lg font-bold text-[13px] transition-all
+            className={`flex-1 h-8 rounded-lg font-bold text-[12px] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
                         active:scale-[0.97] ${
               launchState === 'launched'
@@ -272,12 +272,12 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           {onModifyCard && (
             <button
               onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }}
-              className="h-9 w-9 flex items-center justify-center rounded-lg
+              className="h-8 w-8 flex items-center justify-center rounded-lg
                          bg-white/[0.06] hover:bg-white/[0.15] border border-white/[0.08]
                          text-white/50 hover:text-white/90 transition-all"
               title="Change playercard"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="17" r="2.5"/><circle cx="6" cy="12" r="2.5"/>
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.02-.23-.27-.38-.62-.38-1.01 0-.75.6-1.35 1.35-1.35H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9.94-10-9.94Z"/>
               </svg>
@@ -285,11 +285,11 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(profile); }}
-            className="h-9 w-9 flex items-center justify-center rounded-lg
+            className="h-8 w-8 flex items-center justify-center rounded-lg
                        bg-white/[0.06] hover:bg-red-500/20 border border-white/[0.08]
-                       text-white/50 hover:text-red-400 transition-all text-[13px]"
+                       text-white/50 hover:text-red-400 transition-all"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
             </svg>
@@ -299,8 +299,8 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
 
       {/* Running pulse animation */}
       {running && (
-        <div className="absolute inset-0 z-[6] rounded-2xl pointer-events-none">
-          <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/30 card-pulse" />
+        <div className="absolute inset-0 z-[6] rounded-xl pointer-events-none">
+          <div className="absolute inset-0 rounded-xl border-2 border-amber-400/30 card-pulse" />
         </div>
       )}
     </div>
