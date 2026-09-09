@@ -56,7 +56,7 @@ def _load_api_key():
     env_path = os.path.join(root, ENV_FILENAME)
     if not os.path.exists(env_path):
         return ""
-    with open(env_path, "r", encoding="utf-8") as f:
+    with open(env_path, encoding="utf-8") as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):

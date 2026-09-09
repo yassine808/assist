@@ -6,13 +6,12 @@ injects the local config URL into Riot Client launch arguments so the client
 redirects its chat through us.
 """
 
+import sys
 import threading
 
 from . import crypto_helper
 from . import deceive_proxy as deceive_proxy_mod
 from . import presence_constants as pc
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

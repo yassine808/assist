@@ -13,7 +13,6 @@ where it failed) before the Riot Client is spawned. Progress is reported
 through a listener callback that the backend fans out as IPC events.
 """
 
-import time
 
 import riot_processes as rp
 from riot_client import RiotClientError

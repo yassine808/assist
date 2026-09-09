@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIPC } from "../hooks/useIPC";
-import { useAccountDetection, type DetectionProgress } from "../hooks/useAccountDetection";
+import { useAccountDetection } from "../hooks/useAccountDetection";
 
 interface AddAccountModalProps {
   open: boolean;
@@ -24,33 +24,36 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
   const [phase, setPhase] = useState<ModalPhase>("checking");
   const [suggestedAccount, setSuggestedAccount] = useState<{ display: string; account: Record<string, unknown> } | null>(null);
   const hasChecked = useRef(false);
+  const prevOpen = useRef(false);
 
-  // Check for existing account on open
+  // Handle open/close transitions
   useEffect(() => {
-    if (!open) {
+    if (open && !prevOpen.current) {
+      // Just opened — reset state and check for account
       setPhase("checking");
       setSuggestedAccount(null);
       hasChecked.current = false;
-      return;
-    }
-    if (hasChecked.current) return;
-    hasChecked.current = true;
 
-    let mounted = true;
-    void call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account")
-      .then((result) => {
-        if (!mounted) return;
-        if (result?.found && result.is_new) {
-          setSuggestedAccount({ display: result.display, account: result.account });
-          setPhase("suggest");
-        } else {
-          setPhase("opening");
-        }
-      })
-      .catch(() => {
-        if (mounted) setPhase("opening");
-      });
-    return () => { mounted = false; };
+      let mounted = true;
+      void call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account")
+        .then((result) => {
+          if (!mounted) return;
+          if (result?.found && result.is_new) {
+            setSuggestedAccount({ display: result.display, account: result.account });
+            setPhase("suggest");
+          } else {
+            setPhase("opening");
+          }
+        })
+        .catch(() => {
+          if (mounted) setPhase("opening");
+        });
+      prevOpen.current = true;
+      return () => { mounted = false; };
+    }
+    if (!open) {
+      prevOpen.current = false;
+    }
   }, [open, call]);
 
   // Start detection when phase becomes "opening"
@@ -60,16 +63,15 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
     }
   }, [phase, active, start]);
 
-  // Track detection progress
-  useEffect(() => {
-    if (!progress) return;
-    const s = progress.status;
-    if (s === "waiting") setPhase("waiting");
-    else if (s === "confirm_save") setPhase("confirm_save");
-    else if (s === "already_added") setPhase("already_added");
-    else if (s === "created") setPhase("created");
-    else if (s === "error") setPhase("error");
-  }, [progress]);
+  // Derive phase from progress — use useMemo to avoid setState in effect
+  const progressPhase = progress?.status === "waiting" ? "waiting"
+    : progress?.status === "confirm_save" ? "confirm_save"
+    : progress?.status === "already_added" ? "already_added"
+    : progress?.status === "created" ? "created"
+    : progress?.status === "error" ? "error"
+    : null;
+
+  const effectivePhase = progressPhase ?? phase;
 
   const handleAddSuggested = useCallback(async () => {
     if (!suggestedAccount) return;
@@ -111,16 +113,13 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={handleClose}>
-      {/* Blurred backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div
         className="relative w-[380px] rounded-xl bg-[#12161f] border border-white/10 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: "fadeIn 0.2s ease-out" }}
       >
-        {/* Close button */}
         <button
           onClick={handleClose}
           className="absolute top-3 right-3 text-white/40 hover:text-white transition-colors"
@@ -130,15 +129,13 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
 
         <h2 className="text-white font-bold text-base mb-1">Add Account</h2>
 
-        {/* Phase: checking */}
-        {phase === "checking" && (
+        {effectivePhase === "checking" && (
           <div className="flex items-center gap-2 py-4 text-white/60 text-sm">
             <span className="spinner-icon" /> Checking for logged-in account…
           </div>
         )}
 
-        {/* Phase: suggest */}
-        {phase === "suggest" && suggestedAccount && (
+        {effectivePhase === "suggest" && suggestedAccount && (
           <div className="py-2">
             <p className="text-white/60 text-sm mb-3">
               New account detected in Riot Client:
@@ -169,18 +166,16 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
           </div>
         )}
 
-        {/* Phase: opening / waiting / already_added */}
-        {(phase === "opening" || phase === "waiting" || phase === "already_added") && (
+        {(effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added") && (
           <div className="flex items-center gap-2 py-4 text-white/60 text-sm">
             <span className="spinner-icon" />
-            {phase === "opening" && "Opening Riot Client…"}
-            {phase === "waiting" && "Waiting for login…"}
-            {phase === "already_added" && "Account already added. Launching again…"}
+            {effectivePhase === "opening" && "Opening Riot Client…"}
+            {effectivePhase === "waiting" && "Waiting for login…"}
+            {effectivePhase === "already_added" && "Account already added. Launching again…"}
           </div>
         )}
 
-        {/* Phase: confirm_save */}
-        {phase === "confirm_save" && (
+        {effectivePhase === "confirm_save" && (
           <div className="py-2">
             <p className="text-white/60 text-sm mb-3">New account detected:</p>
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 mb-4">
@@ -206,8 +201,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
           </div>
         )}
 
-        {/* Phase: created */}
-        {phase === "created" && (
+        {effectivePhase === "created" && (
           <div className="py-2 text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -223,8 +217,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: AddAc
           </div>
         )}
 
-        {/* Phase: error */}
-        {phase === "error" && (
+        {effectivePhase === "error" && (
           <div className="py-2 text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-500/20 flex items-center justify-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>

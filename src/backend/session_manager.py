@@ -138,16 +138,14 @@ class SessionManager:
                     if os.path.isdir(source):
                         if self._copy_dir_atomic(source, dest) != 0:
                             all_success = False
-                    elif os.path.isdir(dest):
-                        if self._remove_dir_recursive(dest) != 0:
-                            all_success = False
+                    elif os.path.isdir(dest) and self._remove_dir_recursive(dest) != 0:
+                        all_success = False
                 else:
                     if os.path.isfile(source):
                         if self._copy_file_atomic(source, dest) != 0:
                             all_success = False
-                    elif os.path.isfile(dest):
-                        if not self._remove_file(dest):
-                            all_success = False
+                    elif os.path.isfile(dest) and not self._remove_file(dest):
+                        all_success = False
         return all_success
 
     def delete_profile_dir(self, directory_name):
@@ -216,9 +214,8 @@ class SessionManager:
         if self._copy_dir_recursive(source_path, tmp_path) != 0:
             self._remove_dir_recursive(tmp_path)
             return 1
-        if os.path.isdir(dest_path):
-            if self._remove_dir_recursive(dest_path) != 0:
-                return 1
+        if os.path.isdir(dest_path) and self._remove_dir_recursive(dest_path) != 0:
+            return 1
         if self._rename_with_retry(tmp_path, dest_path) == 0:
             return 0
         if self._copy_dir_recursive(tmp_path, dest_path) == 0:

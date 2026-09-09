@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { useIPC } from "../hooks/useIPC";
-import type { Profile } from "../types/profile";
 
 interface ImportExportModalProps {
   open: boolean;

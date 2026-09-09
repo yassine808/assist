@@ -17,8 +17,8 @@ import re
 import ssl
 import subprocess
 import threading
-import urllib.request
 import urllib.error
+import urllib.request
 
 import riot_processes as rp
 
@@ -181,7 +181,7 @@ class RiotClientManager:
         if not os.path.isfile(RIOT_INSTALLS_JSON):
             return candidates
         try:
-            with open(RIOT_INSTALLS_JSON, "r", encoding="utf-8") as fh:
+            with open(RIOT_INSTALLS_JSON, encoding="utf-8") as fh:
                 data = json.load(fh)
         except (OSError, ValueError):
             return candidates
@@ -191,9 +191,9 @@ class RiotClientManager:
         paths = set()
         associated = data.get("associated_client", {})
         if isinstance(associated, dict):
-            for path_key in associated.keys():
+            for path_key in associated:
                 paths.add(str(path_key).replace("\\", "/").rstrip("/"))
-        for key, value in data.items():
+        for _key, value in data.items():
             if isinstance(value, str) and "Riot" in str(value):
                 paths.add(str(value).replace("\\", "/").rstrip("/"))
 
@@ -213,7 +213,7 @@ class RiotClientManager:
         if not os.path.isfile(RIOT_METADATA_YAML):
             return paths
         try:
-            with open(RIOT_METADATA_YAML, "r", encoding="utf-8", errors="replace") as fh:
+            with open(RIOT_METADATA_YAML, encoding="utf-8", errors="replace") as fh:
                 for line in fh:
                     stripped = line.strip()
                     if stripped.startswith("product_install_full_path:"):
@@ -368,7 +368,7 @@ def _read_lockfile():
     if not os.path.exists(_LOCKFILE_PATH):
         return None
     try:
-        with open(_LOCKFILE_PATH, "r", encoding="utf-8") as f:
+        with open(_LOCKFILE_PATH, encoding="utf-8") as f:
             raw = f.read().strip()
         parts = raw.split(":")
         if len(parts) != 5:

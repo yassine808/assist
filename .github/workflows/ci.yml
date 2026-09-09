@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: TypeScript Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  python:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        run: ruff check src/backend/
+      - name: Syntax check all Python files
+        run: python -m py_compile src/backend/main.py && python -m py_compile src/backend/protocol.py && python -m py_compile src/backend/profile_manager.py && python -m py_compile src/backend/session_manager.py && python -m py_compile src/backend/valorant_tracker.py && python -m py_compile src/backend/riot_client.py && python -m py_compile src/backend/riot_processes.py && python -m py_compile src/backend/riot_account_detect.py && python -m py_compile src/backend/launch_orchestrator.py && python -m py_compile src/backend/account_detector.py && python -m py_compile src/backend/league_settings_sync.py && python -m py_compile src/backend/config_manager.py && python -m py_compile src/backend/agent_database.py && python -m py_compile src/backend/henrik_client.py && echo "All Python files compile OK"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build

@@ -6,10 +6,9 @@ so the user appears offline while chat and system packets pass through intact.
 """
 
 import re
+import sys
 
 from . import presence_constants as pc  # noqa: F401  (kept for parity)
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

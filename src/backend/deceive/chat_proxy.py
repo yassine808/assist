@@ -9,13 +9,11 @@ bridges the two byte streams while filtering outbound <presence> stanzas.
 
 import socket
 import ssl
+import sys
 import threading
 
-from . import crypto_helper
+from . import crypto_helper, xmpp_filter
 from . import presence_constants as pc
-from . import xmpp_filter
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

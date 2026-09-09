@@ -50,7 +50,7 @@ def read_live_account():
     if not settings or not os.path.isfile(settings):
         return {}
     try:
-        with open(settings, "r", encoding="utf-8", errors="replace") as fh:
+        with open(settings, encoding="utf-8", errors="replace") as fh:
             yaml_text = fh.read()
     except OSError:
         return {}

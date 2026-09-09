@@ -49,7 +49,7 @@ class ConfigManager:
         if not os.path.exists(self._path):
             return
         try:
-            with open(self._path, "r", encoding="utf-8") as fh:
+            with open(self._path, encoding="utf-8") as fh:
                 stored = json.load(fh)
             if isinstance(stored, dict):
                 self._values.update(stored)

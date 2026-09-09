@@ -43,7 +43,7 @@ class ProfileManager:
         if not os.path.exists(self._path):
             return []
         try:
-            with open(self._path, "r", encoding="utf-8") as f:
+            with open(self._path, encoding="utf-8") as f:
                 data = json.load(f)
             return data if isinstance(data, list) else []
         except (json.JSONDecodeError, OSError):
@@ -191,9 +191,10 @@ class ProfileManager:
         """
         if not passkey:
             raise ValueError("passkey is required")
-        from cryptography.fernet import Fernet
-        import hashlib
         import base64
+        import hashlib
+
+        from cryptography.fernet import Fernet
 
         with self._lock:
             payload = json.dumps(self._profiles, indent=2, ensure_ascii=False).encode("utf-8")
@@ -218,9 +219,10 @@ class ProfileManager:
         """
         if not passkey:
             raise ValueError("passkey is required")
-        from cryptography.fernet import Fernet, InvalidToken
-        import hashlib
         import base64
+        import hashlib
+
+        from cryptography.fernet import Fernet, InvalidToken
 
         # Derive same key
         salt = b"riotswitcher-export-v1"

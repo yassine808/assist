@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { Profile } from "../types/profile";
 import type { LaunchState } from "../hooks/useProfileLaunch";
 import ProfileCard from "./ProfileCard";
@@ -11,7 +10,7 @@ interface Props {
   launchingProfile?: string | null;
   onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
-  onReorder: (names: string[]) => Promise<void> | void;
+  onReorder?: (names: string[]) => Promise<void> | void;
   onModifyCard?: (p: Profile) => void;
 }
 
@@ -22,46 +21,14 @@ export default function ProfileGrid({
   launchingProfile = null,
   onPlay,
   onDelete,
-  onReorder,
   onModifyCard,
 }: Props) {
-  const [order, setOrder] = useState<string[] | null>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-
-  const visible = order
-    ? [...profiles].sort(
-        (a, b) =>
-          order.indexOf(a.profile_name) - order.indexOf(b.profile_name)
-      )
-    : profiles;
-
-  const commit = (next: Profile[]) => {
-    setOrder(next.map((p) => p.profile_name));
-    void onReorder(next.map((p) => p.profile_name));
-  };
-
-  const move = (from: number, to: number) => {
-    if (from === to) return;
-    const next = [...visible];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    commit(next);
-  };
-
   return (
     <div className="flex flex-wrap gap-5">
       {loading
         ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-        : visible.map((p, i) => (
-            <div
-              key={p.profile_name}
-              className={
-                overIndex === i && dragIndex !== null && dragIndex !== i
-                  ? "profile-card--drop-target"
-                  : ""
-              }
-            >
+        : profiles.map((p) => (
+            <div key={p.profile_name}>
               <ProfileCard
                 profile={p}
                 running={p.is_running}

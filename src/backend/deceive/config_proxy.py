@@ -7,6 +7,7 @@ chat through our local ChatProxy (port substitution + host pinning).
 """
 
 import json
+import sys
 import threading
 import urllib.error
 import urllib.parse
@@ -14,8 +15,6 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import presence_constants as pc
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

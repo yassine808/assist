@@ -70,7 +70,7 @@ function setupIpc(): void {
   ipcMain.handle("window:toggleMaximize", () => {
     const win = appWindow?.win;
     if (!win) return;
-    win.isMaximized() ? win.unmaximize() : win.maximize();
+    if (win.isMaximized()) { win.unmaximize(); } else { win.maximize(); }
   });
 
   ipcMain.handle(

@@ -169,7 +169,7 @@ class LeagueSettingsSync:
         if not os.path.isfile(file_path):
             return False
         try:
-            with open(file_path, "r", encoding="utf-8") as fh:
+            with open(file_path, encoding="utf-8") as fh:
                 content = fh.read()
         except OSError:
             return False
@@ -197,7 +197,7 @@ class LeagueSettingsSync:
         if not os.path.isfile(self.metadata_path()):
             return {}
         try:
-            with open(self.metadata_path(), "r", encoding="utf-8") as fh:
+            with open(self.metadata_path(), encoding="utf-8") as fh:
                 data = json.load(fh)
         except (OSError, ValueError):
             return {}
@@ -443,13 +443,13 @@ class LeagueSettingsSync:
                 self.copy_settings(self.master_dir(), source_profile_dir)
             return True
 
-        if live_config_dir and self.has_valid_settings(live_config_dir):
-            if self._capture_master_snapshot_unlocked(
-                live_config_dir, source_dir_name, source_display_name
-            ) == CAPTURE_SUCCESS:
-                if source_profile_dir:
-                    self.copy_settings(live_config_dir, source_profile_dir)
-                return True
+        if (live_config_dir and self.has_valid_settings(live_config_dir)
+                and self._capture_master_snapshot_unlocked(
+                    live_config_dir, source_dir_name, source_display_name
+                ) == CAPTURE_SUCCESS):
+            if source_profile_dir:
+                self.copy_settings(live_config_dir, source_profile_dir)
+            return True
 
         return False
 
@@ -590,7 +590,7 @@ class LeagueSettingsSync:
         if not os.path.isfile(RIOT_INSTALLS_JSON):
             return ""
         try:
-            with open(RIOT_INSTALLS_JSON, "r", encoding="utf-8") as fh:
+            with open(RIOT_INSTALLS_JSON, encoding="utf-8") as fh:
                 data = json.load(fh)
         except (OSError, ValueError):
             return ""
@@ -608,7 +608,7 @@ class LeagueSettingsSync:
         if not os.path.isfile(RIOT_METADATA_YAML):
             return ""
         try:
-            with open(RIOT_METADATA_YAML, "r", encoding="utf-8") as fh:
+            with open(RIOT_METADATA_YAML, encoding="utf-8") as fh:
                 for line in fh:
                     line = line.strip()
                     if line.startswith("product_install_full_path:"):

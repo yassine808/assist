@@ -31,9 +31,11 @@ export default function HomeView() {
     }
   }, [call]);
 
+  // Load on mount — setProfiles/setLoading are the intended side effects of an async data fetch
   useEffect(() => {
     void load();
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const unsub = onEvent("valorant_data_updated", (params) => {

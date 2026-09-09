@@ -19,11 +19,12 @@ export default function AddAccountView() {
   const isConfirming = progress?.status === "confirm_save";
   const isAlreadyAdded = progress?.status === "already_added";
 
-  // Auto-start detection when the page loads
+  // Auto-start detection when the page loads (run once on mount)
   useEffect(() => {
     if (!active && !isCreated && !isError) {
       void start();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-navigate back after profile is created

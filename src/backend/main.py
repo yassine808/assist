@@ -2,19 +2,19 @@
 
 import sys
 
-from protocol import Protocol
-from profile_manager import ProfileManager
-from valorant_tracker import ValorantTracker
-from config_manager import ConfigManager
-from riot_client import RiotClientManager, RiotClientError
-from session_manager import SessionManager, sanitize_directory_name
-from league_settings_sync import LeagueSettingsSync
 import riot_account_detect as rad
-from deceive.presence_manager import PresenceManager
-from launch_orchestrator import LaunchOrchestrator
 from account_detector import AccountDetector
 from agent_database import AgentDatabase
+from config_manager import ConfigManager
+from deceive.presence_manager import PresenceManager
+from launch_orchestrator import LaunchOrchestrator
+from league_settings_sync import LeagueSettingsSync
+from profile_manager import ProfileManager
+from protocol import Protocol
+from riot_client import RiotClientManager
 from riot_processes import close_valorant_then_client
+from session_manager import SessionManager, sanitize_directory_name
+from valorant_tracker import ValorantTracker
 
 
 def _pid_is_running(pid):
@@ -128,6 +128,7 @@ def main():
 
     def _fetch_playercards():
         """Fetch all playercards from valorant-api.com."""
+        import json as _json
         import urllib.request as _urllib_req
         try:
             req = _urllib_req.Request(
@@ -135,7 +136,7 @@ def main():
                 headers={"User-Agent": "RiotSwitcher/2.0"},
             )
             with _urllib_req.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+                data = _json.loads(resp.read().decode("utf-8"))
             cards = []
             for card in data.get("data", []):
                 large_art = card.get("largeArt", "")

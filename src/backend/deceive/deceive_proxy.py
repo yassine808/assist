@@ -5,10 +5,10 @@ proxy first, wires its discovered via config proxy to the chat upstream, then
 starts the config proxy pointing chat at the local chat port.
 """
 
+import sys
+
 from . import chat_proxy as chat_proxy_mod
 from . import config_proxy as config_proxy_mod
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

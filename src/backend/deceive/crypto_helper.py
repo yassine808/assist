@@ -10,6 +10,7 @@ standard library has no certificate generation primitives.
 """
 
 import datetime
+import sys
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -18,8 +19,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from . import presence_constants as pc
-
-import sys
 
 
 def print(*args, **kwargs):  # noqa: A001  route logs to stderr; stdout carries the IPC channel

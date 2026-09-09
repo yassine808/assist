@@ -22,8 +22,8 @@ _FIXED_KEY_SEED = "riotswitcher-agent-db-v1-2024"
 
 
 def _derive_fernet_key():
-    import hashlib
     import base64
+    import hashlib
     digest = hashlib.sha256(_FIXED_KEY_SEED.encode()).digest()
     return base64.urlsafe_b64encode(digest)
 
