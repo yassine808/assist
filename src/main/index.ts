@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
-import { createAppWindow, AppWindow } from "./window";
+import { createAppWindow, AppWindow, openSettingsWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
 
 let python: PythonBridge | null = null;
@@ -80,6 +80,7 @@ function setupIpc(): void {
   ipcMain.handle("update:check", () => checkForUpdates());
   ipcMain.handle("update:download", () => downloadUpdate());
   ipcMain.handle("update:install", () => quitAndInstall());
+  ipcMain.handle("open:settings", () => openSettingsWindow(python!));
 
   ipcMain.handle(
     "python:call",

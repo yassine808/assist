@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update:status", handler);
   },
 
+  // Settings window
+  openSettings: () => ipcRenderer.invoke("open:settings"),
+
   // Python backend proxy
   call: (method: string, params?: Record<string, unknown>) =>
     ipcRenderer.invoke("python:call", method, params),

@@ -1,26 +1,16 @@
-import { Routes, Route, useLocation } from "react-router-dom";
 import { TitleBar } from "./components/TitleBar";
-import { Sidebar } from "./components/Sidebar";
 import HomeView from "./views/HomeView";
 import SettingsView from "./views/SettingsView";
 
 export default function App() {
-  const location = useLocation();
+  const isSettings = new URLSearchParams(window.location.search).get("view") === "settings";
 
   return (
     <div className="flex flex-col h-full bg-bg-dark">
       <TitleBar />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-bg-dark">
-          <div key={location.pathname} className="view-transition h-full">
-            <Routes location={location}>
-              <Route path="/" element={<HomeView />} />
-              <Route path="/settings" element={<SettingsView />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
+      <main className="flex-1 overflow-y-auto bg-bg-dark">
+        {isSettings ? <SettingsView /> : <HomeView />}
+      </main>
     </div>
   );
 }

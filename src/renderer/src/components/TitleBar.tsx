@@ -1,4 +1,4 @@
-import { Minus, Square, X } from "lucide-react";
+import { Minus, Square, X, Settings } from "lucide-react";
 
 export function TitleBar() {
   return (
@@ -39,8 +39,15 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* Right: Window controls */}
+      {/* Right: Settings + Window controls */}
       <div className="no-drag flex h-full">
+        <button
+          className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200"
+          onClick={() => window.electronAPI.openSettings()}
+          aria-label="Settings"
+        >
+          <Settings size={14} />
+        </button>
         <button
           className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200 relative group/btn"
           onClick={() => window.electronAPI.minimize()}

@@ -11,6 +11,53 @@ export interface AppWindow {
   requestClose: () => void;
 }
 
+let settingsWindow: BrowserWindow | null = null;
+
+export function openSettingsWindow(python: PythonBridge): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 700,
+    height: 650,
+    minWidth: 550,
+    minHeight: 500,
+    frame: false,
+    backgroundColor: "#0f0f12",
+    show: false,
+    parent: undefined,
+    webPreferences: {
+      preload: join(__dirname, "../preload/preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  const baseUrl = process.env.ELECTRON_RENDERER_URL
+    ? process.env.ELECTRON_RENDERER_URL
+    : join(__dirname, "../renderer/index.html");
+
+  const url = process.env.ELECTRON_RENDERER_URL
+    ? `${baseUrl}?view=settings`
+    : `${baseUrl}?view=settings`;
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    settingsWindow.loadURL(url);
+  } else {
+    settingsWindow.loadFile(join(__dirname, "../renderer/index.html"), {
+      query: { view: "settings" },
+    });
+  }
+
+  settingsWindow.once("ready-to-show", () => settingsWindow?.show());
+
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
+}
+
 async function readTrayConfig(
   python: PythonBridge
 ): Promise<{ closeToTray: boolean; minimizeToTray: boolean }> {
