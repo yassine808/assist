@@ -7,13 +7,13 @@ import "../styles/card-glow.css";
 interface ProfileCardProps {
   profile: Profile;
   running: boolean;
+  activeProfileName?: string | null;
   launchState: LaunchState;
-  onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, launchState, onPlay, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
+export default function ProfileCard({ profile, running, activeProfileName, launchState, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
   const { launch } = useProfileLaunch();
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
@@ -43,7 +43,6 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
     e.stopPropagation();
     if (launchState === "idle") {
       launch(profile.profile_name);
-      onPlay(profile);
     }
   };
 
@@ -74,12 +73,14 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
   }
 
   let startButtonText: string;
-  if (running) {
-    startButtonText = "RUNNING";
-  } else if (launchState === "launching") {
+  if (launchState === "launching") {
     startButtonText = "LAUNCHING…";
   } else if (launchState === "launched") {
     startButtonText = "LAUNCHED ✓";
+  } else if (running) {
+    startButtonText = "RUNNING";
+  } else if (activeProfileName && activeProfileName !== profile.profile_name) {
+    startButtonText = "SWITCH";
   } else {
     startButtonText = "START";
   }
@@ -283,7 +284,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
           {/* Large START button — at the bottom */}
           <button
             onClick={handlePlay}
-            disabled={running || launchState === "launching"}
+            disabled={launchState !== "idle"}
             className={`w-full h-13 rounded font-black text-[22px] uppercase tracking-[0.3em] transition-all
                         disabled:opacity-40 disabled:cursor-not-allowed
                         active:scale-[0.98] ${startButtonClass}`}

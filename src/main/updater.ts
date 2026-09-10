@@ -1,9 +1,9 @@
 import { autoUpdater, UpdateInfo } from "electron-updater";
-import { BrowserWindow } from "electron";
+import { BrowserWindow, dialog } from "electron";
 import log from "electron-log";
 
 autoUpdater.logger = log;
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let updateWindow: BrowserWindow | null = null;
@@ -45,8 +45,22 @@ export function initAutoUpdater(): void {
     });
   });
 
-  autoUpdater.on("update-downloaded", () => {
-    sendToRenderer("update:status", { state: "downloaded" });
+  autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
+    sendToRenderer("update:status", { state: "downloaded", version: info.version });
+    dialog
+      .showMessageBox({
+        type: "info",
+        title: "Update Ready",
+        message: `Riot Switcher v${info.version} has been downloaded.`,
+        detail: "The app will restart now to apply the update.",
+        buttons: ["Restart Now", "Later"],
+        defaultId: 0,
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          autoUpdater.quitAndInstall(false, true);
+        }
+      });
   });
 
   autoUpdater.on("error", (err) => {

@@ -10,7 +10,7 @@ import type { Profile } from "../types/profile";
 
 export default function HomeView() {
   const { call, onEvent } = useIPC();
-  const { launch, launchState, launchingProfile } = useProfileLaunch();
+  const { launchState, launchingProfile } = useProfileLaunch();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,13 +50,6 @@ export default function HomeView() {
       unsubCreated();
     };
   }, [onEvent, load]);
-
-  const handlePlay = useCallback(
-    (p: Profile) => {
-      void launch(p.profile_name);
-    },
-    [launch]
-  );
 
   const handleDelete = useCallback(async (p: Profile) => {
     setDeleteError("");
@@ -111,7 +104,6 @@ export default function HomeView() {
         loading={loading}
         launchState={launchState}
         launchingProfile={launchingProfile}
-        onPlay={handlePlay}
         onDelete={handleDelete}
         onModifyCard={handleModifyCard}
       />

@@ -200,14 +200,14 @@ export default function SettingsView() {
               <p className="text-white/70 text-sm font-medium">
                 {updateState === "checking" && "Checking for updates…"}
                 {updateState === "up-to-date" && "You're up to date"}
-                {updateState === "available" && `Update available: v${updateVersion}`}
+                {updateState === "available" && `Update found: v${updateVersion} — downloading…`}
                 {updateState === "downloading" && `Downloading… ${updatePercent}%`}
-                {updateState === "downloaded" && `v${updateVersion} ready to install`}
+                {updateState === "downloaded" && `v${updateVersion} ready — restarting soon…`}
                 {updateState === "error" && "Update check failed"}
-                {updateState === "idle" && "Click to check for updates"}
+                {updateState === "idle" && "Auto-checks on startup"}
               </p>
               <p className="text-white/40 text-xs">
-                Auto-checks on startup for new releases on GitHub
+                Updates download and install automatically on restart
               </p>
             </div>
             <div className="flex gap-2">
@@ -218,15 +218,6 @@ export default function SettingsView() {
                              hover:bg-riot-red/90 transition-colors"
                 >
                   Check
-                </button>
-              )}
-              {updateState === "available" && (
-                <button
-                  onClick={() => window.electronAPI?.downloadUpdate()}
-                  className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                             hover:bg-riot-red/90 transition-colors"
-                >
-                  Download
                 </button>
               )}
               {updateState === "downloaded" && (

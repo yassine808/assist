@@ -8,7 +8,6 @@ interface Props {
   loading: boolean;
   launchState?: LaunchState;
   launchingProfile?: string | null;
-  onPlay: (p: Profile) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
 }
@@ -18,10 +17,11 @@ export default function ProfileGrid({
   loading,
   launchState = "idle",
   launchingProfile = null,
-  onPlay,
   onDelete,
   onModifyCard,
 }: Readonly<Props>) {
+  const activeProfileName = profiles.find((p) => p.is_running)?.profile_name ?? null;
+
   return (
     <div className="flex flex-wrap gap-5">
       {loading
@@ -31,8 +31,8 @@ export default function ProfileGrid({
               <ProfileCard
                 profile={p}
                 running={p.is_running}
+                activeProfileName={activeProfileName}
                 launchState={launchingProfile === p.profile_name ? launchState : "idle"}
-                onPlay={onPlay}
                 onDelete={onDelete}
                 onModifyCard={onModifyCard}
               />
