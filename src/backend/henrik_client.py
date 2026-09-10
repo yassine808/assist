@@ -51,7 +51,12 @@ class HenrikError(RuntimeError):
 
 
 def _load_api_key():
-    """Read the HenrikDev API key from the workspace .env file."""
+    """Read the HenrikDev API key from the .env file or environment variable."""
+    # In packaged builds, __file__ path doesn't resolve to the project root.
+    # The Electron main process reads .env and injects it into spawn env.
+    env_val = os.environ.get(ENV_KEY_HENRIKDEV, "")
+    if env_val:
+        return env_val.strip().strip("\"'")
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     env_path = os.path.join(root, ENV_FILENAME)
     if not os.path.exists(env_path):

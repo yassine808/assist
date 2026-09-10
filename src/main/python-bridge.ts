@@ -1,5 +1,6 @@
 import { ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import { app } from "electron";
 /**
@@ -10,6 +11,23 @@ import { app } from "electron";
  * Response: {"id":1,"result":{...}}\n
  * Event:    {"event":"valorant_data_updated","params":{...}}\n
  */
+
+function loadEnvKey(): string {
+  try {
+    const envPath = join(app.isPackaged ? process.resourcesPath : app.getAppPath(), ".env");
+    const content = readFileSync(envPath, "utf-8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      if (trimmed.startsWith("HENRIKDEV_API_KEY=")) {
+        return trimmed.slice("HENRIKDEV_API_KEY=".length).trim().replace(/^["']|["']$/g, "");
+      }
+    }
+  } catch {
+    // .env not found — rely on env var or dev fallback
+  }
+  return "";
+}
 
 interface PendingCall {
   resolve: (value: unknown) => void;
@@ -53,7 +71,7 @@ export class PythonBridge extends EventEmitter {
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, PYTHONUTF8: "1" },
+      env: { ...process.env, PYTHONUTF8: "1", HENRIKDEV_API_KEY: loadEnvKey() },
     });
 
     this.process.stdout?.on("data", (chunk: Buffer) => {
