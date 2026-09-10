@@ -107,14 +107,28 @@ class AccountDetector:
             return False
         return True
 
+    def _clear_riot_saved_credentials(self):
+        """Delete Riot Client saved credentials to force a fresh login screen."""
+        import os
+        settings_path = os.path.join(
+            os.environ.get("LOCALAPPDATA", ""),
+            "Riot Games", "Riot Client", "Data", "RiotGamesPrivateSettings.yaml",
+        )
+        if os.path.isfile(settings_path):
+            try:
+                os.remove(settings_path)
+            except OSError:
+                pass
+
     def _handle_already_added(self, display):
-        """Re-launch client when a known account is detected."""
+        """Re-launch client with cleared credentials when a known account is detected."""
         self._emit("account_detection_progress", {
             "status": "already_added",
             "message": f"{display} is already added. Opening login\u2026",
             "display": display,
         })
         self._try_kill()
+        self._clear_riot_saved_credentials()
         self._try_launch()
 
     def _handle_new_account(self, account, display):

@@ -15,6 +15,7 @@ export default function HomeView() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
   const [showImportExport, setShowImportExport] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -58,18 +59,20 @@ export default function HomeView() {
   );
 
   const handleDelete = useCallback(async (p: Profile) => {
+    setDeleteError("");
     setConfirmDelete(p);
   }, []);
 
   const doDelete = useCallback(async () => {
     if (!confirmDelete) return;
+    setDeleteError("");
     try {
       await call("delete_profile", { name: confirmDelete.profile_name });
       setConfirmDelete(null);
       void load();
     } catch (e) {
       console.error("delete failed", e);
-      setConfirmDelete(null);
+      setDeleteError(String(e));
     }
   }, [confirmDelete, call, load]);
 
@@ -145,6 +148,9 @@ export default function HomeView() {
               "{confirmDelete.profile_name}" will be permanently removed. Saved
               session data for this profile will be deleted.
             </p>
+            {deleteError && (
+              <p className="text-xs text-red-400 mb-3">{deleteError}</p>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}

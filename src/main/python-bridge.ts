@@ -53,7 +53,7 @@ export class PythonBridge extends EventEmitter {
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env },
+      env: { ...process.env, PYTHONUTF8: "1" },
     });
 
     this.process.stdout?.on("data", (chunk: Buffer) => {

@@ -9,9 +9,17 @@ using one JSON object per line:
   Event:    {"event": "profile_created", "params": {...}}
 """
 
+import io
 import json
 import sys
 import threading
+
+# Force UTF-8 on stdin/stdout so non-ASCII characters (profile names, etc.)
+# survive the pipe between Node.js (always UTF-8) and Python.
+if hasattr(sys.stdin, "buffer"):
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 
 class Protocol:

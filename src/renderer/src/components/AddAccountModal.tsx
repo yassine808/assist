@@ -16,6 +16,7 @@ type ModalPhase =
   | "confirm_save"   // new account detected, ask to save
   | "already_added"  // detected account is already saved
   | "created"        // profile created successfully
+  | "saved"          // suggested account saved directly
   | "error";         // something went wrong
 
 export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
@@ -25,17 +26,23 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   const [suggestedAccount, setSuggestedAccount] = useState<{ display: string; account: Record<string, unknown> } | null>(null);
   const hasChecked = useRef(false);
   const prevOpen = useRef(false);
+  const skipDetection = useRef(false);
 
   const checkForAccount = useCallback(async () => {
     setPhase("checking");
     setSuggestedAccount(null);
     hasChecked.current = false;
+    skipDetection.current = false;
 
     try {
       const result = await call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account");
       if (result?.found && result.is_new) {
         setSuggestedAccount({ display: result.display, account: result.account });
         setPhase("suggest");
+      } else if (result?.found && !result.is_new) {
+        // Already logged into a saved account — clear creds and relaunch
+        setPhase("opening");
+        skipDetection.current = false;
       } else {
         setPhase("opening");
       }
@@ -54,9 +61,9 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
     }
   }, [open, checkForAccount]);
 
-  // Start detection when phase becomes "opening"
+  // Start detection when phase becomes "opening" — but not if skipDetection is set
   useEffect(() => {
-    if (phase === "opening" && !active) {
+    if (phase === "opening" && !active && !skipDetection.current) {
       void start();
     }
   }, [phase, active, start]);
@@ -76,14 +83,14 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   const handleAddSuggested = useCallback(async () => {
     if (!suggestedAccount) return;
     try {
-      setPhase("opening");
+      skipDetection.current = true;
       await call("create_profile", {
         profile_name: suggestedAccount.display,
         valorant_puuid: suggestedAccount.account.puuid as string,
         valorant_region: suggestedAccount.account.riot_region as string,
         valorant_in_game_name: suggestedAccount.display,
       });
-      setPhase("created");
+      setPhase("saved");
       onAccountAdded?.();
     } catch {
       setPhase("error");
@@ -92,6 +99,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
 
   const handleDeclineSuggested = useCallback(() => {
     setSuggestedAccount(null);
+    skipDetection.current = false;
     setPhase("opening");
   }, []);
 
@@ -100,6 +108,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   }, [confirmSave]);
 
   const handleClose = useCallback(async () => {
+    skipDetection.current = true;
     await stop();
     onClose();
   }, [stop, onClose]);
@@ -211,6 +220,22 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
             </div>
             <p className="text-white font-semibold text-sm mb-1">Profile Created</p>
             <p className="text-white/50 text-xs mb-4">{progress?.profile_name ?? "Account"}</p>
+            <button
+              onClick={handleDone}
+              className="w-full h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        )}
+
+        {effectivePhase === "saved" && (
+          <div className="py-2 text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+            <p className="text-white font-semibold text-sm mb-1">Account Added</p>
+            <p className="text-white/50 text-xs mb-4">{suggestedAccount?.display ?? "Account"} saved successfully</p>
             <button
               onClick={handleDone}
               className="w-full h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"

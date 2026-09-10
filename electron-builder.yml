@@ -14,15 +14,13 @@ directories:
 files:
   - out/**
   - package.json
+  - build/icon.png
 
 extraResources:
   - from: release/python
     to: python
     filter:
       - "**/*"
-
-asarUnpack:
-  - resources/python/**
 
 win:
   target:
