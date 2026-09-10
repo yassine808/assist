@@ -2,6 +2,11 @@ appId: com.riotswitcher.app
 productName: RiotSwitcher
 copyright: Copyright © 2026 RiotSwitcher Contributors
 
+publish:
+  provider: github
+  owner: yassine808
+  repo: assist
+
 directories:
   output: release
   buildResources: build

@@ -6,6 +6,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   close: () => ipcRenderer.invoke("window:close"),
   toggleMaximize: () => ipcRenderer.invoke("window:toggleMaximize"),
 
+  // Auto-updater
+  checkUpdate: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: (callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { state: string; version?: string; message?: string; percent?: number }) =>
+      callback(data);
+    ipcRenderer.on("update:status", handler);
+    return () => ipcRenderer.removeListener("update:status", handler);
+  },
+
   // Python backend proxy
   call: (method: string, params?: Record<string, unknown>) =>
     ipcRenderer.invoke("python:call", method, params),

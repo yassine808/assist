@@ -21,6 +21,18 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
   const rankIcon = vd?.rank_icon ?? "";
   const playerCardBg = vd?.player_card_bg ?? "";
   const agentIcon = vd?.agent_display_icon ?? "";
+  const topAgent = vd?.top_agent ?? "";
+  // Fallback: construct displayIcon from agent_bg UUID if displayIcon is empty
+  const resolvedAgentIcon = agentIcon || (() => {
+    const bg = vd?.agent_bg ?? "";
+    if (bg.includes("/agents/")) {
+      try {
+        const uuid = bg.split("/agents/")[1].split("/")[0];
+        return `https://media.valorant-api.com/agents/${uuid}/displayicon.png`;
+      } catch { /* ignore */ }
+    }
+    return "";
+  })();
   const rankName = VALORANT_TIER_NAMES[tierId] ?? "Unranked";
   const wins = vd?.wins ?? 0;
   const losses = vd?.losses ?? 0;
@@ -118,21 +130,10 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
       <div className="relative z-[5] flex flex-col h-full">
         {/* Username at top */}
         <div className="flex items-center justify-center gap-2 px-4 pt-3 pb-1">
-          {agentIcon && (
-            <img
-              src={agentIcon}
-              alt=""
-              className="w-[22px] h-[22px] rounded-full flex-shrink-0 border border-white/20 object-cover"
-              style={{
-                filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.6))",
-              }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
           <span
             className="text-[15px] font-bold tracking-wide truncate text-center"
             style={{
-              fontFamily: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
+              fontFamily: "'Rajdhani', 'Noto Sans JP', 'Yu Gothic UI', 'Yu Gothic', 'Meiryo', system-ui, sans-serif",
               color: "#fff",
               textShadow: "0 2px 20px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.8)",
             }}
@@ -201,6 +202,41 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
         {/* Spacer */}
         <div className="flex-[1.2]" />
 
+        {/* Top agent image */}
+        {topAgent && resolvedAgentIcon && (
+          <div className="flex flex-col items-center gap-0.5 px-4 pb-1">
+            <img
+              src={resolvedAgentIcon}
+              alt={topAgent}
+              className="w-[36px] h-[36px] object-contain"
+              style={{
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.7))",
+              }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <span
+              className="text-[11px] font-bold uppercase tracking-wider"
+              style={{
+                color: "rgba(255,255,255,0.5)",
+                textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+              }}
+            >
+              {topAgent}
+            </span>
+            {vd?.agent_role && (
+              <span
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{
+                  color: "rgba(255,255,255,0.35)",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+                }}
+              >
+                {vd.agent_role}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Stats row at bottom */}
         <div className="flex items-center justify-center gap-3 px-4 pb-1">
           <span className="text-[12px] font-bold" style={{ color: "#4ade80", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
@@ -252,7 +288,7 @@ export default function ProfileCard({ profile, running, launchState, onPlay, onD
                         disabled:opacity-40 disabled:cursor-not-allowed
                         active:scale-[0.98] ${startButtonClass}`}
             style={{
-              fontFamily: "'Rajdhani', 'Impact', 'Segoe UI', system-ui, sans-serif",
+              fontFamily: "'Rajdhani', 'Noto Sans JP', 'Impact', 'Segoe UI', system-ui, sans-serif",
               textShadow: "0 2px 8px rgba(0,0,0,0.5)",
             }}
           >

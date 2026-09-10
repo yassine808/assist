@@ -12,6 +12,12 @@ declare global {
       onEvent: (
         callback: (data: { event: string; params: unknown }) => void
       ) => () => void;
+      checkUpdate: () => Promise<void>;
+      downloadUpdate: () => Promise<void>;
+      installUpdate: () => Promise<void>;
+      onUpdateStatus: (
+        callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void
+      ) => () => void;
     };
   }
 }

@@ -20,11 +20,24 @@ export default function SettingsView() {
   const [importing, setImporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [updateState, setUpdateState] = useState<string>("idle");
+  const [updateVersion, setUpdateVersion] = useState<string>("");
+  const [updatePercent, setUpdatePercent] = useState<number>(0);
 
   useEffect(() => {
     void call<ConfigState>("get_config").then((c) => setConfig(c ?? {}));
     void call<Profile[]>("get_profiles").then((p) => setProfiles(p ?? []));
   }, [call]);
+
+  useEffect(() => {
+    if (!window.electronAPI?.onUpdateStatus) return;
+    const unsub = window.electronAPI.onUpdateStatus((data) => {
+      setUpdateState(data.state);
+      if (data.version) setUpdateVersion(data.version);
+      if (data.percent !== undefined) setUpdatePercent(data.percent);
+    });
+    return unsub;
+  }, []);
 
   const update = useCallback(
     (key: string, value: unknown) => {
@@ -176,6 +189,66 @@ export default function SettingsView() {
             onChange={(v) => update("Language", v)}
           />
         </>
+      ),
+    },
+    {
+      title: "Updates",
+      rows: (
+        <div className="py-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white/70 text-sm font-medium">
+                {updateState === "checking" && "Checking for updates…"}
+                {updateState === "up-to-date" && "You're up to date"}
+                {updateState === "available" && `Update available: v${updateVersion}`}
+                {updateState === "downloading" && `Downloading… ${updatePercent}%`}
+                {updateState === "downloaded" && `v${updateVersion} ready to install`}
+                {updateState === "error" && "Update check failed"}
+                {updateState === "idle" && "Click to check for updates"}
+              </p>
+              <p className="text-white/40 text-xs">
+                Auto-checks on startup for new releases on GitHub
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {(updateState === "idle" || updateState === "up-to-date" || updateState === "error") && (
+                <button
+                  onClick={() => window.electronAPI?.checkUpdate()}
+                  className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
+                             hover:bg-riot-red/90 transition-colors"
+                >
+                  Check
+                </button>
+              )}
+              {updateState === "available" && (
+                <button
+                  onClick={() => window.electronAPI?.downloadUpdate()}
+                  className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
+                             hover:bg-riot-red/90 transition-colors"
+                >
+                  Download
+                </button>
+              )}
+              {updateState === "downloaded" && (
+                <button
+                  onClick={() => window.electronAPI?.installUpdate()}
+                  className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-emerald-500
+                             hover:bg-emerald-600 transition-colors"
+                >
+                  Restart & Install
+                </button>
+              )}
+            </div>
+          </div>
+          {updateState === "downloading" && (
+            <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-riot-red transition-all duration-300"
+                style={{ width: `${updatePercent}%` }}
+              />
+            </div>
+          )}
+        </div>
       ),
     },
     {

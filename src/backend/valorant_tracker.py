@@ -330,7 +330,12 @@ class ValorantTracker:
     def _apply_agent_images(self, data, agent_info):
         """Populate agent image keys from agent_info dict."""
         data[self.KEY_AGENT_PORTRAIT] = agent_info.get("fullPortrait", "")
-        data[self.KEY_AGENT_DISPLAY_ICON] = agent_info.get("displayIcon", "")
+        display_icon = agent_info.get("displayIcon", "")
+        if not display_icon:
+            uuid = agent_info.get("uuid", "")
+            if uuid:
+                display_icon = f"https://media.valorant-api.com/agents/{uuid}/displayicon.png"
+        data[self.KEY_AGENT_DISPLAY_ICON] = display_icon
         data[self.KEY_AGENT_ROLE] = agent_info.get("role", {}).get("name", "")
         data[self.KEY_AGENT_BG] = agent_info.get("background", "")
         data[self.KEY_AGENT_BG_COLORS] = agent_info.get("backgroundGradientColors", [])
@@ -384,6 +389,18 @@ class ValorantTracker:
             agent_info = self._agent_db.get_agent(top_agent)
             if agent_info:
                 self._apply_agent_images(data, agent_info)
+            else:
+                # Agent DB lookup failed — try to construct displayIcon from
+                # the UUID already present in agent_bg URL
+                display_icon = data.get(self.KEY_AGENT_DISPLAY_ICON, "")
+                if not display_icon:
+                    bg_url = data.get(self.KEY_AGENT_BG, "")
+                    if "/agents/" in bg_url:
+                        try:
+                            uuid = bg_url.split("/agents/")[1].split("/")[0]
+                            data[self.KEY_AGENT_DISPLAY_ICON] = f"https://media.valorant-api.com/agents/{uuid}/displayicon.png"
+                        except (IndexError, AttributeError):
+                            pass
 
         self._resolve_player_card(data)
 

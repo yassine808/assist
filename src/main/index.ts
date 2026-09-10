@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
 import { createAppWindow, AppWindow } from "./window";
+import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
 
 let python: PythonBridge | null = null;
 let appWindow: AppWindow | null = null;
@@ -32,6 +33,9 @@ function setup(): void {
         /* window stays alive; user opens from tray */
       },
     });
+
+    setUpdateWindow(appWindow.win);
+    initAutoUpdater();
 
     createAppTray(appIconPath(), {
       onShow: () => {
@@ -72,6 +76,10 @@ function setupIpc(): void {
     if (!win) return;
     if (win.isMaximized()) { win.unmaximize(); } else { win.maximize(); }
   });
+
+  ipcMain.handle("update:check", () => checkForUpdates());
+  ipcMain.handle("update:download", () => downloadUpdate());
+  ipcMain.handle("update:install", () => quitAndInstall());
 
   ipcMain.handle(
     "python:call",
