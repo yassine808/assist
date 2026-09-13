@@ -77,14 +77,40 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
                      _check_current_account, _close_all,
                      _profile_dir_name, _cleanup_league_readonly):
     """Build the dispatch table mapping method names to handler functions."""
+
+    def _delete_profile(name):
+        result = profiles.delete(name)
+        try:
+            sessions.delete_profile_dir(name or "")
+        except Exception:  # noqa: BLE001
+            pass
+        return result
+
+    def _import_profiles(params):
+        raw = params.get("data", "")
+        if isinstance(raw, str):
+            encrypted_data = __import__("base64").b64decode(raw)
+        else:
+            encrypted_data = bytes(raw)
+        result = profiles.import_profiles(
+            params.get("passkey", ""),
+            encrypted_data,
+            merge=bool(params.get("merge", True)),
+        )
+        # Clean up orphaned session dirs when replacing all profiles
+        replaced = result.get("replaced_names", [])
+        for name in replaced:
+            try:
+                sessions.delete_profile_dir(name)
+            except Exception:  # noqa: BLE001
+                pass
+        return result
+
     return {
         "ping": lambda p: "pong",
         "get_profiles": lambda p: profiles.load(),
         "create_profile": lambda p: profiles.create(p),
-        "delete_profile": lambda p: (
-            profiles.delete(p.get("name")),
-            sessions.delete_profile_dir(p.get("name") or ""),
-        )[-1],
+        "delete_profile": lambda p: _delete_profile(p.get("name")),
         "update_profile": lambda p: profiles.update(p.get("name"), p.get("data")),
         "rename_profile": lambda p: profiles.rename(p.get("old_name"), p.get("new_name")),
         "reorder_profiles": lambda p: profiles.reorder(p.get("names")),
@@ -149,13 +175,11 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
             riot.build_launch_args()
         ),
         "export_profiles": lambda p: {
-            "data": list(profiles.export_profiles(p.get("passkey", "")))
+            "data": __import__("base64").b64encode(
+                profiles.export_profiles(p.get("passkey", ""))
+            ).decode("ascii")
         },
-        "import_profiles": lambda p: profiles.import_profiles(
-            p.get("passkey", ""),
-            bytes(p.get("data", [])),
-            merge=bool(p.get("merge", True)),
-        ),
+        "import_profiles": lambda p: _import_profiles(p),
         "get_playercards": lambda p: _fetch_playercards(),
         "set_playercard": lambda p: _set_playercard(
             p.get("name", ""), p.get("card_url", "")

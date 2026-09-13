@@ -22,9 +22,12 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
     if (!exportPasskey) return;
     setExporting(true);
     try {
-      const result = await call<{ data: number[] }>("export_profiles", { passkey: exportPasskey });
+      const result = await call<{ data: string }>("export_profiles", { passkey: exportPasskey });
       if (result?.data) {
-        const blob = new Blob([new Uint8Array(result.data)], { type: "application/octet-stream" });
+        const binaryStr = atob(result.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -48,7 +51,10 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
     setImportResult("");
     try {
       const arrayBuffer = await importFile.arrayBuffer();
-      const data = Array.from(new Uint8Array(arrayBuffer));
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const data = btoa(binary);
       const result = await call<{ imported: number; skipped: number; total: number }>(
         "import_profiles",
         { passkey: importPasskey, data, merge: true }
@@ -65,6 +71,8 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
       }
     } catch (e) {
       setImportResult("Import failed: " + String(e));
+      setImportFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } finally {
       setImporting(false);
     }
@@ -113,7 +121,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
               />
               <button
                 onClick={() => void handleExport()}
-                disabled={!exportPasskey || exporting}
+                disabled={!exportPasskey || exportPasskey.length < 4 || exporting}
                 className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
                            hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
@@ -127,6 +135,9 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
                 {exportLabel}
               </button>
             </div>
+            {exportPasskey.length > 0 && exportPasskey.length < 4 && (
+              <p className="text-amber-400/70 text-xs mt-1">Passkey should be at least 4 characters</p>
+            )}
           </div>
 
           <div className="border-t border-white/5" />
@@ -157,7 +168,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
               />
               <button
                 onClick={() => void handleImport()}
-                disabled={!importPasskey || !importFile || importing}
+                disabled={!importPasskey || importPasskey.length < 4 || !importFile || importing}
                 className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
                            hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
@@ -166,6 +177,9 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
                 {importing ? "Importing…" : "Import"}
               </button>
             </div>
+            {importPasskey.length > 0 && importPasskey.length < 4 && (
+              <p className="text-amber-400/70 text-xs mt-1">Passkey should be at least 4 characters</p>
+            )}
             {importResult && (
               <p key={importResult} className={`result-message text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
                 {importResult}

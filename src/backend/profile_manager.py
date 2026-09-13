@@ -58,6 +58,21 @@ class ProfileManager:
                 json.dump(self._profiles, f, indent=2, ensure_ascii=False)
             os.replace(tmp, self._path)
 
+    @staticmethod
+    def _validate_profile(profile):
+        """Validate an imported profile has required fields. Returns cleaned profile."""
+        if not isinstance(profile, dict):
+            raise ValueError("Profile must be a dictionary")
+        name = profile.get("profile_name", "")
+        if not name or not isinstance(name, str):
+            raise ValueError("Profile missing valid profile_name")
+        # Strip unexpected keys, keep only known fields
+        known_keys = {
+            "profile_name", "description", "valorant_puuid", "valorant_region",
+            "valorant_in_game_name", "valorant_data", "is_running",
+        }
+        return {k: v for k, v in profile.items() if k in known_keys}
+
     def load(self):
         with self._lock:
             return list(self._profiles)
@@ -170,10 +185,10 @@ class ProfileManager:
         if not isinstance(names, list):
             raise ValueError("names must be a list")
         with self._lock:
-            by_name = {p["profile_name"]: p for p in self._profiles}
+            by_name = {p["profile_name"]: p for p in self._profiles if "profile_name" in p}
             ordered = [by_name[n] for n in names if n in by_name]
             for p in self._profiles:
-                if p["profile_name"] not in by_name or p["profile_name"] not in names:
+                if p.get("profile_name") not in by_name or p.get("profile_name") not in names:
                     ordered.append(p)
             self._profiles = ordered
             self._write()
@@ -243,12 +258,14 @@ class ProfileManager:
         imported_profiles = json.loads(decrypted.decode("utf-8"))
         if not isinstance(imported_profiles, list):
             raise ValueError("Invalid profile data format")
+        imported_profiles = [self._validate_profile(p) for p in imported_profiles]
 
         with self._lock:
             if not merge:
+                old_names = [p.get("profile_name", "") for p in self._profiles]
                 self._profiles = imported_profiles
                 self._write()
-                return {"imported": len(imported_profiles), "skipped": 0, "total": len(imported_profiles)}
+                return {"imported": len(imported_profiles), "skipped": 0, "total": len(imported_profiles), "replaced_names": old_names}
 
             existing_puuids = {
                 str(p.get("valorant_puuid", ""))

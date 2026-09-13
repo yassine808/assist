@@ -87,6 +87,11 @@ export class PythonBridge extends EventEmitter {
     this.process.on("exit", (code) => {
       console.log(`[python] exited with code ${code}`);
       this.process = null;
+      for (const [, pending] of this.pending) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error(`Python backend exited with code ${code}`));
+      }
+      this.pending.clear();
     });
 
     this.process.on("error", (err) => {
@@ -126,7 +131,14 @@ export class PythonBridge extends EventEmitter {
       this.pending.set(id, { resolve, reject, timeout });
 
       const message = JSON.stringify({ id, method, params }) + "\n";
-      this.process.stdin.write(message);
+      try {
+        this.process.stdin.write(message);
+      } catch (err) {
+        clearTimeout(timeout);
+        this.pending.delete(id);
+        reject(new Error(`Failed to send '${method}': ${err}`));
+        return;
+      }
     });
   }
 

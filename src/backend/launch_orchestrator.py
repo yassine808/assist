@@ -68,13 +68,17 @@ class LaunchOrchestrator:
         return True, ""
 
     def _save_current_session(self, current_active, profile_name, install_dir):
-        """Save the currently-active profile's session if switching away."""
+        """Save the currently-active profile's session if switching away. Returns (ok, error)."""
         if not current_active or current_active == profile_name:
-            return
+            return True, ""
         self._emit("save", "started", f"Saving session for {current_active}")
         cur_dir = self._profile_dir_name(current_active)
         saved = self.sessions.save_session(cur_dir, install_dir)
-        self._emit("save", "done" if saved else "failed", "Session saved" if saved else "Session save incomplete")
+        if saved:
+            self._emit("save", "done", "Session saved")
+            return True, ""
+        self._emit("save", "failed", "Session save incomplete")
+        return False, "Session save incomplete"
 
     def _restore_target_session(self, target_dir, install_dir):
         """Restore the target profile's session files. Returns (ok, error)."""
@@ -137,7 +141,9 @@ class LaunchOrchestrator:
             if not ok:
                 return {"ok": False, "step": "kill", "error": error}
 
-            self._save_current_session(current_active, profile_name, install_dir)
+            ok, error = self._save_current_session(current_active, profile_name, install_dir)
+            if not ok:
+                self._emit("switch", "warning", f"Failed to save previous session: {error}")
 
             ok, error = self._restore_target_session(target_dir, install_dir)
             if not ok:

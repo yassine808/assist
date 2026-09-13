@@ -41,19 +41,23 @@ class AccountDetector:
                 pass
 
     def _next_profile_name(self, account):
+        MAX_ATTEMPTS = 10000
         base = rad.display_uid(account)
         if not base:
-            while True:
+            for _ in range(MAX_ATTEMPTS):
                 candidate = f"Account {self._display_name_counter}"
                 self._display_name_counter += 1
                 if not self.profiles.get(candidate):
                     return candidate
+            raise RuntimeError("Could not generate unique profile name")
         if not self.profiles.get(base):
             return base
         index = 2
-        while self.profiles.get(f"{base} {index}"):
+        for _ in range(MAX_ATTEMPTS):
+            if not self.profiles.get(f"{base} {index}"):
+                return f"{base} {index}"
             index += 1
-        return f"{base} {index}"
+        raise RuntimeError("Could not generate unique profile name")
 
     def is_running(self):
         with self._lock:

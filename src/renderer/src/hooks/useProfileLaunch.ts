@@ -23,6 +23,7 @@ export function useProfileLaunch(): UseProfileLaunch {
   const [launchingProfile, setLaunchingProfile] = useState<string | null>(null);
   const [progress, setProgress] = useState<LaunchProgress | null>(null);
   const launchedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const unsub = onEvent("profile_switch_progress", (params) => {
@@ -30,6 +31,7 @@ export function useProfileLaunch(): UseProfileLaunch {
       setProgress(p);
       if (p.status === "done" && p.step === "launch") {
         setLaunchState("launched");
+        if (launchTimeoutRef.current) clearTimeout(launchTimeoutRef.current);
         if (launchedTimerRef.current) clearTimeout(launchedTimerRef.current);
         launchedTimerRef.current = setTimeout(() => {
           setLaunchState("idle");
@@ -37,13 +39,16 @@ export function useProfileLaunch(): UseProfileLaunch {
           setProgress(null);
         }, 4000);
       } else if (p.status === "failed") {
+        if (launchTimeoutRef.current) clearTimeout(launchTimeoutRef.current);
         setLaunchState("idle");
         setLaunchingProfile(null);
+        setProgress(null);
       }
     });
     return () => {
       unsub?.();
       if (launchedTimerRef.current) clearTimeout(launchedTimerRef.current);
+      if (launchTimeoutRef.current) clearTimeout(launchTimeoutRef.current);
     };
   }, [onEvent]);
 
@@ -53,6 +58,12 @@ export function useProfileLaunch(): UseProfileLaunch {
       setLaunchState("launching");
       setLaunchingProfile(name);
       setProgress({ step: "start", status: "pending", message: "Killing processes…" });
+      if (launchTimeoutRef.current) clearTimeout(launchTimeoutRef.current);
+      launchTimeoutRef.current = setTimeout(() => {
+        setLaunchState("idle");
+        setLaunchingProfile(null);
+        setProgress({ step: "launch", status: "failed", message: "Launch timed out" });
+      }, 30_000);
       try {
         const result = await call<{
           ok?: boolean;
