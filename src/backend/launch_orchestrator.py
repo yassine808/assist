@@ -119,6 +119,8 @@ class LaunchOrchestrator:
         self._emit("launch", "started", "Launching Riot Client")
         self.config.set("LastRunningProfile", profile_name)
         pid = self.riot.launch_client()
+        if self.presence is not None:
+            self.presence.notify_client_started(pid)
         self._emit("launch", "done", "Riot Client launched", pid=pid)
         return {"ok": True, "pid": pid, "profile": profile_name}
 

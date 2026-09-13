@@ -13,7 +13,7 @@ export interface AppWindow {
 
 let settingsWindow: BrowserWindow | null = null;
 
-export function openSettingsWindow(python: PythonBridge): void {
+export function openSettingsWindow(_python: PythonBridge): void {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
     return;

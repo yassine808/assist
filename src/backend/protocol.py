@@ -30,17 +30,17 @@ class Protocol:
 
     def read_request(self):
         """Read a single request line from stdin. Returns parsed dict or None on EOF."""
-        line = sys.stdin.readline()
-        if not line:
-            return None
-        line = line.strip()
-        if not line:
-            return self.read_request()
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            sys.stderr.write(f"Invalid JSON request: {line}\n")
-            return self.read_request()
+        while True:
+            line = sys.stdin.readline()
+            if not line:
+                return None
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                sys.stderr.write(f"Invalid JSON request: {line}\n")
 
     def send_response(self, request_id, result=None, error=None):
         """Send a single response frame."""

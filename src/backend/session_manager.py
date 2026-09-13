@@ -250,15 +250,13 @@ class SessionManager:
 
     @staticmethod
     def _remove_dir_recursive(path):
+        import time
         for _ in range(3):
             try:
-                shutil.rmtree(path, ignore_errors=True)
-                if not os.path.exists(path):
-                    return 0
+                shutil.rmtree(path)
+                return 0
             except OSError:
-                pass
-            import time
-            time.sleep(0.1)
+                time.sleep(0.1)
         return 0 if not os.path.exists(path) else 1
 
     @staticmethod
