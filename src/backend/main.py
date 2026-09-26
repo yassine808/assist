@@ -17,6 +17,9 @@ from riot_processes import close_valorant_then_client
 from session_manager import SessionManager, sanitize_directory_name
 from valorant_tracker import ValorantTracker
 
+# Cached valorant-api.com map metadata (static list, fetched at most once).
+_MAPS_CACHE = None
+
 
 def _pid_is_running(pid):
     try:
@@ -26,13 +29,14 @@ def _pid_is_running(pid):
         return False
 
 
-def _make_tracker(protocol, profiles, agent_db):
+def _make_tracker(protocol, profiles, agent_db, config=None):
     tracker = ValorantTracker(
         profiles,
         on_update=lambda name, data: protocol.send_event(
             "valorant_data_updated", {"profile_name": name}
         ),
         agent_db=agent_db,
+        config=config,
     )
     tracker.start()
     return tracker
@@ -69,6 +73,42 @@ def _fetch_playercards():
         return cards
     except Exception:  # noqa: BLE001
         return []
+
+
+def _fetch_valorant_maps():
+    """Return competitive map metadata from valorant-api.com.
+
+    The map list is effectively static, so it is cached in memory for the
+    lifetime of the backend instead of refetched per render.
+    """
+    global _MAPS_CACHE
+    if _MAPS_CACHE is not None:
+        return _MAPS_CACHE
+
+    import json as _json
+    import urllib.request as _urllib_req
+    try:
+        req = _urllib_req.Request(
+            "https://valorant-api.com/v1/maps",
+            headers={"User-Agent": "RiotSwitcher/2.0"},
+        )
+        with _urllib_req.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read().decode("utf-8"))
+        maps = []
+        for entry in data.get("data", []):
+            display_name = str(entry.get("displayName", "") or "")
+            if not display_name:
+                continue
+            maps.append({
+                "name": display_name,
+                "splash": entry.get("splash", ""),
+                "display_icon": entry.get("displayIcon", ""),
+                "thumbnail": entry.get("thumbnail", ""),
+            })
+        _MAPS_CACHE = maps
+    except Exception:  # noqa: BLE001
+        _MAPS_CACHE = []
+    return _MAPS_CACHE
 
 
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
@@ -181,6 +221,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         },
         "import_profiles": lambda p: _import_profiles(p),
         "get_playercards": lambda p: _fetch_playercards(),
+        "get_valorant_maps": lambda p: _fetch_valorant_maps(),
         "set_playercard": lambda p: _set_playercard(
             p.get("name", ""), p.get("card_url", "")
         ),
@@ -217,8 +258,8 @@ def main():
     protocol = Protocol()
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
     agent_db = AgentDatabase(data_dir)
-    tracker = _make_tracker(protocol, profiles, agent_db)
     config = ConfigManager(os.path.join(data_dir, "configs.json"))
+    tracker = _make_tracker(protocol, profiles, agent_db, config)
     riot = RiotClientManager(config)
     riot.set_listener(lambda status: protocol.send_event(
         "riot_client_status", {"status": status}

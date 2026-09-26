@@ -21,12 +21,15 @@ export function useIPC() {
     return (await window.electronAPI.call(method, params)) as T;
   };
 
-  const onEvent = (event: string, handler: (params: unknown) => void) => {
+  const onEvent = (event: string, handler: (params: unknown) => void): (() => void) => {
     if (!listenersRef.current.has(event)) {
       listenersRef.current.set(event, new Set());
     }
     listenersRef.current.get(event)!.add(handler);
-    return () => listenersRef.current.get(event)?.delete(handler);
+    // `Set.delete` returns a boolean, which React rejects as a cleanup value.
+    return () => {
+      listenersRef.current.get(event)?.delete(handler);
+    };
   };
 
   return { call, onEvent };

@@ -7,11 +7,30 @@ export interface AgentStat {
 export interface RecentMatch {
   agent: string;
   map: string;
-  result: 'win' | 'loss';
+  result: 'win' | 'loss' | 'draw';
   score: number;
   kills: number;
   deaths: number;
   assists: number;
+}
+
+export interface MapAgentStat {
+  agent: string;
+  games: number;
+  wins: number;
+  winrate: number;
+  avg_score: number;
+  display_icon: string;
+  role: string;
+}
+
+export interface MapStat {
+  map: string;
+  games: number;
+  wins: number;
+  winrate: number;
+  avg_score: number;
+  agents: MapAgentStat[];
 }
 
 export interface ValorantData {
@@ -29,6 +48,7 @@ export interface ValorantData {
   avg_combat_score: number;
   agent_stats: AgentStat[];
   recent_matches: RecentMatch[];
+  map_stats: MapStat[];
   agent_portrait: string;
   agent_display_icon: string;
   agent_role: string;
@@ -36,6 +56,13 @@ export interface ValorantData {
   agent_bg_colors: string[];
   rank_icon: string;
   player_card_bg: string;
+}
+
+export interface ValorantMap {
+  name: string;
+  splash: string;
+  display_icon: string;
+  thumbnail: string;
 }
 
 export interface Profile {

@@ -12,18 +12,34 @@ export interface AppWindow {
 }
 
 let settingsWindow: BrowserWindow | null = null;
+let agentMapWindow: BrowserWindow | null = null;
 
-export function openSettingsWindow(_python: PythonBridge): void {
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.focus();
+/**
+ * Secondary views each get their own BrowserWindow, keyed by `view` query param.
+ * `singleton` keeps one window per view and refocuses it when already open.
+ */
+function openViewWindow(
+  view: "settings" | "agent-maps",
+  options: {
+    width: number;
+    height: number;
+    minWidth: number;
+    minHeight: number;
+  },
+  current: () => BrowserWindow | null,
+  setCurrent: (win: BrowserWindow | null) => void
+): void {
+  const existing = current();
+  if (existing && !existing.isDestroyed()) {
+    existing.focus();
     return;
   }
 
-  settingsWindow = new BrowserWindow({
-    width: 700,
-    height: 650,
-    minWidth: 550,
-    minHeight: 500,
+  const win = new BrowserWindow({
+    width: options.width,
+    height: options.height,
+    minWidth: options.minWidth,
+    minHeight: options.minHeight,
     frame: false,
     backgroundColor: "#0f0f12",
     show: false,
@@ -35,27 +51,32 @@ export function openSettingsWindow(_python: PythonBridge): void {
     },
   });
 
-  const baseUrl = process.env.ELECTRON_RENDERER_URL
-    ? process.env.ELECTRON_RENDERER_URL
-    : join(__dirname, "../renderer/index.html");
-
-  const url = process.env.ELECTRON_RENDERER_URL
-    ? `${baseUrl}?view=settings`
-    : `${baseUrl}?view=settings`;
-
   if (process.env.ELECTRON_RENDERER_URL) {
-    settingsWindow.loadURL(url);
+    win.loadURL(`${process.env.ELECTRON_RENDERER_URL}?view=${view}`);
   } else {
-    settingsWindow.loadFile(join(__dirname, "../renderer/index.html"), {
-      query: { view: "settings" },
-    });
+    win.loadFile(join(__dirname, "../renderer/index.html"), { query: { view } });
   }
 
-  settingsWindow.once("ready-to-show", () => settingsWindow?.show());
+  win.once("ready-to-show", () => win.show());
+  win.on("closed", () => setCurrent(null));
+}
 
-  settingsWindow.on("closed", () => {
-    settingsWindow = null;
-  });
+export function openSettingsWindow(_python: PythonBridge): void {
+  openViewWindow(
+    "settings",
+    { width: 700, height: 650, minWidth: 550, minHeight: 500 },
+    () => settingsWindow,
+    (win) => (settingsWindow = win)
+  );
+}
+
+export function openAgentMapWindow(): void {
+  openViewWindow(
+    "agent-maps",
+    { width: 1000, height: 720, minWidth: 800, minHeight: 560 },
+    () => agentMapWindow,
+    (win) => (agentMapWindow = win)
+  );
 }
 
 async function readTrayConfig(

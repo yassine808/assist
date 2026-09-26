@@ -17,8 +17,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update:status", handler);
   },
 
-  // Settings window
+  // Secondary windows
   openSettings: () => ipcRenderer.invoke("open:settings"),
+  openAgentMaps: () => ipcRenderer.invoke("open:agent-maps"),
 
   // Python backend proxy
   call: (method: string, params?: Record<string, unknown>) =>

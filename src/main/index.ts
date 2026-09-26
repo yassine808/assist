@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
-import { createAppWindow, AppWindow, openSettingsWindow } from "./window";
+import { createAppWindow, AppWindow, openSettingsWindow, openAgentMapWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
 
 let python: PythonBridge | null = null;
@@ -69,10 +69,15 @@ function setup(): void {
 }
 
 function setupIpc(): void {
-  ipcMain.handle("window:minimize", () => appWindow?.win.minimize());
-  ipcMain.handle("window:close", () => appWindow?.win.close());
-  ipcMain.handle("window:toggleMaximize", () => {
-    const win = appWindow?.win;
+  // Window controls must act on whichever window sent them — the settings and
+  // agent-map windows share this title bar but are not `appWindow`.
+  const senderWindow = (event: IpcMainInvokeEvent) =>
+    BrowserWindow.fromWebContents(event.sender) ?? appWindow?.win ?? null;
+
+  ipcMain.handle("window:minimize", (event) => senderWindow(event)?.minimize());
+  ipcMain.handle("window:close", (event) => senderWindow(event)?.close());
+  ipcMain.handle("window:toggleMaximize", (event) => {
+    const win = senderWindow(event);
     if (!win) return;
     if (win.isMaximized()) { win.unmaximize(); } else { win.maximize(); }
   });
@@ -81,6 +86,7 @@ function setupIpc(): void {
   ipcMain.handle("update:download", () => downloadUpdate());
   ipcMain.handle("update:install", () => quitAndInstall());
   ipcMain.handle("open:settings", () => openSettingsWindow(python!));
+  ipcMain.handle("open:agent-maps", () => openAgentMapWindow());
 
   ipcMain.handle(
     "python:call",

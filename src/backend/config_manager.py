@@ -39,6 +39,8 @@ class ConfigManager:
             # Close / minimize to system tray behavior.
             "CloseToTray": True,
             "MinimizeToTray": False,
+            # Per-map agent breakdown (Agent Map page).
+            "PerMapStats": True,
             # UI language code (e.g. "en", "zh", "fr").
             "Language": "en",
         }

@@ -27,12 +27,80 @@ from riot_client import get_equipped_card_url
 
 AUTO_REFRESH_INTERVAL_S = 120
 
+# How many competitive matches to pull per refresh. One request either way, so
+# a larger sample mainly costs bandwidth — it makes the per-map breakdown far
+# less thin and sharpens the overall agent/ACS aggregates.
+MATCH_FETCH_SIZE = 50
+
 # Cached list of playercard UUIDs for random fallback.
 _RANDOM_CARDS = []
 _RANDOM_CARDS_LOCK = threading.Lock()
 _PLAYERCARDS_API = "https://valorant-api.com/v1/playercards"
 
 # Any profile not in `names` is appended at the end in existing relative order.
+
+
+class _MatchAccumulator:
+    """Folds a batch of matches into overall, per-agent and per-map aggregates.
+
+    Match payloads arrive newest-first and the self-player is looked up inside
+    each one, so a single pass through the batch produces every aggregate the
+    tracker needs without a second walk.
+    """
+
+    def __init__(self, recent_limit=10):
+        self._recent_limit = recent_limit
+        self.recent = []
+        self.agent_games = {}
+        self.agent_wins = {}
+        self.score_sum = 0
+        self.score_count = 0
+        self.map_games = {}
+        self.map_wins = {}
+        self.map_score_sum = {}
+        self.map_score_count = {}
+        self.map_agents = {}
+
+    def add(self, map_name, agent_name, result, score):
+        """Record one self-player match across every aggregate it feeds."""
+        if agent_name:
+            self.agent_games[agent_name] = self.agent_games.get(agent_name, 0) + 1
+            if result == "win":
+                self.agent_wins[agent_name] = self.agent_wins.get(agent_name, 0) + 1
+
+        if score > 0:
+            self.score_sum += score
+            self.score_count += 1
+
+        if not map_name:
+            return
+
+        self.map_games[map_name] = self.map_games.get(map_name, 0) + 1
+        if result == "win":
+            self.map_wins[map_name] = self.map_wins.get(map_name, 0) + 1
+        if score > 0:
+            self.map_score_sum[map_name] = self.map_score_sum.get(map_name, 0) + score
+            self.map_score_count[map_name] = self.map_score_count.get(map_name, 0) + 1
+
+        if not agent_name:
+            return
+
+        bucket = self.map_agents.setdefault(map_name, {})
+        entry = bucket.get(agent_name)
+        if entry is None:
+            entry = {"games": 0, "wins": 0, "score_sum": 0, "score_count": 0}
+            bucket[agent_name] = entry
+        entry["games"] += 1
+        if result == "win":
+            entry["wins"] += 1
+        if score > 0:
+            entry["score_sum"] += score
+            entry["score_count"] += 1
+
+    def append_recent(self, entry):
+        """Keep the newest N matches for the home-card activity list."""
+        if len(self.recent) < self._recent_limit:
+            self.recent.append(entry)
 
 
 class ValorantTracker:
@@ -61,6 +129,7 @@ class ValorantTracker:
     KEY_AVG_COMBAT_SCORE = "avg_combat_score"
     KEY_AGENT_STATS = "agent_stats"
     KEY_RECENT_MATCHES = "recent_matches"
+    KEY_MAP_STATS = "map_stats"
     KEY_AGENT_PORTRAIT = "agent_portrait"
     KEY_AGENT_DISPLAY_ICON = "agent_display_icon"
     KEY_AGENT_ROLE = "agent_role"
@@ -69,16 +138,24 @@ class ValorantTracker:
     KEY_RANK_ICON = "rank_icon"
     KEY_PLAYER_CARD_BG = "player_card_bg"
 
-    def __init__(self, profiles, client=None, on_update=None, agent_db=None):
+    def __init__(self, profiles, client=None, on_update=None, agent_db=None,
+                 config=None):
         self._profiles = profiles
         self._client = client or HenrikClient()
         self._on_update = on_update
         self._agent_db = agent_db
+        self._config = config
         self._thread = None
         self._queue_lock = threading.Lock()
         self._jobs = []
         self._auto_refresh_timer = None
         self._auto_refresh_active = False
+
+    def _per_map_enabled(self):
+        """Per-map breakdown is opt-out; missing config means enabled."""
+        if self._config is None:
+            return True
+        return bool(self._config.get("PerMapStats", True))
 
     # ------------------------------------------------------------------
     # Public API
@@ -231,7 +308,9 @@ class ValorantTracker:
 
     def _handle_matches_job(self, job):
         try:
-            matches = self._client.fetch_matches(job["region"], job["puuid"], size=30)
+            matches = self._client.fetch_matches(
+                job["region"], job["puuid"], size=MATCH_FETCH_SIZE
+            )
         except HenrikError:
             return
         self._apply_matches(job["profile_name"], matches)
@@ -359,27 +438,25 @@ class ValorantTracker:
         region = str(profile.get("valorant_region", ""))
         region = self.RIOT_TO_HENRIK_REGION.get(region, region)
 
-        agent_wins = {}
-        agent_games = {}
-        score_sum = 0
-        score_count = 0
-        recent = []
-
+        acc = _MatchAccumulator()
         for match in payload:
-            result = self._process_single_match(
-                match, puuid, agent_games, agent_wins,
-                score_sum, score_count, recent,
-            )
-            if result is not None:
-                score_sum, score_count = result
+            self._process_single_match(match, puuid, acc)
+
+        agent_games = acc.agent_games
+        agent_wins = acc.agent_wins
 
         top_agent = self._compute_top_agent(agent_games)
         agent_stats = self._build_agent_stats_list(agent_games, agent_wins)
 
         data[self.KEY_TOP_AGENT] = top_agent
-        data[self.KEY_AVG_COMBAT_SCORE] = int(round(score_sum / max(1, score_count))) if score_count > 0 else 0
+        data[self.KEY_AVG_COMBAT_SCORE] = (
+            int(round(acc.score_sum / acc.score_count)) if acc.score_count > 0 else 0
+        )
         data[self.KEY_AGENT_STATS] = agent_stats
-        data[self.KEY_RECENT_MATCHES] = recent
+        data[self.KEY_RECENT_MATCHES] = acc.recent
+        data[self.KEY_MAP_STATS] = (
+            self._build_map_stats(acc) if self._per_map_enabled() else []
+        )
 
         tier = data.get(self.KEY_TIER, 0)
         if self._agent_db and tier:
@@ -408,11 +485,10 @@ class ValorantTracker:
         if self._on_update:
             self._on_update(profile_name, data)
 
-    def _process_single_match(self, match, puuid, agent_games, agent_wins,
-                              score_sum, score_count, recent):
-        """Process one match dict. Returns (score_sum, score_count) or None."""
+    def _process_single_match(self, match, puuid, acc):
+        """Fold one match into *acc* when the self-player entry is present."""
         if not isinstance(match, dict):
-            return None
+            return
         metadata = match.get("metadata", {})
         map_name = str(metadata.get("map", "") or "")
 
@@ -439,27 +515,71 @@ class ValorantTracker:
             player_team = str(player.get("team", "") or "").lower()
             result = self._determine_match_result(match, player_team)
 
-            if agent_name:
-                agent_games[agent_name] = agent_games.get(agent_name, 0) + 1
-                if result == "win":
-                    agent_wins[agent_name] = agent_wins.get(agent_name, 0) + 1
+            acc.add(map_name, agent_name, result, score)
+            acc.append_recent({
+                "agent": agent_name,
+                "map": map_name,
+                "result": result,
+                "score": score,
+                "kills": kills,
+                "deaths": deaths,
+                "assists": assists,
+            })
+            return
 
-            if score > 0:
-                score_sum += score
-                score_count += 1
+    def _agent_meta(self, agent_name):
+        """Best-effort display icon and role for an agent name."""
+        if not agent_name or not self._agent_db:
+            return "", ""
+        agent_info = self._agent_db.get_agent(agent_name)
+        if not isinstance(agent_info, dict):
+            return "", ""
+        display_icon = agent_info.get("displayIcon", "")
+        if not display_icon:
+            uuid = agent_info.get("uuid", "")
+            if uuid:
+                display_icon = f"https://media.valorant-api.com/agents/{uuid}/displayicon.png"
+        role = agent_info.get("role", {})
+        role_name = role.get("name", "") if isinstance(role, dict) else ""
+        return display_icon, str(role_name or "")
 
-            if len(recent) < 10:
-                recent.append({
+    def _build_map_stats(self, acc):
+        """Build the per-map breakdown, most-played map first."""
+        map_stats = []
+        for map_name in sorted(acc.map_games, key=lambda m: acc.map_games[m], reverse=True):
+            games = acc.map_games[map_name]
+            wins = acc.map_wins.get(map_name, 0)
+            score_count = acc.map_score_count.get(map_name, 0)
+            score_sum = acc.map_score_sum.get(map_name, 0)
+
+            agents = []
+            bucket = acc.map_agents.get(map_name, {})
+            for agent_name in sorted(bucket, key=lambda a: bucket[a]["games"], reverse=True):
+                entry = bucket[agent_name]
+                agent_games = entry["games"]
+                display_icon, role = self._agent_meta(agent_name)
+                agents.append({
                     "agent": agent_name,
-                    "map": map_name,
-                    "result": result,
-                    "score": score,
-                    "kills": kills,
-                    "deaths": deaths,
-                    "assists": assists,
+                    "games": agent_games,
+                    "wins": entry["wins"],
+                    "winrate": round(entry["wins"] / max(1, agent_games) * 100),
+                    "avg_score": (
+                        int(round(entry["score_sum"] / entry["score_count"]))
+                        if entry["score_count"] > 0 else 0
+                    ),
+                    "display_icon": display_icon,
+                    "role": role,
                 })
-            return score_sum, score_count
-        return None
+
+            map_stats.append({
+                "map": map_name,
+                "games": games,
+                "wins": wins,
+                "winrate": round(wins / max(1, games) * 100),
+                "avg_score": int(round(score_sum / score_count)) if score_count > 0 else 0,
+                "agents": agents,
+            })
+        return map_stats
 
     @staticmethod
     def _compute_top_agent(agent_games):

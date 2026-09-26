@@ -1,4 +1,10 @@
-import { Minus, Square, X, Settings } from "lucide-react";
+import { Minus, Square, X, Settings, Map } from "lucide-react";
+
+/** The agent-map launcher only makes sense from the home window. */
+function isHomeView(): boolean {
+  const view = new URLSearchParams(window.location.search).get("view");
+  return view !== "settings" && view !== "agent-maps";
+}
 
 export function TitleBar() {
   return (
@@ -39,8 +45,17 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* Right: Settings + Window controls */}
+      {/* Right: Page launchers + Window controls */}
       <div className="no-drag flex h-full">
+        {isHomeView() && (
+          <button
+            className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200"
+            onClick={() => window.electronAPI.openAgentMaps()}
+            aria-label="Agent Map"
+          >
+            <Map size={14} />
+          </button>
+        )}
         <button
           className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200"
           onClick={() => window.electronAPI.openSettings()}

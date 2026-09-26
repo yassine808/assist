@@ -19,6 +19,7 @@ declare global {
         callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void
       ) => () => void;
       openSettings: () => Promise<void>;
+      openAgentMaps: () => Promise<void>;
     };
   }
 }
