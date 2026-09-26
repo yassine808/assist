@@ -1,4 +1,4 @@
-# RiotSwitcher v2.0
+# RiotSwitcher v2.1.0
 
 > Instantly switch between multiple Riot Games accounts — VALORANT, League of Legends, and more.
 
@@ -10,7 +10,7 @@ RiotSwitcher is a desktop application that lets you manage and switch between mu
 
 | Layer | Technology |
 |-------|-----------|
-| Desktop Shell | Electron 35 (Chromium) |
+| Desktop Shell | Electron 44.4.5 (Chromium) |
 | Frontend | React 19, TypeScript, Tailwind CSS |
 | Backend | Python 3.9+ |
 | IPC | JSON-line over stdin/stdout |
@@ -52,6 +52,7 @@ graph TB
         APP[App.tsx]
         HV[HomeView]
         SV[SettingsView]
+        AMV[AgentMapView<br/>?view=agent-maps]
         PC[ProfileCard]
         AB[AddAccountModal]
         PP[PlayerCardPicker]
@@ -80,6 +81,7 @@ graph TB
     RN --> APP
     APP --> HV
     APP --> SV
+    APP --> AMV
     HV --> PC
     HV --> AB
     HV --> PP
@@ -87,7 +89,14 @@ graph TB
 
     HV -- "useIPC" --> PB
     SV -- "useIPC" --> PB
+    AMV -- "useIPC" --> PB
 ```
+
+The renderer runs in **two BrowserWindows**. `openViewWindow()` maintains a
+singleton per view, so Settings and Agent Maps each have at most one window
+open; a second click focuses the existing one. Which view a window shows is
+selected from the query string, not a router — `App.tsx` reads `?view=` from
+`URLSearchParams`.
 
 ---
 
@@ -103,8 +112,15 @@ graph TB
 ### VALORANT Integration
 - **Live rank tracking** — fetches MMR, RR, peak rank, win rate from HenrikDev API
 - **Agent stats** — top agent icon, ACS, per-agent performance breakdown
-- **Recent match history** — last 30 competitive games with detailed stats
+- **Recent match history** — last 10 competitive games with detailed stats
 - **Agent visuals** — agent display icons, portraits, backgrounds, and role-colored accents
+
+### Agent Map
+- **Per-map breakdown** — games, wins, win rate and average ACS for every map you have played
+- **Per-map agent breakdown** — the same stats drilled down per agent, on each map
+- **Map and agent artwork** — map splash art and agent display icons, resolved via valorant-api.com
+- **Second window** — opens in its own window so you can keep browsing profiles alongside it
+- **Collected in the background** — per-map stats accumulate inside the normal 2-minute refresh, no extra API cost
 
 ### Cross-Platform Features
 - **League of Legends settings sync** — share hotkeys, video, audio, and interface settings across profiles
@@ -244,6 +260,69 @@ sequenceDiagram
         end
     end
 ```
+
+### Per-Map Statistics Pipeline
+
+```mermaid
+graph LR
+    subgraph "HenrikDev API"
+        MM[50 most recent<br/>competitive matches]
+    end
+    ACC[_MatchAccumulator<br/>map / map+agent buckets]
+    OUT[profile_data]
+    WIN[AgentMapView<br/>secondary window]
+
+    MM -->|"every 2 min"| ACC
+    ACC -->|"map_stats"| OUT
+    OUT -->|"get_valorant"| WIN
+
+    MAPS["valorant-api.com<br/>/v1/maps"] -.->|"splash + display names"| WIN
+```
+
+One fetch of 50 matches feeds **two different outputs**, which is worth being
+precise about:
+
+| Output | Built from | Size |
+|--------|-----------|------|
+| `map_stats` (per-map + per-agent) | **all 50** fetched matches | grows with history |
+| `recent_matches` (home card list) | newest first, **capped at 10** | always 10 |
+
+`recent_matches` is the truncated list; the per-map aggregates are computed
+over the full fetched window. Collection is gated on the `PerMapStats` config
+key — when disabled, `map_stats` is emitted as `[]` and no accumulation cost
+is paid.
+
+#### `map_stats` shape
+
+Exactly what `valorant_tracker._build_map_stats()` emits — maps sorted by games
+descending, agents within each map likewise:
+
+```jsonc
+"map_stats": [
+  {
+    "map": "Ascent",
+    "games": 34,
+    "wins": 21,
+    "winrate": 62,            // round(wins / games * 100)
+    "avg_score": 214,         // round(score_sum / score_count), 0 if no scores
+    "agents": [               // sorted by games descending
+      {
+        "agent": "Jett",
+        "games": 15,
+        "wins": 9,
+        "winrate": 60,
+        "avg_score": 231,
+        "display_icon": "https://media.valorant-api.com/agents/…",
+        "role": "Duelist"
+      }
+    ]
+  }
+]
+```
+
+Map splash art and display names come from `https://valorant-api.com/v1/maps`
+via the `get_valorant_maps` handler. A failed fetch is **not** cached, so a
+transient network failure does not permanently blank every map.
 
 ### Import/Export Flow
 
@@ -397,47 +476,49 @@ sequenceDiagram
 | 6 | `rename_profile` | Rename a profile |
 | 7 | `reorder_profiles` | Reorder profile list |
 | 8 | `get_valorant` | Get VALORANT stats for a profile |
-| 9 | `refresh_valorant` | Trigger rank/stat refresh |
-| 10 | `refresh_valorant_all` | Refresh all profiles |
-| 11 | `has_api_key` | Check if HenrikDev API key exists |
-| 12 | `get_config` | Get all config values |
-| 13 | `set_config` | Set a config value |
-| 14 | `set_config_many` | Set multiple config values |
-| 15 | `set_riot_client_location` | Set Riot Client install path |
-| 16 | `detect_riot_client_location` | Auto-detect Riot Client path |
-| 17 | `get_riot_client_status` | Get Riot Client status |
-| 18 | `kill_riot_processes` | Kill all Riot processes |
-| 19 | `stop_riot_client` | Kill and wait for Riot Client |
-| 20 | `launch_riot_client` | Spawn Riot Client |
-| 21 | `launch_profile` | Full profile switch sequence |
-| 22 | `stop_profile` | Stop profile switch |
-| 23 | `read_live_account` | Read current logged-in account |
-| 24 | `check_current_account` | Check if current account is new |
-| 25 | `detect_live_account_new` | Check if account is new vs saved |
-| 26 | `start_account_detection` | Start background account detection |
-| 27 | `stop_account_detection` | Stop account detection |
-| 28 | `account_detection_state` | Check if detection is running |
-| 29 | `confirm_account_save` | Accept/decline saving detected account |
-| 30 | `save_session` | Backup session files for a profile |
-| 31 | `restore_session` | Restore session files from backup |
-| 32 | `has_session` | Check if profile has saved session |
-| 33 | `league_find_dir` | Detect League install directory |
-| 34 | `league_capture` | Capture League settings snapshot |
-| 35 | `league_apply` | Deploy settings to League Config |
-| 36 | `league_refresh` | Validate master snapshot |
-| 37 | `league_dir_differs` | Compare live vs master settings |
-| 38 | `league_cleanup_readonly` | Remove read-only flags |
-| 39 | `league_resolve_source` | Get source profile info |
-| 40 | `league_get_metadata` | Get snapshot metadata |
-| 41 | `presence_start` | Start Appear Offline proxy |
-| 42 | `presence_stop` | Stop Appear Offline proxy |
-| 43 | `presence_state` | Get proxy state |
-| 44 | `presence_get_ports` | Get proxy port info |
-| 45 | `presence_get_launch_args` | Get Riot launch args with proxy |
-| 46 | `export_profiles` | Encrypt and export profiles |
-| 47 | `import_profiles` | Decrypt and import profiles |
-| 48 | `get_playercards` | Fetch all playercards |
-| 49 | `set_playercard` | Set profile playercard |
+| 9 | `get_valorant_maps` | Get map metadata (splash, display name) |
+| 10 | `refresh_valorant` | Trigger rank/stat refresh |
+| 11 | `refresh_valorant_all` | Refresh all profiles |
+| 12 | `has_api_key` | Check if HenrikDev API key exists |
+| 13 | `get_config` | Get all config values |
+| 14 | `set_config` | Set a config value |
+| 15 | `set_config_many` | Set multiple config values |
+| 16 | `set_riot_client_location` | Set Riot Client install path |
+| 17 | `detect_riot_client_location` | Auto-detect Riot Client path |
+| 18 | `get_riot_client_status` | Get Riot Client status |
+| 19 | `kill_riot_processes` | Kill all Riot processes |
+| 20 | `stop_riot_client` | Kill and wait for Riot Client |
+| 21 | `launch_riot_client` | Spawn Riot Client |
+| 22 | `close_all` | Close VALORANT and Riot Client |
+| 23 | `launch_profile` | Full profile switch sequence |
+| 24 | `stop_profile` | Stop profile switch |
+| 25 | `read_live_account` | Read current logged-in account |
+| 26 | `check_current_account` | Check if current account is new |
+| 27 | `detect_live_account_new` | Check if account is new vs saved |
+| 28 | `start_account_detection` | Start background account detection |
+| 29 | `stop_account_detection` | Stop account detection |
+| 30 | `account_detection_state` | Check if detection is running |
+| 31 | `confirm_account_save` | Accept/decline saving detected account |
+| 32 | `save_session` | Backup session files for a profile |
+| 33 | `restore_session` | Restore session files from backup |
+| 34 | `has_session` | Check if profile has saved session |
+| 35 | `league_find_dir` | Detect League install directory |
+| 36 | `league_capture` | Capture League settings snapshot |
+| 37 | `league_apply` | Deploy settings to League Config |
+| 38 | `league_refresh` | Validate master snapshot |
+| 39 | `league_dir_differs` | Compare live vs master settings |
+| 40 | `league_cleanup_readonly` | Remove read-only flags |
+| 41 | `league_resolve_source` | Get source profile info |
+| 42 | `league_get_metadata` | Get snapshot metadata |
+| 43 | `presence_start` | Start Appear Offline proxy |
+| 44 | `presence_stop` | Stop Appear Offline proxy |
+| 45 | `presence_state` | Get proxy state |
+| 46 | `presence_get_ports` | Get proxy port info |
+| 47 | `presence_get_launch_args` | Get Riot launch args with proxy |
+| 48 | `export_profiles` | Encrypt and export profiles |
+| 49 | `import_profiles` | Decrypt and import profiles |
+| 50 | `get_playercards` | Fetch all playercards |
+| 51 | `set_playercard` | Set profile playercard |
 
 ---
 
@@ -499,6 +580,7 @@ graph TB
 | `EnforceReadOnlySettings` | `true` | Set read-only on deployed League files |
 | `CloseToTray` | `true` | Hide to tray on window close |
 | `MinimizeToTray` | `false` | Hide to tray on minimize |
+| `PerMapStats` | `true` | Collect per-map and per-agent statistics |
 | `Language` | `"en"` | UI language |
 
 ---
@@ -530,6 +612,29 @@ HENRIKDEV_API_KEY=your_key_here
 ```
 
 Get a free key at [https://henrikdev.xyz](https://henrikdev.xyz).
+
+### Dependency floor
+
+Electron is the app's entire security boundary, so its version is not a
+routine dependency bump:
+
+| Concern | Detail |
+|---------|--------|
+| Minimum supported | **40.10.6** — the oldest line with no open high-severity advisories |
+| Currently pinned | **44.4.5** |
+| Why a floor | Electron 35 is end-of-life. `35.7.5` is its final release and cannot be patched in place; it carried a `contextIsolation` bypass, which is precisely the mechanism this app relies on to keep the renderer away from Node |
+
+A full `npm install` (not `--ignore-scripts`) is required after changing the
+Electron version, otherwise the binary is never downloaded and every
+typecheck still passes green against types alone.
+
+> **CI does not verify this.** The pipeline installs with
+> `npm ci --ignore-scripts` and runs only typecheck, lint and build — it
+> never downloads an Electron binary and never exercises the main process.
+> The runtime behaviour of an Electron major bump is only verified by
+> booting the app locally (`npm run preview`) and building a package
+> (`npm run dist`). Treat that as a required manual step after any
+> Electron change.
 
 ---
 
@@ -578,4 +683,8 @@ All file operations are **atomic** (write to temp file, then rename) to prevent 
 
 ## License
 
-MIT
+**Unresolved — needs an owner decision.** `package.json` declares `GPL-3.0`,
+while this file previously said `MIT`, and there is no `LICENSE` file in the
+repository. MIT and GPL-3.0 are not interchangeable (copyleft vs permissive),
+so this must be settled deliberately rather than picked by whoever edits next.
+Do not assume the value here is correct until it has been confirmed.
