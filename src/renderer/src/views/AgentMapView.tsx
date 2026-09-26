@@ -21,23 +21,37 @@ export default function AgentMapView() {
   const [enabled, setEnabled] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    void call<Record<string, unknown>>("get_config").then((cfg) => {
-      setEnabled(Boolean(cfg?.PerMapStats ?? true));
-    });
-    void call<ValorantMap[]>("get_valorant_maps").then((m) => setMaps(m ?? []));
-    void call<Profile[]>("get_profiles").then((p) => {
-      const list = p ?? [];
-      setProfiles(list);
-      // Prefer a profile that already has stats so the page opens populated.
-      setSelected((prev) => {
-        if (prev && list.some((x) => x.profile_name === prev)) return prev;
-        const withData = list.find((x) => (x.valorant_data?.map_stats?.length ?? 0) > 0);
-        return withData?.profile_name ?? list[0]?.profile_name ?? "";
+    void call<Record<string, unknown>>("get_config")
+      .then((cfg) => setEnabled(Boolean(cfg?.PerMapStats ?? true)))
+      .catch(() => undefined);
+    void call<ValorantMap[]>("get_valorant_maps")
+      .then((m) => setMaps(m ?? []))
+      .catch(() => undefined);
+    void call<Profile[]>("get_profiles")
+      .then((p) => {
+        const list = p ?? [];
+        setProfiles(list);
+        setSelected((prev) => {
+          // The dropdown only lists profiles bound to a VALORANT account, so
+          // only ever select one of those or the select shows no match.
+          const usable = list.filter((x) => Boolean(x.valorant_puuid));
+          if (prev && usable.some((x) => x.profile_name === prev)) return prev;
+          const withData = usable.find(
+            (x) => (x.valorant_data?.map_stats?.length ?? 0) > 0
+          );
+          return withData?.profile_name ?? usable[0]?.profile_name ?? "";
+        });
+        setLoading(false);
+      })
+      .catch(() => {
+        // A rejected call means the backend is unreachable, which is not the
+        // same as "no profiles" — do not leave a misleading empty state.
+        setError("Could not reach the backend. Is it still starting up?");
+        setLoading(false);
       });
-      setLoading(false);
-    });
   }, [call]);
 
   const profile = useMemo(
@@ -146,6 +160,8 @@ export default function AgentMapView() {
         <p className="text-sm text-white/40 py-8 text-center">
           Per-map stats are turned off. Enable the toggle above to collect them.
         </p>
+      ) : error ? (
+        <p className="text-sm text-riot-red py-8 text-center">{error}</p>
       ) : eligible.length === 0 ? (
         <p className="text-sm text-white/40 py-8 text-center">
           No profiles with a VALORANT account yet. Sign in on the home page first.

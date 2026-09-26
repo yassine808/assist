@@ -31,6 +31,7 @@ function openViewWindow(
 ): void {
   const existing = current();
   if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore();
     existing.focus();
     return;
   }
@@ -50,6 +51,10 @@ function openViewWindow(
       nodeIntegration: false,
     },
   });
+
+  // Must be stored immediately, otherwise the singleton check above can never
+  // hit and every launch leaks another BrowserWindow.
+  setCurrent(win);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(`${process.env.ELECTRON_RENDERER_URL}?view=${view}`);

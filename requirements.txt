@@ -1,0 +1,12 @@
+# Runtime dependencies for the RiotSwitcher Python backend.
+#
+# Pinned exactly: the packaged app bundles this interpreter and these wheels
+# (see build/build-python.spec), so "whatever was installed on the build
+# machine" is not good enough. cryptography in particular protects Riot
+# account credentials, so a silent downgrade here is a security event.
+#
+# Regenerate with:  python -m pip freeze
+# Audit with:        python -m pip_audit -r requirements.txt
+
+cryptography==46.0.7
+psutil==7.2.2

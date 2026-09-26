@@ -232,6 +232,33 @@ class ValorantTracker:
                 "region": region,
             })
         self.start()
+        # `start()` bails out while the old thread is still winding down, which
+        # could strand this job with no worker. Re-check and wake it if so.
+        with self._queue_lock:
+            stranded = bool(self._jobs) and not self._thread_is_running()
+        if stranded:
+            with self._queue_lock:
+                self._thread = threading.Thread(target=self._worker, daemon=True)
+                self._thread.start()
+
+    def _thread_is_running(self):
+        return self._thread is not None and self._thread.is_alive()
+
+    def stop(self):
+        """Stop the auto-refresh timer and drain the worker queue.
+
+        Safe to call more than once. Without this the 2-minute timer re-arms
+        itself forever, so a hidden-to-tray app keeps polling the API for every
+        profile indefinitely.
+        """
+        self._auto_refresh_active = False
+        with self._queue_lock:
+            timer = self._auto_refresh_timer
+            self._auto_refresh_timer = None
+        if timer is not None:
+            timer.cancel()
+        with self._queue_lock:
+            self._jobs.clear()
 
     def _pop_job(self):
         with self._queue_lock:

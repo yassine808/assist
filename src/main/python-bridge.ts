@@ -117,6 +117,15 @@ export class PythonBridge extends EventEmitter {
 
   call(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     return new Promise((resolve, reject) => {
+      // Defence in depth for the contextIsolation boundary. Today the reachable
+      // set is already narrowed by the hardcoded preload surface, but if that
+      // boundary is ever bypassed the renderer must not be able to name an
+      // arbitrary property. Validating the *shape* rather than enumerating the
+      // handlers means a newly added backend method keeps working.
+      if (!/^[a-z][a-z0-9_]{0,63}$/.test(method)) {
+        reject(new Error(`Rejected malformed backend method '${method}'`));
+        return;
+      }
       if (!this.process?.stdin) {
         reject(new Error("Python backend not running"));
         return;

@@ -51,9 +51,14 @@ export default function SettingsView() {
     if (!exportPasskey) return;
     setExporting(true);
     try {
-      const result = await call<{ data: number[] }>("export_profiles", { passkey: exportPasskey });
+      const result = await call<{ data: string }>("export_profiles", { passkey: exportPasskey });
       if (result?.data) {
-        const blob = new Blob([new Uint8Array(result.data)], { type: "application/octet-stream" });
+        // The backend returns base64 text, not raw bytes. Passing the string
+        // straight to Uint8Array silently produced a 0-byte backup file.
+        const binaryStr = atob(result.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;

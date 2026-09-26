@@ -78,11 +78,13 @@ def _fetch_playercards():
 def _fetch_valorant_maps():
     """Return competitive map metadata from valorant-api.com.
 
-    The map list is effectively static, so it is cached in memory for the
-    lifetime of the backend instead of refetched per render.
+    The map list is effectively static, so a successful fetch is cached in
+    memory for the lifetime of the backend instead of refetched per render.
+    A failed fetch is deliberately NOT cached, otherwise a single offline
+    start-up would blank every map for the whole process lifetime.
     """
     global _MAPS_CACHE
-    if _MAPS_CACHE is not None:
+    if _MAPS_CACHE:
         return _MAPS_CACHE
 
     import json as _json
@@ -105,10 +107,11 @@ def _fetch_valorant_maps():
                 "display_icon": entry.get("displayIcon", ""),
                 "thumbnail": entry.get("thumbnail", ""),
             })
-        _MAPS_CACHE = maps
+        if maps:
+            _MAPS_CACHE = maps
     except Exception:  # noqa: BLE001
-        _MAPS_CACHE = []
-    return _MAPS_CACHE
+        pass
+    return _MAPS_CACHE or []
 
 
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
@@ -362,7 +365,12 @@ def main():
     sys.stderr.write(f"[backend] ready, data_dir={data_dir}\n")
     sys.stderr.flush()
 
-    _message_loop(protocol, handlers)
+    try:
+        _message_loop(protocol, handlers)
+    finally:
+        # stdin closed: tear the refresh timer and worker down explicitly rather
+        # than relying on daemon-thread death at interpreter exit.
+        tracker.stop()
 
 
 if __name__ == "__main__":
