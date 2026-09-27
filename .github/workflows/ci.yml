@@ -88,7 +88,12 @@ jobs:
         # Quoted: the bare ":all:" contains a space-colon, which YAML reads as
         # a nested mapping and rejects. Versions come from requirements-dev.txt
         # so a local run and this job cannot disagree about what "clean" means.
-        run: 'pip install --only-binary :all: -r requirements-dev.txt'
+        # requirements.txt is required too, not optional: tests/test_regressions.py
+        # imports main, which imports agent_database, which imports cryptography.
+        # Until now no test imported the real backend, so CI never needed the
+        # runtime deps and this went unnoticed. --only-binary keeps this to
+        # prebuilt wheels, so no Rust or C toolchain is needed on the runner.
+        run: 'pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt'
       - name: Ruff check
         run: ruff check src/backend/ tests/
       # compileall walks the tree, so a newly added module is covered without
