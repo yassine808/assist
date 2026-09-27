@@ -1,3 +1,5 @@
+// @vitest-environment node
+// Main-process code with no DOM surface; see the note in updater.test.ts.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 /**

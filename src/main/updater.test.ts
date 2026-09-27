@@ -1,3 +1,6 @@
+// @vitest-environment node
+// Main-process code. Running it under jsdom would load a DOM implementation
+// these tests never touch, and couples them to jsdom's release cadence.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**

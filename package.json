@@ -5,6 +5,9 @@
   "main": "out/main/index.js",
   "author": "RiotSwitcher Contributors",
   "license": "GPL-3.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "scripts": {
     "dev": "concurrently -n electron,python -c blue,green \"npm run dev:electron\" \"npm run dev:python\"",
     "dev:electron": "electron-vite dev",

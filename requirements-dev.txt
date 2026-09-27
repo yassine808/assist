@@ -1,0 +1,14 @@
+# Development and CI tooling. Not bundled into the packaged app -- runtime deps
+# live in requirements.txt, which is pinned separately on purpose.
+#
+# These versions are the contract. CI installs exactly these, so a local run and
+# a CI run must not disagree about what "clean" means.
+#
+#   python -m pip install -r requirements-dev.txt
+#
+# ruff 0.5.0 and 0.16.0 disagree on isort's handling of a blank line between
+# two late imports in tests/test_regressions.py, and no source layout satisfies
+# both. That drift is why this file exists: pick one version, use it everywhere.
+
+ruff==0.16.0
+pytest==8.4.2
