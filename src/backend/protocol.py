@@ -14,12 +14,30 @@ import json
 import sys
 import threading
 
-# Force UTF-8 on stdin/stdout so non-ASCII characters (profile names, etc.)
-# survive the pipe between Node.js (always UTF-8) and Python.
-if hasattr(sys.stdin, "buffer"):
-    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
-if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+# Whether ensure_utf8_streams() has already run in this process. Guards against
+# wrapping the streams twice, which would nest TextIOWrappers and, on exit,
+# close the underlying buffer out from under the parent process.
+_utf8_configured = False
+
+
+def ensure_utf8_streams():
+    """Force UTF-8 on stdin/stdout so non-ASCII profile names survive the pipe
+    between Node.js (always UTF-8) and Python.
+
+    This must be called from the process entry point, NOT at import time.
+    Wrapping ``sys.stdout`` at import hijacks the interpreter's global streams
+    for anyone who merely imports this module, and the wrapper closes the
+    underlying buffer when it is collected -- which breaks the importing
+    process's own output.
+    """
+    global _utf8_configured
+    if _utf8_configured:
+        return
+    if hasattr(sys.stdin, "buffer"):
+        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    _utf8_configured = True
 
 
 class Protocol:

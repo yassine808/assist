@@ -7,6 +7,16 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let updateWindow: BrowserWindow | null = null;
+let installing = false;
+
+/** Quit-and-install may only be initiated once per process lifetime. */
+function installOnce(): void {
+  if (installing) {
+    return;
+  }
+  installing = true;
+  autoUpdater.quitAndInstall(false, true);
+}
 
 export function setUpdateWindow(win: BrowserWindow): void {
   updateWindow = win;
@@ -47,18 +57,24 @@ export function initAutoUpdater(): void {
 
   autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
     sendToRenderer("update:status", { state: "downloaded", version: info.version });
+    // Parent the dialog to the live window, otherwise it can open behind the
+    // app (or as an orphan taskbar entry) on Windows.
+    const parent = updateWindow && !updateWindow.isDestroyed() ? updateWindow : undefined;
     dialog
-      .showMessageBox({
+      .showMessageBox(parent!, {
         type: "info",
         title: "Update Ready",
         message: `Riot Switcher v${info.version} has been downloaded.`,
-        detail: "The app will restart now to apply the update.",
+        // autoInstallOnAppQuit is enabled, so "Later" only defers to the next
+        // quit. Say so rather than implying the update is being declined.
+        detail: "Restart now to apply the update, or keep using the app — it will be installed the next time Riot Switcher closes.",
         buttons: ["Restart Now", "Later"],
         defaultId: 0,
+        cancelId: 1,
       })
       .then(({ response }) => {
         if (response === 0) {
-          autoUpdater.quitAndInstall(false, true);
+          installOnce();
         }
       });
   });
@@ -83,5 +99,5 @@ export function downloadUpdate(): void {
 }
 
 export function quitAndInstall(): void {
-  autoUpdater.quitAndInstall(false, true);
+  installOnce();
 }

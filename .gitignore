@@ -4,6 +4,7 @@ dist/
 out/
 .vite/
 *.tsbuildinfo
+coverage/
 
 # Python
 __pycache__/
@@ -15,10 +16,17 @@ build/pyinstaller/
 *.exe
 venv/
 .venv/
+.pytest_cache/
+.ruff_cache/
 
 # Electron
 release/
 *.log
+# electron-vite writes a temp ESM config next to the original during build
+electron.vite.config.*.mjs
+
+# Local agent/tooling scratch
+.claude/
 
 # Environment
 .env
@@ -40,5 +48,4 @@ src_godot/
 .godotrc
 godot.md
 
-data/
 data/

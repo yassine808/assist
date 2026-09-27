@@ -25,10 +25,10 @@ _SRC = os.path.join(os.path.dirname(__file__), os.pardir, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, os.path.normpath(_SRC))
 
-from backend.profile_manager import ProfileManager
-from backend.session_manager import SessionManager, sanitize_directory_name
-from backend.config_manager import ConfigManager
-from backend.protocol import Protocol
+from backend.config_manager import ConfigManager  # noqa: E402
+from backend.profile_manager import ProfileManager  # noqa: E402
+from backend.protocol import Protocol  # noqa: E402
+from backend.session_manager import SessionManager, sanitize_directory_name  # noqa: E402
 
 # Mock riot_account_detect before importing AccountDetector, since the module
 # only exists inside the packaged Electron app (not in this test environment).
@@ -269,6 +269,7 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
         """Encrypted payload that decodes to a dict, not a list, is rejected."""
         import base64
         import hashlib
+
         from cryptography.fernet import Fernet
 
         salt = b"riotswitcher-export-v1"
@@ -509,25 +510,25 @@ class TestSessionManager(_TempDirMixin, unittest.TestCase):
 class TestProtocol(unittest.TestCase):
 
     def _proto(self, stdin_text=""):
-        """Create a Protocol with a mock stdin and capture stdout."""
+        """Create a Protocol with a mock stdin and capture stdout.
+
+        The patchers are registered via ``addCleanup`` so they are always
+        stopped, even if the test body raises. Patching ``sys.stdout`` mutates
+        the real interpreter stream, so a leaked patcher corrupts pytest's own
+        capture and aborts the whole run during unconfigure.
+        """
         p = Protocol()
         stdin = io.StringIO(stdin_text)
         stdout = io.StringIO()
-        # Patch sys.stdin and sys.stdout at module level
-        p._stdin_patcher = mock.patch("backend.protocol.sys.stdin", stdin)
-        p._stdout_patcher = mock.patch("backend.protocol.sys.stdout", stdout)
-        p._stdin_patcher.start()
-        p._stdout_patcher.start()
+        stdin_patcher = mock.patch("backend.protocol.sys.stdin", stdin)
+        stdout_patcher = mock.patch("backend.protocol.sys.stdout", stdout)
+        stdin_patcher.start()
+        stdout_patcher.start()
+        # addCleanup runs even on failure, and in reverse order.
+        self.addCleanup(stdout_patcher.stop)
+        self.addCleanup(stdin_patcher.stop)
         p._stdout = stdout
         return p
-
-    def tearDown(self):
-        # Clean up any patches created by _proto
-        for attr in ("_stdin_patcher", "_stdout_patcher"):
-            if hasattr(self, "_proto_instance"):
-                getattr(self._proto_instance, attr, None) and getattr(
-                    self._proto_instance, attr
-                ).stop()
 
     def test_read_request_valid(self):
         p = self._proto('{"id":1,"method":"ping","params":{}}\n')

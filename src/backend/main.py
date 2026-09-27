@@ -11,7 +11,7 @@ from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
 from league_settings_sync import LeagueSettingsSync
 from profile_manager import ProfileManager
-from protocol import Protocol
+from protocol import Protocol, ensure_utf8_streams
 from riot_client import RiotClientManager
 from riot_processes import close_valorant_then_client
 from session_manager import SessionManager, sanitize_directory_name
@@ -255,6 +255,10 @@ def _message_loop(protocol, handlers):
 
 
 def main():
+    # Must happen before any protocol I/O, and only in the real entry point:
+    # wrapping the global streams at import time corrupts any process that
+    # merely imports protocol (see protocol.ensure_utf8_streams).
+    ensure_utf8_streams()
     data_dir = _determine_data_dir()
     os.makedirs(data_dir, exist_ok=True)
 
@@ -332,6 +336,10 @@ def main():
             raise ValueError(f"Profile '{profile_name}' not found")
         vd = prof.get("valorant_data", {}) or {}
         vd["player_card_bg"] = card_url
+        # Record that this card was picked by hand. The tracker already
+        # preserves any stored card, so this is provenance for diagnostics
+        # rather than something the refresh path branches on.
+        vd["player_card_source"] = "user"
         profiles.update(profile_name, {"valorant_data": vd})
         protocol.send_event("valorant_data_updated", {"profile_name": profile_name})
         return {"ok": True}

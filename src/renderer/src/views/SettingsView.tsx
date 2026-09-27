@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useIPC } from "../hooks/useIPC";
+import { base64ToBlob } from "../utils/base64";
 import type { Profile } from "../types/profile";
 
 interface ConfigState {
@@ -55,10 +56,7 @@ export default function SettingsView() {
       if (result?.data) {
         // The backend returns base64 text, not raw bytes. Passing the string
         // straight to Uint8Array silently produced a 0-byte backup file.
-        const binaryStr = atob(result.data);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const blob = new Blob([bytes], { type: "application/octet-stream" });
+        const blob = base64ToBlob(result.data);
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
