@@ -107,7 +107,7 @@ selected from the query string, not a router — `App.tsx` reads `?view=` from
 - **Auto-detect new accounts** — detects when a new Riot account logs in and offers to save it
 - **Profile cards** — Valorant lobby-style cards with full playercard art, rank icon, agent icon, RR, wins/losses
 - **Drag-and-drop reorder** — arrange profiles however you like
-- **Playercard picker** — choose from 3000+ VALORANT playercards or let the system auto-detect your equipped card
+- **Playercard picker** — choose from 3000+ VALORANT playercards
 
 ### VALORANT Integration
 - **Live rank tracking** — fetches MMR, RR, peak rank, win rate from HenrikDev API

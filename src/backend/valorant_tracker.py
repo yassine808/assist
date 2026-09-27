@@ -23,7 +23,6 @@ import time
 import traceback
 
 from henrik_client import HenrikClient, HenrikError
-from riot_client import get_equipped_card_url
 
 AUTO_REFRESH_INTERVAL_S = 120
 
@@ -137,6 +136,10 @@ class ValorantTracker:
     KEY_AGENT_BG_COLORS = "agent_bg_colors"
     KEY_RANK_ICON = "rank_icon"
     KEY_PLAYER_CARD_BG = "player_card_bg"
+    # Provenance of player_card_bg: "user" (explicit pick) or "random"
+    # (fallback seeded on first refresh). Recorded for diagnostics; the
+    # never-overwrite rule in _resolve_player_card does not depend on it.
+    KEY_PLAYER_CARD_SOURCE = "player_card_source"
 
     def __init__(self, profiles, client=None, on_update=None, agent_db=None,
                  config=None):
@@ -634,14 +637,21 @@ class ValorantTracker:
         return agent_stats
 
     def _resolve_player_card(self, data):
-        """Set the player card background in *data*."""
-        card_url = get_equipped_card_url()
-        if card_url:
-            data[self.KEY_PLAYER_CARD_BG] = card_url
-        elif not data.get(self.KEY_PLAYER_CARD_BG):
-            random_card = self._get_random_playercard_url()
-            if random_card:
-                data[self.KEY_PLAYER_CARD_BG] = random_card
+        """Set the player card background in *data* when none is stored.
+
+        A card that is already stored is never replaced. It was either picked
+        explicitly by the user (the set_playercard handler) or seeded by an
+        earlier random fallback, and either way it is the value the profile is
+        meant to show. Profiles created before playercards had provenance
+        metadata carry such a value too, so this single rule is what keeps a
+        refresh from silently replacing it.
+        """
+        if data.get(self.KEY_PLAYER_CARD_BG):
+            return
+        random_card = self._get_random_playercard_url()
+        if random_card:
+            data[self.KEY_PLAYER_CARD_BG] = random_card
+            data[self.KEY_PLAYER_CARD_SOURCE] = "random"
 
     @staticmethod
     def _player_agent_name(player):
