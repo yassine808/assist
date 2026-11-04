@@ -19,8 +19,11 @@ body,
 }
 
 body {
-  background: #0f0f12;
-  color: #e5e5e7;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -5%, rgba(40, 90, 140, 0.32), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 70, 85, 0.07), transparent 70%),
+    #0b121b;
+  color: #ece8e1;
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }

@@ -25,21 +25,21 @@ export default function ProfileGrid({
   const activeProfileName = profiles.find((p) => p.is_running)?.profile_name ?? null;
 
   return (
-    <div className="flex flex-wrap gap-5">
+    <div className="flex flex-wrap gap-x-7 gap-y-8">
       {loading
         ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-        : profiles.map((p) => (
-            <div key={p.profile_name}>
-              <ProfileCard
-                profile={p}
-                running={p.is_running}
-                activeProfileName={activeProfileName}
-                launchState={launchingProfile === p.profile_name ? launchState : "idle"}
-                onLaunch={onLaunch}
-                onDelete={onDelete}
-                onModifyCard={onModifyCard}
-              />
-            </div>
+        : profiles.map((p, i) => (
+            <ProfileCard
+              key={p.profile_name}
+              index={i}
+              profile={p}
+              running={p.is_running}
+              activeProfileName={activeProfileName}
+              launchState={launchingProfile === p.profile_name ? launchState : "idle"}
+              onLaunch={onLaunch}
+              onDelete={onDelete}
+              onModifyCard={onModifyCard}
+            />
           ))}
     </div>
   );
