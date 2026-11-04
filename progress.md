@@ -114,3 +114,100 @@
 - Verified: 128 pytest, 37 Vitest, typecheck, ESLint, Ruff, compileall,
   `npm run build`.
 - Next: push tag + build the 3.0.0 release.
+
+### 2026-11-04 — Agent Mastery cards (30) to official playercards
+
+- Goal: extract the 30 Agent Mastery player cards from the VALORANT Wiki
+  (animated GIF + large HD art) into official playercards, named per agent.
+- Done:
+  - Created `official playercards/AgentMastery/{Animated,HD,Large}` plus
+    `manifest.csv` (agent, animated file, frame count, HD dims, Large dims).
+  - Downloaded from wiki.playvalorant.com via a headless Chromium
+    (Playwright, same-origin fetch) because plain curl/Invoke-WebRequest got a
+    Cloudflare 403.
+  - Animated: 30 GIFs, 230x536, 291–500 frames, 147.5 MB total.
+  - HD: 28 PNGs at ~2367x5655 (Sova only 941x2247).
+  - Large: 30 PNGs at 268x640.
+- Verified: every file has a valid GIF/PNG signature; frame counts and image
+  sizes read back with System.Drawing; counts 30/28/30.
+- Next: Hush and Neon have no `Large_HD` on the wiki (Hush has no HD at all;
+  Neon's only HD asset is the 3000x850 wide banner, which is a different
+  crop and was not written). Optional: convert GIFs to APNG and fold into
+  `Animated/` if the app needs the project's animated-card layout.
+### 2026-11-04 — Agent Mastery: game-extracted source (resolution audit)
+
+- Goal: answer "it looks sharpened, give me the highest resolution possible"
+  by going to the game files instead of the wiki.
+- Done:
+  - Added a generic `--mode tex` to `tools/carddump` (Analyze/DecodeFormat +
+    WritePng) so any texture package can be dumped to PNG.
+  - Found the 30 mastery cards in the live build: 27 as
+    `Playercard_Bloomline_<Codename>_01_L` and 3 as
+    `PlayerCards_<Codename>AM_01_Large` (Gekko, Chamber, Harbor).
+  - Extracted all 30 to `official playercards/AgentMastery/Game` at their
+    native 268x640.
+  - Compared wiki art vs game art: the wiki `Large` (268x640) is the same
+    texture; the wiki `Large_HD` (2368x5656) is an ~8.8x upscale of it,
+    which is the "sharpened" look.
+- Verified: 30 files, all 268x640, PNG signatures good; side-by-side renders
+  match the wiki composition.
+- Next: decide whether to ship native 268x640, a clean non-sharpened upscale,
+  or a rebuilt composite (background + agent overlay layer) at native.
+### 2026-11-04 — Agent Mastery: native-only delivery
+
+- Goal: finalise the set at native game resolution after the resolution audit.
+- Done: kept `AgentMastery/Game` (30 x 268x640 PNG from the game) and
+  `AgentMastery/Animated` (30 GIFs); removed the wiki upscales (`HD`) and
+  the duplicate wiki `Large` set; rewrote `manifest.csv`.
+- Verified: 30/30 files, all 268x640, thumbnail sheet checked against the wiki
+  set; no alpha damage.
+- Next: done. If full-card composites are wanted later, the missing foreground
+  layers are `_Sequence` sheets + `_Mask` (Jett, KAYO, Killjoy, Miks, Neon,
+  Viper among them).
+### 2026-11-04 — Agent Mastery: full animated cards rebuilt from game layers
+
+- Goal: replace the deleted wiki GIFs with real animations composited from the
+  game's own assets.
+- Done:
+  - Deleted `AgentMastery/Animated` (the wiki GIFs) as instructed.
+  - Mapped all 30 animation flipbooks (`_Sequence` sheets) + grid layouts.
+  - Built a compositor: each flipbook cell is the full-card artwork squashed
+    into its cell, so it is stretched to 268x640 and alpha-composited over the
+    `_L` base. Calibrated against the in-game capture of Astra's card.
+  - Wrote 30 looping APNGs (native 268x640) to `AgentMastery/Animated`.
+  - Rewrote `manifest.csv` with frame counts and file sizes.
+- Verified: 30/30 APNGs decode, 8-55 frames each, mid-loop frame differs from
+  frame 0 on every card (animation is real), contact sheet checked against the
+  base art.
+- Next: done.
+
+### 2026-11-04 — Agent Mastery: stretch audit, cleanup, push
+
+- Goal: answer "the cards look stretched or cut — is it the browser or the
+  file?", clear the leftover build artifacts, commit and push.
+- Findings:
+  - File geometry is correct: APNG IHDR 268x640 on all sampled cards, aspect
+    0.4188 identical to the static art, 16 frames, `loop=0`. `preview.html`
+    uses `width:100%; height:auto`, so the page cannot distort them either.
+  - The art inside is wrong. `compose.py` resizes each 256x256 flipbook cell to
+    268x640 and alpha-blends it at `OPACITY = 1.0`; the cell alpha is opaque, so
+    it replaces the card art instead of overlaying it. Result: over-zoomed,
+    cropped frames (Astra's forearm cut at the bottom).
+  - The corrected result exists only as `mix_Astra/Harbor/Gekko.png` previews
+    (15:14, after the APNGs were written at 14:50) — base art kept, energy layer
+    scaled and aligned behind it. It was never rebuilt into the 30 files.
+  - Hush (372x410), Neon (256x512) and Sova (410x1024) have non-square cells, so
+    cell→card needs a per-card fit, not a plain stretch.
+- Done:
+  - Deleted 423 MB of build intermediates: `official playercards/_animtest`,
+    `_probe`, `_stage`, and every `Animated/*/frames` dump.
+  - `.gitignore`: added `official playercards/`, `tools/dotnet`, `tools/retoc*`,
+    `tools/unpack_test`, `tools/cue4parse-src`, `tools/carddump/{bin,obj}`,
+    `tools/*.{pak,txt,csv}` — the untracked asset trees are 1.8 GB.
+  - Committed docs + tool sources only (no game assets).
+- Note: `tools/build-cards.ps1` reads `_stage`, which is now deleted; rebuilding
+  `Static/` or `Animated/` needs a re-stage from the game first.
+- Next: rebuild the 30 APNGs with the calibrated blend (square layer fitted to
+  the card, screen/over, per-card fit for Hush/Neon/Sova). The compositor and
+  the extracted `_Sequence` textures are still in
+  `%TEMP%\opencode\{wikidl,bloomline}`.

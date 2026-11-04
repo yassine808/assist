@@ -28,6 +28,20 @@ electron.vite.config.*.mjs
 # Local agent/tooling scratch
 .claude/
 
+# Extracted game assets and toolchains (not source, ~1.8 GB)
+official playercards/
+tools/dotnet/
+tools/retoc/
+tools/retoc.zip
+tools/unpack_test/
+tools/cue4parse-src/
+tools/carddump/bin/
+tools/carddump/obj/
+tools/*.pak
+tools/*.txt
+tools/*.csv
+tools/dotnet-install.ps1
+
 # Environment
 .env
 .env.local
