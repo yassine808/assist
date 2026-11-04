@@ -82,6 +82,7 @@ function setupIpc(): void {
     if (win.isMaximized()) { win.unmaximize(); } else { win.maximize(); }
   });
 
+  ipcMain.handle("app:version", () => app.getVersion());
   ipcMain.handle("update:check", () => checkForUpdates());
   ipcMain.handle("update:download", () => downloadUpdate());
   ipcMain.handle("update:install", () => quitAndInstall());

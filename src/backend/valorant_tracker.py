@@ -16,8 +16,6 @@ Design notes:
   * Auto-refresh runs every 120 seconds (2 minutes) while the app is open.
 """
 
-import json
-import random
 import threading
 import time
 import traceback
@@ -31,10 +29,8 @@ AUTO_REFRESH_INTERVAL_S = 120
 # less thin and sharpens the overall agent/ACS aggregates.
 MATCH_FETCH_SIZE = 50
 
-# Cached list of playercard UUIDs for random fallback.
-_RANDOM_CARDS = []
-_RANDOM_CARDS_LOCK = threading.Lock()
-_PLAYERCARDS_API = "https://valorant-api.com/v1/playercards"
+# Player cards are served from the local catalogue (playercard_store); the
+# tracker only needs the store, not its own copy of the card list.
 
 # Any profile not in `names` is appended at the end in existing relative order.
 
@@ -142,11 +138,12 @@ class ValorantTracker:
     KEY_PLAYER_CARD_SOURCE = "player_card_source"
 
     def __init__(self, profiles, client=None, on_update=None, agent_db=None,
-                 config=None):
+                 playercard_store=None, config=None):
         self._profiles = profiles
         self._client = client or HenrikClient()
         self._on_update = on_update
         self._agent_db = agent_db
+        self._playercard_store = playercard_store
         self._config = config
         self._thread = None
         self._queue_lock = threading.Lock()
@@ -713,34 +710,16 @@ class ValorantTracker:
         return names.get(tier, "Unranked")
 
     def _get_random_playercard_url(self):
-        """Fetch a random playercard largeArt URL from valorant-api.com.
+        """Return a random card URL from the local catalogue.
 
-        Caches the card list on first call so subsequent random picks are free.
+        The catalogue lives in a SQLite file and is only refreshed from
+        valorant-api.com once a week, so this never waits on the network while
+        a usable cache exists.
         """
-        global _RANDOM_CARDS
-        with _RANDOM_CARDS_LOCK:
-            if _RANDOM_CARDS:
-                card = random.choice(_RANDOM_CARDS)  # SonarCloud: safe — used for UI shuffle only
-                return card.get("largeArt", "")
-
-        # Fetch the list from the API
-        import urllib.request
+        store = getattr(self, "_playercard_store", None)
+        if store is None:
+            return ""
         try:
-            req = urllib.request.Request(
-                _PLAYERCARDS_API,
-                headers={"User-Agent": "RiotSwitcher/2.0"},
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            cards = []
-            for card in data.get("data", []):
-                large_art = card.get("largeArt", "")
-                if large_art:
-                    cards.append({"uuid": card.get("uuid", ""), "largeArt": large_art})
-            with _RANDOM_CARDS_LOCK:
-                _RANDOM_CARDS = cards
-            if cards:
-                return random.choice(cards).get("largeArt", "")  # SonarCloud: safe — used for UI shuffle only
+            return store.random_card_url()
         except Exception:  # noqa: BLE001
-            pass
-        return ""
+            return ""

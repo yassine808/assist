@@ -133,6 +133,7 @@ class HandlerWiringTests(_TempDirMixin):
             presence=mock.MagicMock(),
             protocol=mock.MagicMock(),
             data_dir=self.root,
+            playercards=mock.MagicMock(),
             _league_config_dir=lambda: "",
             _swap_profile=mock.MagicMock(return_value=True),
             _set_playercard=mock.MagicMock(),

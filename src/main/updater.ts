@@ -1,13 +1,23 @@
+import { app, BrowserWindow, dialog } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
-import { BrowserWindow, dialog } from "electron";
 import log from "electron-log";
 
+// Re-check every four hours so a long-running session still picks up a release
+// published after the app was opened. Startup does the first check.
+const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+const STARTUP_CHECK_DELAY_MS = 5000;
+
 autoUpdater.logger = log;
+// Download and install without asking: the dialog below only offers "restart
+// now" or "apply on next quit", never "skip this version".
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoRunAppAfterInstall = true;
+autoUpdater.allowDowngrade = false;
 
 let updateWindow: BrowserWindow | null = null;
 let installing = false;
+let checkTimer: NodeJS.Timeout | null = null;
 
 /** Quit-and-install may only be initiated once per process lifetime. */
 function installOnce(): void {
@@ -28,7 +38,21 @@ function sendToRenderer(channel: string, ...args: unknown[]): void {
   }
 }
 
+function runCheck(): void {
+  autoUpdater.checkForUpdates().catch((err) => {
+    // Offline, rate-limited, or no release published yet — all non-fatal.
+    log.warn("Update check failed:", err?.message ?? err);
+  });
+}
+
 export function initAutoUpdater(): void {
+  if (!app.isPackaged) {
+    // electron-updater needs the generated app-update.yml and an installed
+    // build; in dev it would only log errors on every check.
+    log.info("Auto-updater disabled outside a packaged build");
+    return;
+  }
+
   autoUpdater.on("checking-for-update", () => {
     sendToRenderer("update:status", { state: "checking" });
   });
@@ -84,14 +108,18 @@ export function initAutoUpdater(): void {
     sendToRenderer("update:status", { state: "error", message: err.message });
   });
 
-  // Check on startup (after a short delay so the window loads first)
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
-  }, 5000);
+  // First check shortly after the window is up, then on a fixed interval.
+  setTimeout(runCheck, STARTUP_CHECK_DELAY_MS);
+  checkTimer = setInterval(runCheck, UPDATE_CHECK_INTERVAL_MS);
+  checkTimer.unref?.();
 }
 
 export function checkForUpdates(): void {
-  autoUpdater.checkForUpdates().catch(() => {});
+  if (!app.isPackaged) {
+    sendToRenderer("update:status", { state: "up-to-date" });
+    return;
+  }
+  runCheck();
 }
 
 export function downloadUpdate(): void {

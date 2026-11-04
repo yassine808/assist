@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Minus, Square, X, Settings, Map } from "lucide-react";
 
 /** The agent-map launcher only makes sense from the home window. */
@@ -7,6 +8,12 @@ function isHomeView(): boolean {
 }
 
 export function TitleBar() {
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    void window.electronAPI?.getVersion?.().then((v) => setVersion(v ?? ""));
+  }, []);
+
   return (
     <div className="drag-region flex items-center justify-between h-10 bg-[#070b11]/80 backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
       {/* Animated gradient line at bottom */}
@@ -38,9 +45,11 @@ export function TitleBar() {
           RIOTSWITCHER
         </span>
         {/* Version pill */}
-        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.06] uppercase">
-          v2.1
-        </span>
+        {version && (
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.06] uppercase">
+            v{version}
+          </span>
+        )}
       </div>
 
       {/* Right: Page launchers + Window controls */}

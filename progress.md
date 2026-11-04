@@ -10,6 +10,12 @@
 - [x] Redesign "Add Account": capture the live session when it is new, otherwise
       open a fresh Riot Client and auto-save the account on login
 - [x] Map the detector's `canceled` status to a real UI phase (currently stuck)
+- [ ] Player-card catalogue in a local SQLite DB: download once, serve from
+      disk, re-check for new cards at most once a week
+- [ ] Auto-update: check GitHub on start and periodically, packaged builds only
+- [ ] Rewrite README (TL;DR, screenshots, license, latest-release link)
+- [ ] Add `LICENSE` (GPL-3.0 full text)
+- [ ] Bump to v3.0.0 and add an annotated release tag
 
 ## Log
 

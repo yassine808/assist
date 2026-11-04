@@ -2,6 +2,7 @@
 
 import os
 import sys
+import threading
 
 import riot_account_detect as rad
 from account_detector import AccountDetector, unique_profile_name
@@ -10,6 +11,7 @@ from config_manager import ConfigManager
 from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
 from league_settings_sync import LeagueSettingsSync
+from playercard_store import PlayercardStore
 from profile_manager import ProfileManager
 from protocol import Protocol, ensure_utf8_streams
 from riot_client import RiotClientManager
@@ -29,13 +31,14 @@ def _pid_is_running(pid):
         return False
 
 
-def _make_tracker(protocol, profiles, agent_db, config=None):
+def _make_tracker(protocol, profiles, agent_db, playercards, config=None):
     tracker = ValorantTracker(
         profiles,
         on_update=lambda name, data: protocol.send_event(
             "valorant_data_updated", {"profile_name": name}
         ),
         agent_db=agent_db,
+        playercard_store=playercards,
         config=config,
     )
     tracker.start()
@@ -48,31 +51,6 @@ def _determine_data_dir():
         return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
     base = os.environ.get("APPDATA", ".")
     return os.path.join(base, "RiotSwitcher")
-
-
-def _fetch_playercards():
-    """Fetch all playercards from valorant-api.com."""
-    import json as _json
-    import urllib.request as _urllib_req
-    try:
-        req = _urllib_req.Request(
-            "https://valorant-api.com/v1/playercards",
-            headers={"User-Agent": "RiotSwitcher/2.0"},
-        )
-        with _urllib_req.urlopen(req, timeout=10) as resp:
-            data = _json.loads(resp.read().decode("utf-8"))
-        cards = []
-        for card in data.get("data", []):
-            large_art = card.get("largeArt", "")
-            if large_art:
-                cards.append({
-                    "uuid": card.get("uuid", ""),
-                    "displayName": card.get("displayName", ""),
-                    "largeArt": large_art,
-                })
-        return cards
-    except Exception:  # noqa: BLE001
-        return []
 
 
 def _fetch_valorant_maps():
@@ -151,6 +129,7 @@ def _capture_session(name, sessions, profiles, config, install_dir_provider):
 
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
                      sessions, league, presence, protocol, data_dir,
+                     playercards,
                      _league_config_dir, _swap_profile, _set_playercard,
                      _check_current_account, _capture_current_account, _close_all,
                      _profile_dir_name, _cleanup_league_readonly,
@@ -273,7 +252,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
             ).decode("ascii")
         },
         "import_profiles": lambda p: _import_profiles(p),
-        "get_playercards": lambda p: _fetch_playercards(),
+        "get_playercards": lambda p: playercards.get_cards(),
         "get_valorant_maps": lambda p: _fetch_valorant_maps(),
         "set_playercard": lambda p: _set_playercard(
             p.get("name", ""), p.get("card_url", "")
@@ -316,7 +295,8 @@ def main():
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
     agent_db = AgentDatabase(data_dir)
     config = ConfigManager(os.path.join(data_dir, "configs.json"))
-    tracker = _make_tracker(protocol, profiles, agent_db, config)
+    playercards = PlayercardStore(data_dir)
+    tracker = _make_tracker(protocol, profiles, agent_db, playercards, config)
     riot = RiotClientManager(config)
     riot.set_listener(lambda status: protocol.send_event(
         "riot_client_status", {"status": status}
@@ -452,7 +432,6 @@ def main():
         return {"added": True, "reason": "created", "display": display, "profile": profile}
 
     def _close_all():
-        import threading
         def _do_close():
             ok = close_valorant_then_client()
             protocol.send_event("close_complete", {"ok": ok})
@@ -462,6 +441,7 @@ def main():
     handlers = _build_handlers(
         profiles, config, riot, tracker, detector, orchestrator,
         sessions, league, presence, protocol, data_dir,
+        playercards,
         _league_config_dir, _swap_profile, _set_playercard,
         _check_current_account, _capture_current_account, _close_all,
         _profile_dir_name, _cleanup_league_readonly, _capture_profile_session,
@@ -470,6 +450,10 @@ def main():
     protocol.send_event("backend_ready", {"data_dir": data_dir})
     sys.stderr.write(f"[backend] ready, data_dir={data_dir}\n")
     sys.stderr.flush()
+
+    # Warm the player-card catalogue off the protocol thread: first run
+    # downloads it once, later runs only re-check when it is a week old.
+    threading.Thread(target=playercards.get_cards, daemon=True).start()
 
     try:
         _message_loop(protocol, handlers)

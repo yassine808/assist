@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   toggleMaximize: () => ipcRenderer.invoke("window:toggleMaximize"),
 
   // Auto-updater
+  getVersion: () => ipcRenderer.invoke("app:version"),
   checkUpdate: () => ipcRenderer.invoke("update:check"),
   downloadUpdate: () => ipcRenderer.invoke("update:download"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
