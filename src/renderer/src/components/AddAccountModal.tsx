@@ -101,7 +101,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div
-        className="relative w-[380px] rounded-xl bg-[#12161f] border border-white/10 p-6 shadow-2xl"
+        className="relative w-[380px] modal-panel p-6"
         onClick={(e) => e.stopPropagation()}
         role="button"
         tabIndex={0}
@@ -150,7 +150,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
             </p>
             <button
               onClick={handleDone}
-              className="w-full h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
+              className="w-full h-9 rounded-md text-xs font-semibold btn-primary transition-colors"
             >
               Done
             </button>
@@ -173,7 +173,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
               </button>
               <button
                 onClick={() => { setPhase("opening"); }}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
+                className="flex-1 h-9 rounded-md text-xs font-semibold btn-primary transition-colors"
               >
                 Retry
               </button>

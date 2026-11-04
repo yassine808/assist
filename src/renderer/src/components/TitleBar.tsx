@@ -8,7 +8,7 @@ function isHomeView(): boolean {
 
 export function TitleBar() {
   return (
-    <div className="drag-region flex items-center justify-between h-10 bg-[#0c0f16] border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
+    <div className="drag-region flex items-center justify-between h-10 bg-[#070b11]/80 backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
       {/* Animated gradient line at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-[1px] z-10">
         <div
@@ -28,19 +28,17 @@ export function TitleBar() {
 
       {/* Left: Logo + brand */}
       <div className="flex items-center px-3 gap-2.5">
-        {/* Animated orb */}
-        <div className="relative w-5 h-5 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-riot-red/20 animate-pulse" />
-          <div className="w-2.5 h-2.5 rounded-full bg-riot-red shadow-[0_0_8px_rgba(255,70,85,0.6)]" />
-        </div>
-        <span
-          className="text-[11px] font-bold tracking-[0.15em] text-white/80 select-none"
-          style={{ fontFamily: "'Rajdhani', sans-serif" }}
-        >
+        {/* Brand mark (same as the favicon) */}
+        <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden className="drop-shadow-[0_0_6px_rgba(255,70,85,0.45)]">
+          <polygon points="10,0 64,0 64,54 54,64 0,64 0,10" fill="#0f1923" />
+          <polygon points="12,18 36,18 36,12 52,22 36,32 36,26 12,26" fill="#ff4655" />
+          <polygon points="52,46 28,46 28,52 12,42 28,32 28,38 52,38" fill="#ece8e1" />
+        </svg>
+        <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">
           RIOTSWITCHER
         </span>
         {/* Version pill */}
-        <span className="px-1.5 py-0.5 rounded-full text-[8px] font-bold tracking-wider text-white/30 bg-white/[0.04] border border-white/[0.06] uppercase">
+        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.06] uppercase">
           v2.1
         </span>
       </div>

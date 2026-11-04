@@ -125,7 +125,7 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
         style={{ animation: "backdropFade 0.2s ease-out" }}
       >
         <div
-          className="w-[680px] max-h-[80vh] rounded-lg bg-bg-card border border-white/10 shadow-xl flex flex-col"
+          className="w-[680px] max-h-[80vh] modal-panel flex flex-col"
           onClick={(e) => e.stopPropagation()}
           role="button"
           tabIndex={0}

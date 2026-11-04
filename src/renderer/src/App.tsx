@@ -7,9 +7,9 @@ export default function App() {
   const view = new URLSearchParams(window.location.search).get("view");
 
   return (
-    <div className="flex flex-col h-full bg-bg-dark">
+    <div className="flex flex-col h-full">
       <TitleBar />
-      <main className="flex-1 overflow-y-auto bg-bg-dark">
+      <main className="flex-1 overflow-y-auto">
         {view === "settings" && <SettingsView />}
         {view === "agent-maps" && <AgentMapView />}
         {view !== "settings" && view !== "agent-maps" && <HomeView />}

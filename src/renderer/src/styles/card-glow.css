@@ -2,16 +2,17 @@
    Navy #0f1923, cream plate #eaeeb8, wing #f7f9dc, red #ff4655 */
 @property --reveal { syntax: "<percentage>"; inherits: false; initial-value: 112%; }
 
-:root { --lobby-k: 1.0538; --lobby-font: "Barlow", "Bahnschrift", "DIN Next LT Pro", "Rajdhani", system-ui, sans-serif; --rank-size: 60px; }
+:root { --lobby-k: 1.17; --lobby-font: var(--app-font, system-ui, sans-serif); --rank-size: 42px; }
 
-.lobby-slot { width: 196px; display: flex; flex-direction: column; padding-top: 4px; }
+.lobby-slot { width: calc(186px * var(--lobby-k)); display: flex; flex-direction: column; padding-top: 4px; }
 
 .lobby-card {
-  position: relative; width: 196px; height: calc(472px * var(--lobby-k)); cursor: default; user-select: none;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease, translate 0.3s ease;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.4));
+  position: relative; width: calc(186px * var(--lobby-k)); height: calc(472px * var(--lobby-k)); cursor: default; user-select: none;
+  transition: filter 0.35s ease, translate 0.3s ease;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.42));
 }
-.lobby-card:hover { transform: translateY(-6px); filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.5)); }
+/* hover never moves the card: it lights up instead (see the hover block below) */
+.lobby-card:hover { filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.42)) drop-shadow(0 0 14px rgba(130, 205, 255, 0.16)); }
 .lobby-card.is-busy { filter: drop-shadow(0 0 16px rgba(90, 150, 230, 0.4)); }
 .lobby-card.is-me { translate: 0 -10px; }
 
@@ -42,53 +43,91 @@
 .o-kite { fill: none; stroke: rgba(200, 225, 245, 0.3); stroke-width: 1; }
 .o-bracket { fill: none; stroke: rgba(200, 225, 245, 0.36); stroke-width: 1; }
 .o-tick { fill: none; stroke: rgba(235, 245, 255, 0.6); stroke-width: 1.2; }
-.lobby-card:hover .o-rail { stroke-width: 1.6; }
-.lobby-card:hover .o-kite, .lobby-card:hover .o-bracket { stroke: rgba(235, 245, 255, 0.7); }
 
 /* the two cream wings beside the rank */
-.wing { fill: #f9fde0; filter: drop-shadow(0 0 2px rgba(215, 245, 215, 0.55)); transition: filter 0.25s; }
-.lobby-card:hover .wing { filter: drop-shadow(0 0 6px rgba(240, 255, 220, 1)); }
+.wing { fill: #f9fde0; filter: drop-shadow(0 0 2px rgba(215, 245, 215, 0.55)); transition: filter 0.3s, fill 0.3s; }
 
-.lobby-topbar { position: absolute; top: 22px; left: 12px; width: 161px; height: 3.5px; z-index: 3; background: #e0f6f8; transition: box-shadow 0.25s; }
-.lobby-card:hover .lobby-topbar { box-shadow: 0 0 10px rgba(224, 246, 248, 0.7); }
+.lobby-topbar { position: absolute; top: 22px; left: 12px; width: 161px; height: 3.5px; z-index: 3; background: #e0f6f8; transition: box-shadow 0.3s; }
 
-/* art block: starts under the top bar, fades into the navy body */
-.lobby-art-wrap { position: absolute; left: 12px; top: 26px; width: 161px; height: 320px; overflow: hidden; background: #0f1923; }
-.lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
-.lobby-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(18, 36, 62, 0.55) 76%, rgba(19, 40, 66, 1) 100%); }
-.lobby-sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.16) 50%, transparent 62%); transform: translateX(-120%); }
-.lobby-card:hover .lobby-sheen { animation: sheen 0.9s ease-out 1; }
+/* art block: starts under the top bar. The art is never cropped (portrait art is fitted to the width, top aligned)
+   and fades into the navy body right after it passes under the name plate. */
+.lobby-art-wrap {
+  position: absolute; left: 12px; top: 26px; width: 161px; height: 330px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 286px, rgba(0, 0, 0, 0.78) 296px, rgba(0, 0, 0, 0.42) 308px, rgba(0, 0, 0, 0.14) 320px, transparent 330px);
+  mask-image: linear-gradient(180deg, #000 0, #000 286px, rgba(0, 0, 0, 0.78) 296px, rgba(0, 0, 0, 0.42) 308px, rgba(0, 0, 0, 0.14) 320px, transparent 330px);
+}
+.lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: filter 0.4s ease; }
+.lobby-art.is-portrait { inset: 0 auto auto 0; height: auto; object-fit: fill; }
+.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); height: 100%; }
+
+/* ── hover: VALORANT-style "scan + lock" (the card itself never moves) ── */
+.lobby-scan { position: absolute; left: 0; right: 0; top: 0; height: 56px; z-index: 2; pointer-events: none; opacity: 0; transform: translateY(-100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(150, 225, 255, 0.05) 45%, rgba(170, 235, 255, 0.26) 100%);
+  border-bottom: 1.5px solid rgba(235, 252, 255, 0.9); box-shadow: 0 2px 12px rgba(150, 230, 255, 0.55); }
+.lobby-art-wrap::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; background: rgba(215, 245, 255, 0.5); }
+
+.lobby-corner { position: absolute; width: 0; height: 0; z-index: 5; pointer-events: none; opacity: 0; border: 0 solid #eafcff;
+  filter: drop-shadow(0 0 3px rgba(150, 235, 255, 0.9));
+  transition: width 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.12s; }
+.lobby-corner.tl { top: 5px; left: 5px; border-top-width: 2px; border-left-width: 2px; }
+.lobby-corner.tr { top: 5px; right: 5px; border-top-width: 2px; border-right-width: 2px; transition-delay: 0.04s; }
+.lobby-corner.br { bottom: 86px; right: 5px; border-bottom-width: 2px; border-right-width: 2px; transition-delay: 0.08s; }
+.lobby-corner.bl { bottom: 86px; left: 5px; border-bottom-width: 2px; border-left-width: 2px; transition-delay: 0.12s; }
+
+.lobby-card:hover .lobby-art { filter: brightness(1.07) saturate(1.1); }
+.lobby-card:hover .lobby-corner { width: 17px; height: 17px; opacity: 1; }
+.lobby-card:hover .lobby-scan { animation: lobby-scan 0.9s cubic-bezier(0.45, 0, 0.25, 1) 1 both; }
+.lobby-card:hover .lobby-art-wrap::after { animation: lobby-flash 0.55s ease-out 1 both; }
+@keyframes lobby-scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  12% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { transform: translateY(300px); opacity: 0; }
+}
 @keyframes sheen { to { transform: translateX(120%); } }
+@keyframes lobby-flash { 0% { opacity: 0.32; } 100% { opacity: 0; } }
 
-.lobby-actions { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
+.lobby-card:hover .lobby-outline { filter: drop-shadow(0 0 5px rgba(150, 225, 255, 0.3)); }
+.lobby-card:hover .o-rail { stroke-width: 1.7; }
+.lobby-card:hover .o-kite, .lobby-card:hover .o-bracket { stroke: rgba(235, 245, 255, 0.75); }
+.lobby-card:hover .wing { fill: #ffffff; filter: drop-shadow(0 0 7px rgba(240, 255, 225, 1)); }
+.lobby-card:hover .lobby-topbar { box-shadow: 0 0 12px rgba(224, 246, 248, 0.85); }
+.lobby-outline { transition: filter 0.3s; }
+
+.lobby-actions { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
 .lobby-card:hover .lobby-actions, .lobby-actions:focus-within { opacity: 1; transform: none; }
-.lobby-actions button { width: 24px; height: 24px; display: grid; place-items: center; background: rgba(15, 25, 35, 0.72); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.75); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.lobby-actions button { width: 26px; height: 26px; display: grid; place-items: center; background: rgba(15, 25, 35, 0.72); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.75); transition: background 0.15s, color 0.15s, border-color 0.15s; }
 .lobby-actions button:hover { background: rgba(236, 232, 225, 0.2); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
 .lobby-actions button.danger:hover { background: rgba(255, 70, 85, 0.28); color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
 
 /* READY label, cream name plate (always, like the lobby), sub lines */
-.lobby-status { position: absolute; left: 0; width: 185px; top: 281.3px; z-index: 3; text-align: center; font: 700 9.5px/1 var(--lobby-font); letter-spacing: 0.01em; color: #eef5fa; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+.lobby-status { position: absolute; left: 0; width: 185px; top: 277px; z-index: 3; text-align: center; font: 700 11px/1 var(--lobby-font); letter-spacing: 0.04em; color: #eef5fa; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85); }
 .lobby-card.is-busy .lobby-status { color: #8ab8f0; }
-.lobby-plate { position: absolute; left: 8px; width: 169px; top: 293px; height: 20px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 10px; background: #eaeeb8; }
-.lobby-plate-name { transform: translateY(-0.6px); font: 500 12.3px/1 var(--lobby-font); color: #232a25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plate-mark { flex: none; color: #232a25; }
+.lobby-plate { position: absolute; left: 8px; width: 169px; top: 291px; height: 24px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; background: #eaeeb8; overflow: hidden; }
+.lobby-plate::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-120%); background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%); }
+.lobby-card:hover .lobby-plate::after { animation: sheen 0.7s ease-out 0.15s 1 both; }
+.lobby-plate-name { transform: translateY(-0.5px); font: 600 14px/1 var(--lobby-font); color: #1f2622; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate-mark { flex: none; color: #232a25; width: 7.5px; height: 8.5px; }
 
-.lobby-sub { position: absolute; left: 0; width: 185px; top: 314px; display: flex; flex-direction: column; align-items: center; gap: 5px; font: 600 9.3px/1 var(--lobby-font); letter-spacing: 0.02em; color: rgba(228, 237, 244, 0.88); }
-.lobby-sub > div:first-child { display: flex; align-items: center; gap: 4px; }
-.lobby-sub img { width: 13px; height: 13px; object-fit: contain; }
-.lobby-wl { display: flex; gap: 8px; }
+.lobby-sub { position: absolute; left: 0; width: 185px; top: 321px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 11.5px/1 var(--lobby-font); letter-spacing: 0.02em; color: rgba(232, 240, 246, 0.94); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+.lobby-sub > div:first-child { display: flex; align-items: center; gap: 5px; }
+.lobby-sub img { width: 15px; height: 15px; object-fit: contain; }
+.lobby-wl { display: flex; gap: 9px; }
 .lobby-wl b { color: #4ade80; font-weight: 700; }
 .lobby-wl i { color: #f87171; font-style: normal; font-weight: 700; }
 
 /* ── rank: big emblem inside the kite ── */
-.rank-emblem { position: absolute; left: calc(92.5px - var(--rank-size) * 0.65); top: calc(405px - var(--rank-size) * 0.65); width: calc(var(--rank-size) * 1.3); height: calc(var(--rank-size) * 1.3); display: grid; place-items: center; z-index: 2; }
+.rank-emblem { position: absolute; left: calc(92.5px - var(--rank-size) * 0.65); top: calc(413px - var(--rank-size) * 0.65); width: calc(var(--rank-size) * 1.3); height: calc(var(--rank-size) * 1.3); display: grid; place-items: center; z-index: 2; }
 .rank-halo { position: absolute; left: 50%; top: 50%; width: calc(var(--rank-size) * 0.54); height: calc(var(--rank-size) * 0.54); transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--rank) 10%, rgba(170, 160, 172, 0.22)) 0 66%, rgba(150, 150, 165, 0.1) 80%, transparent 82%); }
 .rank-emblem img { position: relative; z-index: 2; width: var(--rank-size); height: var(--rank-size); object-fit: contain; animation: rank-breathe 3s ease-in-out infinite; transition: transform 0.25s; }
 .lobby-card:hover .rank-emblem img { transform: scale(1.08); }
+.rank-ping { position: absolute; left: 50%; top: 50%; width: calc(var(--rank-size) * 0.9); height: calc(var(--rank-size) * 0.9); margin: calc(var(--rank-size) * -0.45) 0 0 calc(var(--rank-size) * -0.45);
+  border-radius: 50%; border: 1px solid color-mix(in srgb, var(--rank) 70%, white); opacity: 0; pointer-events: none; z-index: 1; }
+.lobby-card:hover .rank-ping { animation: rank-ping 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) 0.1s 1 both; }
+@keyframes rank-ping { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
 .rank-none { position: relative; z-index: 2; width: 10px; height: 10px; transform: rotate(45deg); background: rgba(236, 232, 225, 0.3); }
-.rank-dash { position: absolute; left: 90.5px; top: 431.5px; width: 4px; height: 1px; background: rgba(225, 238, 248, 0.5); }
-.rank-mute { position: absolute; left: 87px; top: 436px; color: rgba(240, 246, 250, 0.9); }
+.rank-dash { position: absolute; left: 90.5px; top: 434px; width: 4px; height: 1px; background: rgba(225, 238, 248, 0.5); }
+.rank-mute { position: absolute; left: 87px; top: 438.5px; color: rgba(240, 246, 250, 0.9); }
 .rank-sweep { display: none; position: absolute; inset: 17%; border-radius: 50%; opacity: 0.5;
   background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--rank) 80%, white) 100%);
   -webkit-mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 70%, transparent 74%);
@@ -103,9 +142,9 @@
 
 /* ── START → "in queue" style button ── */
 .lobby-start {
-  position: relative; overflow: hidden; width: 100%; height: 52px; margin-top: 14px;
+  position: relative; overflow: hidden; width: 100%; height: 56px; margin-top: 16px;
   display: flex; align-items: center; justify-content: center;
-  font: 700 22px/1 "Rajdhani", "Impact", system-ui, sans-serif; letter-spacing: 0.16em; color: #fff;
+  font: 700 22px/1 var(--app-font, system-ui, sans-serif); letter-spacing: 0.18em; color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.4);
   transition: filter 0.2s, transform 0.12s, box-shadow 0.25s, background 0.3s, border-color 0.3s;
 }
@@ -144,6 +183,7 @@
 @keyframes bar-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lobby-inner, .rank-emblem img, .rank-sweep, .lobby-bar, .start-icon.spin path { animation: none !important; }
-  .lobby-card, .lobby-card:hover { transform: none; }
+  .lobby-inner, .rank-emblem img, .rank-sweep, .lobby-bar, .start-icon.spin path,
+  .lobby-card:hover .lobby-scan, .lobby-card:hover .lobby-art-wrap::after, .lobby-card:hover .rank-ping, .lobby-card:hover .lobby-plate::after { animation: none !important; }
+  .lobby-corner { transition: none; }
 }

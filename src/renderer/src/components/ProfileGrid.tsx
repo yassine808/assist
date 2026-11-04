@@ -25,7 +25,7 @@ export default function ProfileGrid({
   const activeProfileName = profiles.find((p) => p.is_running)?.profile_name ?? null;
 
   return (
-    <div className="flex flex-wrap gap-x-7 gap-y-8">
+    <div className="flex flex-wrap gap-x-8 gap-y-10">
       {loading
         ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
         : profiles.map((p, i) => (

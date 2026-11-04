@@ -91,7 +91,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
       tabIndex={0}
     >
       <div
-        className="w-[420px] rounded-xl bg-[#12161f] border border-white/10 p-5 shadow-2xl"
+        className="w-[420px] modal-panel p-5"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         role="button"
@@ -122,8 +122,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
               <button
                 onClick={() => void handleExport()}
                 disabled={!exportPasskey || exportPasskey.length < 4 || exporting}
-                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
               >
                 {exporting && <span className="spinner-icon" />}
@@ -169,8 +168,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
               <button
                 onClick={() => void handleImport()}
                 disabled={!importPasskey || importPasskey.length < 4 || !importFile || importing}
-                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
               >
                 {importing && <span className="spinner-icon" />}

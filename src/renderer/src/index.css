@@ -1,8 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Noto+Sans+JP:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* One font for the whole app (cards included). Change it here and everything follows. */
+:root {
+  --app-font: "Chakra Petch", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --bg-base: #0a1017;
+  --line: rgba(190, 225, 240, 0.12);
+}
 
 * {
   box-sizing: border-box;
@@ -15,18 +22,28 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: "Exo 2", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Hiragino Sans", "MS Gothic", system-ui, sans-serif;
+  font-family: var(--app-font);
 }
 
+html {
+  background: var(--bg-base);
+}
+
+/* Clean background: one flat base colour with a single soft light from the top. */
 body {
   background:
-    radial-gradient(ellipse 75% 65% at 50% 38%, rgba(38, 98, 135, 0.55), transparent 75%),
-    radial-gradient(ellipse 90% 70% at 50% 120%, rgba(255, 70, 85, 0.07), transparent 70%),
-    #0b1b29;
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(72, 130, 175, 0.17), transparent 72%),
+    var(--bg-base);
   color: #ece8e1;
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
+
+/* thin, quiet scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(190, 225, 240, 0.14); border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(190, 225, 240, 0.28); background-clip: padding-box; border: 3px solid transparent; }
 
 .drag-region {
   -webkit-app-region: drag;
@@ -157,4 +174,55 @@ body {
 
 .result-message {
   animation: result-fade-in 0.25s ease-out;
+}
+
+
+/* ── Page chrome ── */
+.page-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: #ff4655;
+}
+.page-eyebrow::before { content: ""; width: 18px; height: 2px; background: #ff4655; }
+.page-title {
+  font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #f3efe8;
+}
+.page-sub { font-size: 13px; color: rgba(236, 232, 225, 0.5); letter-spacing: 0.02em; }
+.count-pill {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 8px; margin-left: 10px; vertical-align: middle;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: rgba(236, 232, 225, 0.75);
+  background: rgba(190, 225, 240, 0.08); border: 1px solid var(--line);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+
+/* ── Buttons: angular like VALORANT's own UI ── */
+.btn-primary, .btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  font-family: var(--app-font); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  transition: filter 0.18s ease, box-shadow 0.25s ease, background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+.btn-primary {
+  color: #0f1923; border: 0; border-radius: 0;
+  background: linear-gradient(180deg, #ff5a68, #f2414f);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 22px rgba(255, 70, 85, 0.5); }
+.btn-primary:active:not(:disabled) { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost {
+  color: rgba(236, 232, 225, 0.8); border-radius: 3px;
+  background: rgba(190, 225, 240, 0.06); border: 1px solid var(--line);
+}
+.btn-ghost:hover:not(:disabled) { color: #fff; background: rgba(190, 225, 240, 0.12); border-color: rgba(190, 225, 240, 0.3); }
+.btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Panels & modals ── */
+.modal-panel {
+  position: relative; border-radius: 4px; background: #0e1620; border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.modal-panel::before { content: ""; position: absolute; left: -1px; top: -1px; width: 44px; height: 2px; background: #ff4655; }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  padding: 56px 24px; margin-top: 8px; border: 1px dashed rgba(190, 225, 240, 0.18); background: rgba(190, 225, 240, 0.025);
 }

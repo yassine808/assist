@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Palette, Trash2 } from "lucide-react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
@@ -46,6 +46,17 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   const rankName = VALORANT_TIER_NAMES[tier] ?? "Unranked";
   const agentIcon = agentIconFor(vd);
   const [copied, setCopied] = useState(false);
+
+  // Tall portrait art (the 1:2 "large" player cards) is shown whole, fitted to the width.
+  // Anything else (wide / square art) keeps the cover crop so it still fills the card.
+  const artRef = useRef<HTMLImageElement>(null);
+  const [portrait, setPortrait] = useState(false);
+  const measureArt = (el: HTMLImageElement | null) => {
+    if (el && el.naturalWidth > 0) setPortrait(el.naturalHeight / el.naturalWidth >= 1.3);
+  };
+  useEffect(() => {
+    measureArt(artRef.current);
+  }, [vd?.player_card_bg]);
 
   useEffect(() => {
     if (launchState === "launched") sfx.launched();
@@ -131,10 +142,10 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
 
             <div className="lobby-art-wrap">
               {vd?.player_card_bg
-                ? <img src={vd.player_card_bg} alt="" className="lobby-art" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ? <img ref={artRef} src={vd.player_card_bg} alt="" className={`lobby-art${portrait ? " is-portrait" : ""}`} onLoad={(e) => measureArt(e.currentTarget)} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 : <div className="lobby-art lobby-art-empty" />}
-              <div className="lobby-shade" />
-              <div className="lobby-sheen" />
+              <span className="lobby-scan" />
+              <i className="lobby-corner tl" /><i className="lobby-corner tr" /><i className="lobby-corner bl" /><i className="lobby-corner br" />
               <div className="lobby-actions">
                 <button onClick={copy} title="Copy username">{copied ? <Check size={12} /> : <Copy size={12} />}</button>
                 {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
@@ -144,7 +155,7 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
 
             <span className="lobby-status">{status}</span>
             <div className="lobby-plate" title={profile.profile_name}>
-              <svg className="plate-mark" width="6.5" height="7.5" viewBox="0 0 10 11" aria-hidden><path d="M5 10.6L.9 5.6C-.6 3.4 1.5.7 3.5 1.7L5 2.9l1.5-1.2c2-1 4.1 1.7 2.6 3.9z" fill="currentColor" /></svg>
+              <svg className="plate-mark" width="7.5" height="8.5" viewBox="0 0 10 11" aria-hidden><path d="M5 10.6L.9 5.6C-.6 3.4 1.5.7 3.5 1.7L5 2.9l1.5-1.2c2-1 4.1 1.7 2.6 3.9z" fill="currentColor" /></svg>
               <span className="lobby-plate-name">{profile.profile_name}</span>
             </div>
 
@@ -158,6 +169,7 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
 
             <div className={`rank-emblem ${hasSweep ? "has-sweep" : ""} ${tier >= 27 ? "is-radiant" : ""}`}>
               <span className="rank-halo" />
+              <span className="rank-ping" />
               <span className="rank-sweep" />
               {vd?.rank_icon
                 ? <img src={vd.rank_icon} alt={rankName} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />

@@ -217,8 +217,7 @@ export default function SettingsView() {
               {(updateState === "idle" || updateState === "up-to-date" || updateState === "error") && (
                 <button
                   onClick={() => window.electronAPI?.checkUpdate()}
-                  className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                             hover:bg-riot-red/90 transition-colors"
+                  className="h-8 px-4 rounded-md text-xs font-semibold btn-primary transition-colors"
                 >
                   Check
                 </button>
@@ -265,8 +264,7 @@ export default function SettingsView() {
               <button
                 onClick={() => void handleExport()}
                 disabled={!exportPasskey || exporting}
-                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
               >
                 {exporting && <span className="spinner-icon" />}
@@ -307,8 +305,7 @@ export default function SettingsView() {
               <button
                 onClick={() => void handleImport()}
                 disabled={!importPasskey || !importFile || importing}
-                className="h-8 px-4 rounded-md text-xs font-semibold text-black bg-riot-red
-                           hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors
+                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
               >
                 {importing && <span className="spinner-icon" />}
@@ -328,7 +325,7 @@ export default function SettingsView() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
+      <h1 className="page-title mb-6">Settings</h1>
       <div className="flex flex-col gap-4">
         {cards.map((card, index) => (
           <section

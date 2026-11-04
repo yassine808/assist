@@ -74,30 +74,32 @@ export default function HomeView() {
   }, []);
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="px-9 py-8">
+      <header className="flex items-end justify-between mb-9 pb-5 border-b border-white/[0.06]">
         <div>
-          <h1 className="text-2xl font-bold text-white">Profiles</h1>
-          <p className="text-xs text-white/40 mt-0.5">
-            Switch between Riot accounts instantly
-          </p>
+          <div className="page-eyebrow mb-2.5">Account manager</div>
+          <h1 className="page-title">
+            Profiles
+            {!loading && <span className="count-pill">{profiles.length}</span>}
+          </h1>
+          <p className="page-sub mt-2">Switch between Riot accounts instantly</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowImportExport(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-white/70 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] hover:text-white transition-all"
+            className="btn-ghost h-9 px-4 text-[11px]"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
             Import / Export
           </button>
           <button
             onClick={() => setShowAddAccount(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
+            className="btn-primary h-9 px-5 text-[11px]"
           >
-            <Plus size={13} /> Add Account
+            <Plus size={14} strokeWidth={3} /> Add Account
           </button>
         </div>
-      </div>
+      </header>
 
       <ProfileGrid
         profiles={profiles}
@@ -110,31 +112,31 @@ export default function HomeView() {
       />
 
       {!loading && profiles.length === 0 && (
-        <div className="mt-16 flex flex-col items-center text-center">
-          <p className="text-white/50 text-sm">
-            No profiles yet. Click{" "}
-            <span className="text-riot-red">Add Account</span> to create your
-            first profile.
-          </p>
+        <div className="empty-state">
+          <p className="text-white/80 text-base font-semibold tracking-wide">No profiles yet</p>
+          <p className="text-white/45 text-sm mb-4">Add your first Riot account to start switching.</p>
+          <button onClick={() => setShowAddAccount(true)} className="btn-primary h-9 px-5 text-[11px]">
+            <Plus size={14} strokeWidth={3} /> Add Account
+          </button>
         </div>
       )}
 
       {confirmDelete && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-[2px]"
           onClick={() => setConfirmDelete(null)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setConfirmDelete(null); }}
           role="button"
           tabIndex={0}
         >
           <div
-            className="w-[340px] rounded-lg bg-bg-card border border-white/10 p-5 shadow-xl"
+            className="modal-panel w-[360px] p-6"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             role="button"
             tabIndex={0}
           >
-            <h3 className="text-white font-bold text-base mb-2">
+            <h3 className="text-white font-bold text-base tracking-wide uppercase mb-2">
               Delete profile?
             </h3>
             <p className="text-sm text-white/60 mb-5">
@@ -147,13 +149,13 @@ export default function HomeView() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10"
+                className="btn-ghost h-9 px-4 text-[11px]"
               >
                 Cancel
               </button>
               <button
                 onClick={() => void doDelete()}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-riot-red hover:bg-riot-red/90"
+                className="btn-primary h-9 px-5 text-[11px]"
               >
                 Delete
               </button>

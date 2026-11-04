@@ -112,7 +112,7 @@ export default function AgentMapView() {
     <div className="p-6 max-w-5xl">
       <div className="flex items-start justify-between gap-4 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-white">Agent Map</h1>
+          <h1 className="page-title">Agent Map</h1>
           <p className="text-xs text-white/40 mt-1">
             Per-map agent winrates from your recent competitive matches
           </p>
@@ -135,8 +135,7 @@ export default function AgentMapView() {
           <button
             onClick={handleRefresh}
             disabled={!selected || refreshing}
-            className="h-8 px-3 rounded-md text-xs font-semibold text-black bg-riot-red
-                       hover:bg-riot-red/90 disabled:opacity-40 disabled:cursor-not-allowed
+            className="h-8 px-3 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors inline-flex items-center gap-1.5"
           >
             <RefreshCw size={12} className={refreshing ? "animate-spin" : undefined} />
