@@ -234,6 +234,7 @@ sequenceDiagram
         U->>UI: Click "Add Account"
         UI->>BE: create_profile(account_data)
         BE->>FS: Write to profiles_data.json
+        BE->>FS: Copy live session files into the profile backup
         BE-->>UI: profile_created event
     else No account / already added
         UI->>BE: start_account_detection()
@@ -255,6 +256,7 @@ sequenceDiagram
             U->>UI: Click "Save Profile"
             UI->>BE: confirm_account_save(accepted=true)
             BE->>FS: Create profile in profiles_data.json
+            BE->>FS: Copy live session files into the profile backup
             BE-->>UI: profile_created event
             UI-->>U: "Profile Created!" ✓
         end

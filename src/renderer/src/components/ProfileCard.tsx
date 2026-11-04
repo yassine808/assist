@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
-import { useProfileLaunch, LaunchState } from "../hooks/useProfileLaunch";
+import type { LaunchState } from "../hooks/useProfileLaunch";
 import "../styles/card-glow.css";
 
 interface ProfileCardProps {
@@ -9,12 +9,12 @@ interface ProfileCardProps {
   running: boolean;
   activeProfileName?: string | null;
   launchState: LaunchState;
+  onLaunch: (name: string) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
 }
 
-export default function ProfileCard({ profile, running, activeProfileName, launchState, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
-  const { launch } = useProfileLaunch();
+export default function ProfileCard({ profile, running, activeProfileName, launchState, onLaunch, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
   const { valorant_data: vd } = profile;
   const rr = vd?.rr ?? 0;
   const tierId = vd?.tier ?? 0;
@@ -42,7 +42,7 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (launchState === "idle") {
-      launch(profile.profile_name);
+      onLaunch(profile.profile_name);
     }
   };
 

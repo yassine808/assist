@@ -56,13 +56,17 @@ function openViewWindow(
   // hit and every launch leaks another BrowserWindow.
   setCurrent(win);
 
+  // Attach before loading: `ready-to-show` can fire while `loadURL` is still
+  // pending on a warm dev server, and a listener added afterwards never sees
+  // the event -- leaving the `show: false` window invisible forever.
+  win.once("ready-to-show", () => win.show());
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(`${process.env.ELECTRON_RENDERER_URL}?view=${view}`);
   } else {
     win.loadFile(join(__dirname, "../renderer/index.html"), { query: { view } });
   }
 
-  win.once("ready-to-show", () => win.show());
   win.on("closed", () => setCurrent(null));
 }
 
@@ -117,13 +121,17 @@ export async function createAppWindow(
     },
   });
 
+  // Attach before loading: with a warm renderer the event can fire before an
+  // `await loadURL` resolves, and a late listener would keep the window hidden.
+  win.once("ready-to-show", () => win.show());
+
   if (process.env.ELECTRON_RENDERER_URL) {
     await win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
     await win.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
-  win.once("ready-to-show", () => win.show());
+  if (!win.isVisible()) win.show();
 
   const { closeToTray, minimizeToTray } = await readTrayConfig(python);
 

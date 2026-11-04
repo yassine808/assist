@@ -9,47 +9,49 @@ interface AddAccountModalProps {
 }
 
 type ModalPhase =
-  | "checking"       // checking for existing logged-in account
-  | "suggest"        // found a new account already logged in
-  | "opening"        // killing + launching client
+  | "checking"       // checking for an existing live session
+  | "opening"        // opening a fresh Riot Client for a new login
   | "waiting"        // waiting for login
-  | "confirm_save"   // new account detected, ask to save
   | "already_added"  // detected account is already saved
   | "created"        // profile created successfully
-  | "saved"          // suggested account saved directly
   | "error";         // something went wrong
+
+interface CaptureResult {
+  added: boolean;
+  reason: string;
+  display: string;
+  profile?: { profile_name?: string };
+  message?: string;
+}
 
 export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
   const { call } = useIPC();
-  const { active, progress, start, stop, confirmSave } = useAccountDetection();
+  const { active, progress, start, stop } = useAccountDetection();
   const [phase, setPhase] = useState<ModalPhase>("checking");
-  const [suggestedAccount, setSuggestedAccount] = useState<{ display: string; account: Record<string, unknown> } | null>(null);
-  const hasChecked = useRef(false);
+  const [createdName, setCreatedName] = useState("");
   const prevOpen = useRef(false);
   const skipDetection = useRef(false);
 
   const checkForAccount = useCallback(async () => {
     setPhase("checking");
-    setSuggestedAccount(null);
-    hasChecked.current = false;
+    setCreatedName("");
     skipDetection.current = false;
 
     try {
-      const result = await call<{ found: boolean; display: string; is_new: boolean; account: Record<string, unknown> }>("check_current_account");
-      if (result?.found && result.is_new) {
-        setSuggestedAccount({ display: result.display, account: result.account });
-        setPhase("suggest");
-      } else if (result?.found && !result.is_new) {
-        // Already logged into a saved account — clear creds and relaunch
-        setPhase("opening");
-        skipDetection.current = false;
+      const result = await call<CaptureResult>("capture_current_account");
+      if (result?.added) {
+        // The live session was new, so it has already been saved.
+        setCreatedName(result.profile?.profile_name || result.display || "Account");
+        setPhase("created");
+        onAccountAdded?.();
       } else {
+        // Nothing worth capturing: open a fresh client and wait for a login.
         setPhase("opening");
       }
     } catch {
       setPhase("opening");
     }
-  }, [call]);
+  }, [call, onAccountAdded]);
 
   useEffect(() => {
     if (open && !prevOpen.current) {
@@ -71,41 +73,15 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   // Derive phase from progress — use useMemo to avoid setState in effect
   const phaseFromStatus: Partial<Record<string, ModalPhase>> = {
     waiting: "waiting",
-    confirm_save: "confirm_save",
     already_added: "already_added",
     created: "created",
+    // A login timeout must surface as an error, not leave the modal spinning.
+    canceled: "error",
     error: "error",
   };
   const progressPhase = progress?.status ? (phaseFromStatus[progress.status] ?? null) : null;
 
   const effectivePhase = progressPhase ?? phase;
-
-  const handleAddSuggested = useCallback(async () => {
-    if (!suggestedAccount) return;
-    try {
-      skipDetection.current = true;
-      await call("create_profile", {
-        profile_name: suggestedAccount.display,
-        valorant_puuid: suggestedAccount.account.puuid as string,
-        valorant_region: suggestedAccount.account.riot_region as string,
-        valorant_in_game_name: suggestedAccount.display,
-      });
-      setPhase("saved");
-      onAccountAdded?.();
-    } catch {
-      setPhase("error");
-    }
-  }, [call, suggestedAccount, onAccountAdded]);
-
-  const handleDeclineSuggested = useCallback(() => {
-    setSuggestedAccount(null);
-    skipDetection.current = false;
-    setPhase("opening");
-  }, []);
-
-  const handleConfirmSave = useCallback(async (accept: boolean) => {
-    await confirmSave(accept);
-  }, [confirmSave]);
 
   const handleClose = useCallback(async () => {
     skipDetection.current = true;
@@ -147,68 +123,18 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
           </div>
         )}
 
-        {effectivePhase === "suggest" && suggestedAccount && (
-          <div className="py-2">
-            <p className="text-white/60 text-sm mb-3">
-              New account detected in Riot Client:
-            </p>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 mb-4">
-              <div className="w-8 h-8 rounded-full bg-riot-red/20 flex items-center justify-center text-riot-red text-sm font-bold">
-                {suggestedAccount.display.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-white font-semibold text-sm">{suggestedAccount.display}</span>
-            </div>
-            <p className="text-white/50 text-xs mb-4">
-              Would you like to add this account?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDeclineSuggested}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-white/70 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-              >
-                Switch Account
-              </button>
-              <button
-                onClick={() => void handleAddSuggested()}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
-              >
-                Add Account
-              </button>
-            </div>
-          </div>
-        )}
-
         {(effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added") && (
-          <div className="flex items-center gap-2 py-4 text-white/60 text-sm">
-            <span className="spinner-icon" />
-            {effectivePhase === "opening" && "Opening Riot Client…"}
-            {effectivePhase === "waiting" && "Waiting for login…"}
-            {effectivePhase === "already_added" && "Account already added. Launching again…"}
-          </div>
-        )}
-
-        {effectivePhase === "confirm_save" && (
-          <div className="py-2">
-            <p className="text-white/60 text-sm mb-3">New account detected:</p>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 mb-4">
-              <div className="w-8 h-8 rounded-full bg-riot-red/20 flex items-center justify-center text-riot-red text-sm font-bold">
-                {(progress?.display ?? "?").charAt(0).toUpperCase()}
-              </div>
-              <span className="text-white font-semibold text-sm">{progress?.display ?? "Unknown"}</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => void handleConfirmSave(false)}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-white/70 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-              >
-                Skip
-              </button>
-              <button
-                onClick={() => void handleConfirmSave(true)}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
-              >
-                Save Profile
-              </button>
+          <div className="flex items-start gap-2 py-4 text-white/60 text-sm">
+            <span className="spinner-icon mt-0.5" />
+            <div>
+              {effectivePhase === "opening" && "Waiting for login…"}
+              {effectivePhase === "waiting" && "Waiting for login…"}
+              {effectivePhase === "already_added" && "Account already added. Opening the login screen again…"}
+              {effectivePhase !== "already_added" && (
+                <p className="text-white/40 text-xs mt-1">
+                  The Riot Client is open. Sign in with the account you want to add — it is saved automatically.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -218,24 +144,10 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
             </div>
-            <p className="text-white font-semibold text-sm mb-1">Profile Created</p>
-            <p className="text-white/50 text-xs mb-4">{progress?.profile_name ?? "Account"}</p>
-            <button
-              onClick={handleDone}
-              className="w-full h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        )}
-
-        {effectivePhase === "saved" && (
-          <div className="py-2 text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            </div>
             <p className="text-white font-semibold text-sm mb-1">Account Added</p>
-            <p className="text-white/50 text-xs mb-4">{suggestedAccount?.display ?? "Account"} saved successfully</p>
+            <p className="text-white/50 text-xs mb-4">
+              {createdName || progress?.profile_name || progress?.display || "Account"} saved
+            </p>
             <button
               onClick={handleDone}
               className="w-full h-9 rounded-md text-xs font-semibold text-black bg-riot-red hover:bg-riot-red/90 transition-colors"

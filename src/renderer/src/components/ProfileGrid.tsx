@@ -8,6 +8,7 @@ interface Props {
   loading: boolean;
   launchState?: LaunchState;
   launchingProfile?: string | null;
+  onLaunch: (name: string) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
 }
@@ -17,6 +18,7 @@ export default function ProfileGrid({
   loading,
   launchState = "idle",
   launchingProfile = null,
+  onLaunch,
   onDelete,
   onModifyCard,
 }: Readonly<Props>) {
@@ -33,6 +35,7 @@ export default function ProfileGrid({
                 running={p.is_running}
                 activeProfileName={activeProfileName}
                 launchState={launchingProfile === p.profile_name ? launchState : "idle"}
+                onLaunch={onLaunch}
                 onDelete={onDelete}
                 onModifyCard={onModifyCard}
               />

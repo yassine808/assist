@@ -10,7 +10,7 @@ import type { Profile } from "../types/profile";
 
 export default function HomeView() {
   const { call, onEvent } = useIPC();
-  const { launchState, launchingProfile } = useProfileLaunch();
+  const { launchState, launchingProfile, launch } = useProfileLaunch();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +104,7 @@ export default function HomeView() {
         loading={loading}
         launchState={launchState}
         launchingProfile={launchingProfile}
+        onLaunch={launch}
         onDelete={handleDelete}
         onModifyCard={handleModifyCard}
       />

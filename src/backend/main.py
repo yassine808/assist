@@ -4,7 +4,7 @@ import os
 import sys
 
 import riot_account_detect as rad
-from account_detector import AccountDetector
+from account_detector import AccountDetector, unique_profile_name
 from agent_database import AgentDatabase
 from config_manager import ConfigManager
 from deceive.presence_manager import PresenceManager
@@ -114,12 +114,59 @@ def _fetch_valorant_maps():
     return _MAPS_CACHE or []
 
 
+def _capture_session(name, sessions, profiles, config, install_dir_provider):
+    """Back up the live Riot session into a newly created profile.
+
+    A profile is only usable for switching once its session files are on disk:
+    restoring a profile with no backup cannot log the client in, and the next
+    switch would attribute the live session to the wrong profile. Returns True
+    only when at least one session file was actually captured.
+    """
+    if not name:
+        return False
+    profile = profiles.get(name) or {}
+    directory_name = profile.get("directory_name", "") or sanitize_directory_name(name)
+    try:
+        install_dir = install_dir_provider()
+    except Exception:  # noqa: BLE001
+        # The install dir only supplies the two client Config yaml files; the
+        # account session itself lives under LOCALAPPDATA and is still worth
+        # capturing when the client install has not been located yet.
+        install_dir = ""
+    try:
+        if not sessions.save_session(directory_name, install_dir):
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+    backup_dir = sessions.profile_dir(directory_name)
+    try:
+        captured = os.path.isdir(backup_dir) and bool(os.listdir(backup_dir))
+    except OSError:
+        captured = False
+    if captured:
+        # The account that just got added is the one running right now.
+        config.set("LastRunningProfile", name)
+    return captured
+
+
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
                      sessions, league, presence, protocol, data_dir,
                      _league_config_dir, _swap_profile, _set_playercard,
-                     _check_current_account, _close_all,
-                     _profile_dir_name, _cleanup_league_readonly):
+                     _check_current_account, _capture_current_account, _close_all,
+                     _profile_dir_name, _cleanup_league_readonly,
+                     _capture_session):
     """Build the dispatch table mapping method names to handler functions."""
+
+    def _create_profile(params):
+        """Create a profile and immediately back up the live Riot session.
+
+        Adding an account means "save the account that is logged in right
+        now": without the session files on disk the profile cannot be
+        switched back to later.
+        """
+        profile = profiles.create(params)
+        _capture_session(profile.get("profile_name", ""))
+        return profile
 
     def _delete_profile(name):
         result = profiles.delete(name)
@@ -152,7 +199,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
     return {
         "ping": lambda p: "pong",
         "get_profiles": lambda p: profiles.load(),
-        "create_profile": lambda p: profiles.create(p),
+        "create_profile": lambda p: _create_profile(p),
         "delete_profile": lambda p: _delete_profile(p.get("name")),
         "update_profile": lambda p: profiles.update(p.get("name"), p.get("data")),
         "rename_profile": lambda p: profiles.rename(p.get("old_name"), p.get("new_name")),
@@ -175,10 +222,13 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         "stop_profile": lambda p: orchestrator.stop(),
         "read_live_account": lambda p: rad.read_live_account(),
         "check_current_account": lambda p: _check_current_account(),
+        "capture_current_account": lambda p: _capture_current_account(),
         "detect_live_account_new": lambda p: rad.is_account_new(
             p.get("account") or {}, profiles.load()
         ),
-        "start_account_detection": lambda p: detector.start_detection(),
+        "start_account_detection": lambda p: detector.start_detection(
+            auto_save=bool(p.get("auto_save", True))
+        ),
         "stop_account_detection": lambda p: (detector.stop_detection(), None)[1],
         "account_detection_state": lambda p: detector.is_running(),
         "confirm_account_save": lambda p: detector.confirm_save(bool(p.get("accept", True))),
@@ -295,24 +345,6 @@ def main():
     def _handle_event(name, data):
         protocol.send_event(name, data)
 
-    detector = AccountDetector(
-        profiles, on_event=_handle_event, launcher=riot.launch_client,
-        on_profile_created=lambda name: tracker.refresh_profile(name),
-        killer=riot.kill_all,
-    )
-
-    def _league_config_dir():
-        league_dir = league.find_league_dir()
-        if not league_dir:
-            return ""
-        return os.path.join(league_dir, "Config")
-
-    def _cleanup_league_readonly():
-        config_dir = _league_config_dir()
-        if config_dir:
-            league.cleanup_readonly_flags(config_dir)
-        return True
-
     def _profile_dir_name(name):
         profile = profiles.get(name) or {}
         directory_name = profile.get("directory_name", "")
@@ -329,6 +361,31 @@ def main():
         if save:
             return sessions.save_session(directory_name, install_dir)
         return sessions.restore_session(directory_name, install_dir)
+
+    def _capture_profile_session(name):
+        return _capture_session(name, sessions, profiles, config, _install_dir)
+
+    def _on_profile_created(name):
+        _capture_profile_session(name)
+        tracker.refresh_profile(name)
+
+    detector = AccountDetector(
+        profiles, on_event=_handle_event, launcher=riot.launch_client,
+        on_profile_created=_on_profile_created,
+        killer=riot.kill_all,
+    )
+
+    def _league_config_dir():
+        league_dir = league.find_league_dir()
+        if not league_dir:
+            return ""
+        return os.path.join(league_dir, "Config")
+
+    def _cleanup_league_readonly():
+        config_dir = _league_config_dir()
+        if config_dir:
+            league.cleanup_readonly_flags(config_dir)
+        return True
 
     def _set_playercard(profile_name, card_url):
         prof = profiles.get(profile_name)
@@ -353,6 +410,47 @@ def main():
         is_new = rad.is_account_new(account, profiles_list)
         return {"found": True, "display": display, "is_new": is_new, "account": account}
 
+    def _capture_current_account():
+        """Add the account that is logged into the Riot Client right now.
+
+        ``added=True`` means a profile was created *and* its session files were
+        copied. Every other outcome tells the UI to open a fresh client and
+        wait for the user to log in, at which point the detector saves it.
+        """
+        account = rad.read_live_account()
+        if not account:
+            return {"added": False, "reason": "no_session", "display": ""}
+        display = rad.display_uid(account)
+        if not rad.is_account_new(account, profiles.load()):
+            return {"added": False, "reason": "already_saved", "display": display}
+
+        name, _counter = unique_profile_name(profiles, display)
+        try:
+            profile = profiles.create({
+                "profile_name": name,
+                "valorant_puuid": account.get("puuid", ""),
+                "valorant_region": account.get("riot_region", ""),
+                "valorant_in_game_name": display,
+            })
+        except Exception as exc:  # noqa: BLE001
+            return {"added": False, "reason": "create_failed", "display": display, "message": str(exc)}
+
+        if not _capture_profile_session(name):
+            # A profile without session files cannot be switched back to, so
+            # drop it and let the caller fall through to a fresh login.
+            try:
+                profiles.delete(name)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                sessions.delete_profile_dir(_profile_dir_name(name))
+            except Exception:  # noqa: BLE001
+                pass
+            return {"added": False, "reason": "capture_failed", "display": display}
+
+        tracker.refresh_profile(name)
+        return {"added": True, "reason": "created", "display": display, "profile": profile}
+
     def _close_all():
         import threading
         def _do_close():
@@ -365,8 +463,8 @@ def main():
         profiles, config, riot, tracker, detector, orchestrator,
         sessions, league, presence, protocol, data_dir,
         _league_config_dir, _swap_profile, _set_playercard,
-        _check_current_account, _close_all,
-        _profile_dir_name, _cleanup_league_readonly,
+        _check_current_account, _capture_current_account, _close_all,
+        _profile_dir_name, _cleanup_league_readonly, _capture_profile_session,
     )
 
     protocol.send_event("backend_ready", {"data_dir": data_dir})

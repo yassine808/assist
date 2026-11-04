@@ -17,6 +17,33 @@ import riot_account_detect as rad
 POLL_INTERVAL_S = 1.5
 RELAUNCH_WAIT_S = 8  # wait for Riot Client to fully restart after kill
 DETECTION_TIMEOUT_S = 300  # give up after 5 minutes of no new login
+MAX_NAME_ATTEMPTS = 10000
+
+
+def unique_profile_name(profiles, base, start_index=1):
+    """Return ``(name, next_counter)`` for a profile name that is not taken.
+
+    ``base`` is normally the account's ``name#tag``; empty means fall back to
+    numbered "Account N" names. Shared by the detector and the immediate
+    capture path so both pick names the same way.
+    """
+    if not base:
+        candidate = start_index
+        for _ in range(MAX_NAME_ATTEMPTS):
+            name = f"Account {candidate}"
+            candidate += 1
+            if not profiles.get(name):
+                return name, candidate
+    else:
+        if not profiles.get(base):
+            return base, start_index
+        index = 2
+        for _ in range(MAX_NAME_ATTEMPTS):
+            name = f"{base} {index}"
+            if not profiles.get(name):
+                return name, start_index
+            index += 1
+    raise RuntimeError("Could not generate unique profile name")
 
 
 class AccountDetector:
@@ -32,6 +59,7 @@ class AccountDetector:
         self._display_name_counter = 1
         self._pending_account = None
         self._confirm_event = threading.Event()
+        self._auto_save = False
 
     def _emit(self, name, data):
         if self.on_event:
@@ -41,33 +69,27 @@ class AccountDetector:
                 pass
 
     def _next_profile_name(self, account):
-        MAX_ATTEMPTS = 10000
-        base = rad.display_uid(account)
-        if not base:
-            for _ in range(MAX_ATTEMPTS):
-                candidate = f"Account {self._display_name_counter}"
-                self._display_name_counter += 1
-                if not self.profiles.get(candidate):
-                    return candidate
-            raise RuntimeError("Could not generate unique profile name")
-        if not self.profiles.get(base):
-            return base
-        index = 2
-        for _ in range(MAX_ATTEMPTS):
-            if not self.profiles.get(f"{base} {index}"):
-                return f"{base} {index}"
-            index += 1
-        raise RuntimeError("Could not generate unique profile name")
+        name, self._display_name_counter = unique_profile_name(
+            self.profiles, rad.display_uid(account), self._display_name_counter
+        )
+        return name
 
     def is_running(self):
         with self._lock:
             return self._thread is not None and self._thread.is_alive()
 
-    def start_detection(self):
-        """Launch the Riot Client (if a launcher is provided) and begin polling."""
+    def start_detection(self, auto_save=False):
+        """Launch the Riot Client (if a launcher is provided) and begin polling.
+
+        ``auto_save`` saves the account the moment a new login is detected
+        instead of waiting for a UI confirmation. It also clears the live
+        credentials up front, because the caller only takes this path when the
+        current session is not worth keeping -- the user must see a login form.
+        """
         with self._lock:
             if self._thread and self._thread.is_alive():
                 return False
+            self._auto_save = auto_save
             self._stop.clear()
             self._thread = threading.Thread(target=self._run, daemon=True)
             self._thread.start()
@@ -136,7 +158,16 @@ class AccountDetector:
         self._try_launch()
 
     def _handle_new_account(self, account, display):
-        """Prompt user and handle save/decline for a newly detected account."""
+        """Handle a newly detected account.
+
+        In auto-save mode (the "Add Account" button) the profile is created
+        immediately: the user clicked Add, opened the client and logged in, so
+        no second confirmation is wanted.
+        """
+        if self._auto_save:
+            self._finish(account)
+            return False
+
         self._pending_account = account
         self._pending_decision = None
         self._confirm_event.clear()
@@ -164,6 +195,10 @@ class AccountDetector:
     def _run(self):
         self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client\u2026"})
         self._try_kill()
+        if self._auto_save:
+            # The current session is not worth keeping, so force the login
+            # screen instead of relaunching straight into the old account.
+            self._clear_riot_saved_credentials()
         if not self._try_launch():
             return
 

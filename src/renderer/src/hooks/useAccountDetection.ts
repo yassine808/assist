@@ -57,7 +57,7 @@ export function useAccountDetection(): UseAccountDetection {
     setActive(true);
     setProgress({ status: "waiting", message: "Opening Riot Client\u2026" });
     try {
-      await call("start_account_detection");
+      await call("start_account_detection", { auto_save: true });
     } catch (e) {
       setProgress({ status: "error", message: String(e) });
       setActive(false);
