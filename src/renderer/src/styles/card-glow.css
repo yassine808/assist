@@ -61,15 +61,15 @@
 .lobby-art {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: filter 0.4s ease;
   /* wide / square art (cropped to fill): fade out at the bottom of its box */
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 268px, rgba(0,0,0,.926) 279px, rgba(0,0,0,.741) 291px, rgba(0,0,0,.5) 302px, rgba(0,0,0,.259) 313px, rgba(0,0,0,.074) 325px, transparent 336px);
-  mask-image: linear-gradient(180deg, #000 0, #000 268px, rgba(0,0,0,.926) 279px, rgba(0,0,0,.741) 291px, rgba(0,0,0,.5) 302px, rgba(0,0,0,.259) 313px, rgba(0,0,0,.074) 325px, transparent 336px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 236px, rgba(0,0,0,.9) 252px, rgba(0,0,0,.79) 268px, rgba(0,0,0,.64) 284px, rgba(0,0,0,.48) 300px, rgba(0,0,0,.32) 314px, rgba(0,0,0,.12) 326px, transparent 336px);
+  mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 236px, rgba(0,0,0,.9) 252px, rgba(0,0,0,.79) 268px, rgba(0,0,0,.64) 284px, rgba(0,0,0,.48) 300px, rgba(0,0,0,.32) 314px, rgba(0,0,0,.12) 326px, transparent 336px);
 }
 /* tall portrait art: shown whole (never cropped), runs down behind the name plate, the V and the rank,
    and fades away gradually to its very last pixel */
 .lobby-art.is-portrait {
   position: absolute; left: 0; top: 0; inset: 0 auto auto 0; display: block; width: 100%; height: auto; object-fit: fill; max-width: none;
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 262px, rgba(0,0,0,.93) 280px, rgba(0,0,0,.8) 300px, rgba(0,0,0,.64) 322px, rgba(0,0,0,.47) 345px, rgba(0,0,0,.3) 367px, rgba(0,0,0,.15) 387px, rgba(0,0,0,.05) 400px, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0, #000 262px, rgba(0,0,0,.93) 280px, rgba(0,0,0,.8) 300px, rgba(0,0,0,.64) 322px, rgba(0,0,0,.47) 345px, rgba(0,0,0,.3) 367px, rgba(0,0,0,.15) 387px, rgba(0,0,0,.05) 400px, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 240px, rgba(0,0,0,.9) 262px, rgba(0,0,0,.8) 285px, rgba(0,0,0,.74) 300px, rgba(0,0,0,.63) 322px, rgba(0,0,0,.48) 345px, rgba(0,0,0,.31) 367px, rgba(0,0,0,.16) 387px, rgba(0,0,0,.06) 400px, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 240px, rgba(0,0,0,.9) 262px, rgba(0,0,0,.8) 285px, rgba(0,0,0,.74) 300px, rgba(0,0,0,.63) 322px, rgba(0,0,0,.48) 345px, rgba(0,0,0,.31) 367px, rgba(0,0,0,.16) 387px, rgba(0,0,0,.06) 400px, transparent 100%);
 }
 .lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
 
