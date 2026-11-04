@@ -117,8 +117,8 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
                 </linearGradient>
                 <linearGradient id="lf-body" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#14405f" stopOpacity="0.94" />
-                  <stop offset="0.7" stopColor="#122740" stopOpacity="0.96" />
-                  <stop offset="1" stopColor="#173046" stopOpacity="0.95" />
+                  <stop offset="0.6" stopColor="#153a58" stopOpacity="0.95" />
+                  <stop offset="1" stopColor="#24546f" stopOpacity="0.95" />
                 </linearGradient>
                 <linearGradient id="lf-kite" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#7f9bc4" stopOpacity="0.26" />
@@ -136,7 +136,6 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
                 ? <img ref={artRef} src={vd.player_card_bg} alt="" className={`lobby-art${portrait ? " is-portrait" : ""}`} onLoad={(e) => measureArt(e.currentTarget)} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 : <div className="lobby-art lobby-art-empty" />}
               <span className="lobby-scan" />
-              <i className="lobby-corner tl" /><i className="lobby-corner tr" /><i className="lobby-corner bl" /><i className="lobby-corner br" />
               <div className="lobby-actions">
                 <button onClick={copy} title="Copy username">{copied ? <Check size={12} /> : <Copy size={12} />}</button>
                 {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
