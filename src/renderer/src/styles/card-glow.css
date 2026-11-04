@@ -36,7 +36,8 @@
 /* frame lines */
 .lobby-outline { position: absolute; inset: 0; overflow: visible; }
 .lobby-frame { z-index: 2; pointer-events: none; }
-.o-fill { fill: url(#lf-body); }
+/* card body: starts where the art starts (y=29), so the gap under the white line (y 25.5 to 29) stays empty, no blue */
+.o-fill { fill: url(#lf-body); d: path("M7.5 33L11.25 29H173.75L177.5 33V342L92.5 441L7.5 342Z"); }
 .o-outer { fill: none; stroke: rgba(190, 225, 240, 0.2); stroke-width: 1; }
 .o-inner { fill: none; stroke: rgba(190, 225, 240, 0.22); stroke-width: 1; }
 .o-rail { fill: none; stroke: url(#lf-rail); stroke-width: 1; stroke-linejoin: miter; transition: stroke-width 0.25s; }
@@ -53,7 +54,7 @@
 /* art block: starts under the top bar. The art is never cropped (portrait art is fitted to the width, top aligned)
    and fades into the navy body right after it passes under the name plate. */
 .lobby-art-wrap {
-  position: absolute; left: 7.5px; top: 26px; width: 170px; height: 338px;
+  position: absolute; left: 7.5px; top: 29px; width: 170px; height: 338px;
   /* nothing is clipped: the art runs past the frame's V and fades out by itself. Only the two top corners are bevelled. */
   overflow: visible;
   clip-path: polygon(3.75px 0, calc(100% - 3.75px) 0, 100% 4px, 100% 600px, 0 600px, 0 4px);
