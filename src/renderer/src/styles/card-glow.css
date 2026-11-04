@@ -1,17 +1,21 @@
-/* VALORANT lobby card, 1:1 anatomy (196x500). Navy #0f1923, bone #ece8e1, red #ff4655 */
+/* VALORANT lobby card. Drawn in the real card's 186x472 box, then scaled to the 196px slot.
+   Navy #0f1923, cream plate #eaeeb8, wing #f7f9dc, red #ff4655 */
 @property --reveal { syntax: "<percentage>"; inherits: false; initial-value: 112%; }
 
-.lobby-slot { width: 196px; display: flex; flex-direction: column; padding-top: 24px; }
+:root { --lobby-k: 1.0538; --lobby-font: "Barlow", "Bahnschrift", "DIN Next LT Pro", "Rajdhani", system-ui, sans-serif; --rank-size: 60px; }
+
+.lobby-slot { width: 196px; display: flex; flex-direction: column; padding-top: 4px; }
 
 .lobby-card {
-  position: relative; width: 196px; height: 500px; cursor: default; user-select: none;
+  position: relative; width: 196px; height: calc(472px * var(--lobby-k)); cursor: default; user-select: none;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease, translate 0.3s ease;
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.4));
 }
 .lobby-card:hover { transform: translateY(-6px); filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.5)); }
 .lobby-card.is-busy { filter: drop-shadow(0 0 16px rgba(90, 150, 230, 0.4)); }
-.lobby-card.is-me { translate: 0 -14px; }
-.lobby-card.is-me::before { content: ""; position: absolute; left: 50%; top: -14px; width: 9px; height: 9px; margin-left: -5px; border-left: 1px solid rgba(190, 215, 235, 0.7); border-top: 1px solid rgba(190, 215, 235, 0.7); transform: rotate(45deg); }
+.lobby-card.is-me { translate: 0 -10px; }
+
+.lobby-stage { position: absolute; left: 0; top: 0; width: 186px; height: 472px; transform: scale(var(--lobby-k)); transform-origin: 0 0; }
 
 .lobby-inner {
   position: absolute; inset: 0;
@@ -22,31 +26,37 @@
 }
 @keyframes lobby-in { from { --reveal: 0%; } to { --reveal: 112%; } }
 
+/* signal bars + "you" caret sit above the card, outside the reveal mask */
+.lobby-signal { position: absolute; left: 159px; top: 7px; color: #3ddc97; }
+.lobby-caret { display: none; position: absolute; left: 90.5px; top: 8px; width: 4px; height: 4px; border-left: 1px solid rgba(190, 225, 240, 0.45); border-top: 1px solid rgba(190, 225, 240, 0.45); transform: rotate(45deg); }
+.lobby-card.is-me .lobby-caret { display: block; }
+.lobby-card:not(.is-me) .lobby-signal { color: rgba(190, 215, 235, 0.55); }
+
 /* frame lines */
 .lobby-outline { position: absolute; inset: 0; overflow: visible; }
-.o-fill { fill: rgba(8, 24, 40, 0.45); }
-.o-line { fill: none; stroke: rgba(185, 215, 240, 0.8); stroke-width: 1.25; transition: stroke 0.25s; }
-.o-inner { stroke: rgba(185, 215, 240, 0.42); stroke-width: 1; }
-.o-tick { stroke: rgba(185, 215, 240, 0.55); stroke-width: 1; }
-.lobby-card:hover .o-line { stroke: #f2f8ff; }
-.lobby-card:hover .o-inner, .lobby-card:hover .o-tick { stroke: rgba(242, 248, 255, 0.6); }
-.lobby-card.is-me .o-line { stroke: #ece8e1; }
+.o-fill { fill: url(#lf-body); }
+.o-outer { fill: none; stroke: rgba(190, 225, 240, 0.2); stroke-width: 1; }
+.o-inner { fill: none; stroke: rgba(190, 225, 240, 0.22); stroke-width: 1; }
+.o-rail { fill: none; stroke: url(#lf-rail); stroke-width: 1; stroke-linejoin: miter; transition: stroke-width 0.25s; }
+.o-kite-fill { fill: url(#lf-kite); }
+.o-kite { fill: none; stroke: rgba(200, 225, 245, 0.3); stroke-width: 1; }
+.o-bracket { fill: none; stroke: rgba(200, 225, 245, 0.36); stroke-width: 1; }
+.o-tick { fill: none; stroke: rgba(235, 245, 255, 0.6); stroke-width: 1.2; }
+.lobby-card:hover .o-rail { stroke-width: 1.6; }
+.lobby-card:hover .o-kite, .lobby-card:hover .o-bracket { stroke: rgba(235, 245, 255, 0.7); }
 
 /* the two cream wings beside the rank */
-.wing { fill: #f4f1d0; opacity: 0.5; filter: drop-shadow(0 0 8px rgba(244, 241, 208, 0.5)); transition: opacity 0.25s, filter 0.25s; }
-.lobby-card:hover .wing, .lobby-card.is-me .wing { opacity: 1; filter: drop-shadow(0 0 12px rgba(244, 241, 208, 0.85)); }
+.wing { fill: #f9fde0; filter: drop-shadow(0 0 2px rgba(215, 245, 215, 0.55)); transition: filter 0.25s; }
+.lobby-card:hover .wing { filter: drop-shadow(0 0 6px rgba(240, 255, 220, 1)); }
 
-.lobby-topbar { position: absolute; top: 0; left: 10px; right: 10px; height: 4px; z-index: 3; background: rgba(255, 255, 255, 0.92); transition: box-shadow 0.25s; }
-.lobby-card:hover .lobby-topbar, .lobby-card.is-me .lobby-topbar { box-shadow: 0 0 12px rgba(255, 255, 255, 0.75); }
+.lobby-topbar { position: absolute; top: 22px; left: 12px; width: 161px; height: 3.5px; z-index: 3; background: #e0f6f8; transition: box-shadow 0.25s; }
+.lobby-card:hover .lobby-topbar { box-shadow: 0 0 10px rgba(224, 246, 248, 0.7); }
 
-.lobby-signal { position: absolute; top: -17px; right: 10px; color: rgba(190, 215, 235, 0.5); }
-.lobby-card.is-me .lobby-signal { color: #3ddc97; }
-
-/* art block */
-.lobby-art-wrap { position: absolute; left: 10px; right: 10px; top: 4px; height: 334px; overflow: hidden; background: #0f1923; }
+/* art block: starts under the top bar, fades into the navy body */
+.lobby-art-wrap { position: absolute; left: 12px; top: 26px; width: 161px; height: 320px; overflow: hidden; background: #0f1923; }
 .lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
-.lobby-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8, 18, 30, 0.6) 0%, transparent 24%); }
+.lobby-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(18, 36, 62, 0.55) 76%, rgba(19, 40, 66, 1) 100%); }
 .lobby-sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.16) 50%, transparent 62%); transform: translateX(-120%); }
 .lobby-card:hover .lobby-sheen { animation: sheen 0.9s ease-out 1; }
 @keyframes sheen { to { transform: translateX(120%); } }
@@ -57,41 +67,37 @@
 .lobby-actions button:hover { background: rgba(236, 232, 225, 0.2); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
 .lobby-actions button.danger:hover { background: rgba(255, 70, 85, 0.28); color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
 
-/* READY label, full-width plate, title lines */
-.lobby-status { position: absolute; left: 0; right: 0; top: 298px; z-index: 3; text-align: center; font: 700 10px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.06em; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
+/* READY label, cream name plate (always, like the lobby), sub lines */
+.lobby-status { position: absolute; left: 0; width: 185px; top: 281.3px; z-index: 3; text-align: center; font: 700 9.5px/1 var(--lobby-font); letter-spacing: 0.01em; color: #eef5fa; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
 .lobby-card.is-busy .lobby-status { color: #8ab8f0; }
-.lobby-plate { position: absolute; left: 0; right: 0; top: 314px; height: 24px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; background: linear-gradient(90deg, rgba(160, 172, 190, 0.72), rgba(128, 142, 164, 0.62)); backdrop-filter: blur(3px); }
-.lobby-card.is-me .lobby-plate { background: #eaeebc; }
-.lobby-plate-name { font: 600 15px/1 "Rajdhani", "Noto Sans JP", system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lobby-card.is-me .lobby-plate-name { color: #0f1923; text-shadow: none; }
-.plate-mark { width: 8px; height: 8px; flex: none; transform: rotate(45deg); background: #0f1923; }
+.lobby-plate { position: absolute; left: 8px; width: 169px; top: 293px; height: 20px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 10px; background: #eaeeb8; }
+.lobby-plate-name { transform: translateY(-0.6px); font: 500 12.3px/1 var(--lobby-font); color: #232a25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate-mark { flex: none; color: #232a25; }
 
-.lobby-sub { position: absolute; left: 0; right: 0; top: 346px; display: flex; flex-direction: column; align-items: center; gap: 5px; font: 500 11px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.03em; color: rgba(236, 232, 225, 0.78); }
-.lobby-sub > div:first-child { display: flex; align-items: center; gap: 5px; }
-.lobby-sub img { width: 15px; height: 15px; object-fit: contain; }
+.lobby-sub { position: absolute; left: 0; width: 185px; top: 314px; display: flex; flex-direction: column; align-items: center; gap: 5px; font: 600 9.3px/1 var(--lobby-font); letter-spacing: 0.02em; color: rgba(228, 237, 244, 0.88); }
+.lobby-sub > div:first-child { display: flex; align-items: center; gap: 4px; }
+.lobby-sub img { width: 13px; height: 13px; object-fit: contain; }
 .lobby-wl { display: flex; gap: 8px; }
 .lobby-wl b { color: #4ade80; font-weight: 700; }
 .lobby-wl i { color: #f87171; font-style: normal; font-weight: 700; }
 
-/* ── rank: double-line diamond in the point ── */
-.rank-emblem { position: absolute; left: 50px; top: 404px; width: 96px; height: 96px; display: grid; place-items: center; }
-.rank-diamond { position: absolute; width: 54px; height: 54px; top: 21px; left: 21px; transform: rotate(45deg); background: rgba(120, 165, 200, 0.1); border: 1px solid rgba(185, 215, 240, 0.55); }
-.rank-diamond::after { content: ""; position: absolute; inset: -6px; border: 1px solid rgba(185, 215, 240, 0.28); }
-.rank-core { position: absolute; width: 36px; height: 36px; top: 30px; left: 30px; transform: rotate(45deg); background: rgba(8, 20, 32, 0.88); border: 1px solid color-mix(in srgb, var(--rank) 60%, transparent); box-shadow: inset 0 0 12px color-mix(in srgb, var(--rank) 30%, transparent); }
-.rank-emblem img { position: relative; z-index: 2; width: 38px; height: 38px; object-fit: contain; animation: rank-breathe 3s ease-in-out infinite; transition: transform 0.25s; }
-.lobby-card:hover .rank-emblem img { transform: scale(1.1); }
+/* ── rank: big emblem inside the kite ── */
+.rank-emblem { position: absolute; left: calc(92.5px - var(--rank-size) * 0.65); top: calc(405px - var(--rank-size) * 0.65); width: calc(var(--rank-size) * 1.3); height: calc(var(--rank-size) * 1.3); display: grid; place-items: center; z-index: 2; }
+.rank-halo { position: absolute; left: 50%; top: 50%; width: calc(var(--rank-size) * 0.54); height: calc(var(--rank-size) * 0.54); transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--rank) 10%, rgba(170, 160, 172, 0.22)) 0 66%, rgba(150, 150, 165, 0.1) 80%, transparent 82%); }
+.rank-emblem img { position: relative; z-index: 2; width: var(--rank-size); height: var(--rank-size); object-fit: contain; animation: rank-breathe 3s ease-in-out infinite; transition: transform 0.25s; }
+.lobby-card:hover .rank-emblem img { transform: scale(1.08); }
 .rank-none { position: relative; z-index: 2; width: 10px; height: 10px; transform: rotate(45deg); background: rgba(236, 232, 225, 0.3); }
-.rank-tick { position: absolute; left: 50%; top: 66px; margin-left: -3px; border: 3px solid transparent; border-top-color: rgba(236, 232, 225, 0.55); }
-.rank-mute { position: absolute; left: 50%; top: 74px; margin-left: -5px; color: rgba(236, 232, 225, 0.6); }
-.rank-sweep { display: none; position: absolute; width: 84px; height: 84px; top: 6px; left: 6px; border-radius: 50%; opacity: 0.5;
+.rank-dash { position: absolute; left: 90.5px; top: 431.5px; width: 4px; height: 1px; background: rgba(225, 238, 248, 0.5); }
+.rank-mute { position: absolute; left: 87px; top: 436px; color: rgba(240, 246, 250, 0.9); }
+.rank-sweep { display: none; position: absolute; inset: 17%; border-radius: 50%; opacity: 0.5;
   background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--rank) 80%, white) 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 46%, #000 48%, #000 62%, transparent 66%);
-  mask-image: radial-gradient(circle, transparent 46%, #000 48%, #000 62%, transparent 66%); }
+  -webkit-mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 70%, transparent 74%);
+  mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 70%, transparent 74%); }
 .rank-emblem.has-sweep .rank-sweep { display: block; animation: rank-spin 4.5s linear infinite; }
 .rank-emblem.is-radiant .rank-sweep { animation-duration: 2.8s; opacity: 0.8; }
 @keyframes rank-breathe {
-  0%, 100% { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--rank) 55%, transparent)); }
-  50% { filter: drop-shadow(0 0 12px color-mix(in srgb, var(--rank) 90%, transparent)); }
+  0%, 100% { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rank) 50%, transparent)); }
+  50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--rank) 85%, transparent)); }
 }
 @keyframes rank-spin { to { transform: rotate(360deg); } }
 
