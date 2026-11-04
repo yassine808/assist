@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Palette, Trash2 } from "lucide-react";
+import { Check, Copy, Palette, Trash2, VolumeX } from "lucide-react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
 import { sfx } from "../lib/sfx";
@@ -91,11 +91,14 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
         </svg>
 
         <div className="lobby-inner">
-          {/* open banner outline, exactly like the lobby: hollow body, pointed bottom, double line */}
-          <svg className="lobby-outline" width="196" height="470" viewBox="0 0 196 470" aria-hidden>
-            <polygon className="o-fill" points="0.5,0.5 195.5,0.5 195.5,372 98,469.5 0.5,372" />
-            <polygon className="o-line" points="0.5,0.5 195.5,0.5 195.5,372 98,469.5 0.5,372" />
-            <path className="o-line o-inner" d="M5.5 321 V369.5 L98 460 L190.5 369.5 V321" />
+          {/* frame: chamfered top, outer + inner line, steep point, and the two wings */}
+          <svg className="lobby-outline" width="196" height="500" viewBox="0 0 196 500" aria-hidden>
+            <path className="o-fill" d="M9 .75H187L195.25 9V378L98 499.25L.75 378V9Z" />
+            <path className="o-line" d="M9 .75H187L195.25 9V378L98 499.25L.75 378V9Z" />
+            <path className="o-line o-inner" d="M6.5 14V375.7L98 489.6L189.5 375.7V14" />
+            <path className="o-line o-tick" d="M.75 40H6.5M189.5 40H195.25M.75 120H6.5M189.5 120H195.25M.75 200H6.5M189.5 200H195.25M.75 280H6.5M189.5 280H195.25" />
+            <polygon className="wing" points="16,386 32,386 58,448 42,448" />
+            <polygon className="wing" points="180,386 164,386 138,448 154,448" />
           </svg>
 
           <div className="lobby-topbar" />
@@ -106,18 +109,17 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
               : <div className="lobby-art lobby-art-empty" />}
             <div className="lobby-shade" />
             <div className="lobby-sheen" />
-
             <div className="lobby-actions">
               <button onClick={copy} title="Copy username">{copied ? <Check size={12} /> : <Copy size={12} />}</button>
               {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
               <button className="danger" onClick={(e) => { e.stopPropagation(); onDelete(profile); }} title="Delete profile"><Trash2 size={12} /></button>
             </div>
+          </div>
 
-            <span className="lobby-status">{status}</span>
-            <div className="lobby-plate" title={profile.profile_name}>
-              {isMe && <i className="plate-mark" />}
-              <span className="lobby-plate-name">{profile.profile_name}</span>
-            </div>
+          <span className="lobby-status">{status}</span>
+          <div className="lobby-plate" title={profile.profile_name}>
+            {isMe && <i className="plate-mark" />}
+            <span className="lobby-plate-name">{profile.profile_name}</span>
           </div>
 
           <div className="lobby-sub">
@@ -128,14 +130,15 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
             <div className="lobby-wl"><b>{vd?.wins ?? 0}W</b><i>{vd?.losses ?? 0}L</i></div>
           </div>
 
-          {isMe && <><span className="lobby-wing l" /><span className="lobby-wing r" /></>}
-
           <div className={`rank-emblem ${hasSweep ? "has-sweep" : ""} ${tier >= 27 ? "is-radiant" : ""}`}>
             <span className="rank-sweep" />
             <span className="rank-diamond" />
+            <span className="rank-core" />
             {vd?.rank_icon
               ? <img src={vd.rank_icon} alt={rankName} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               : <span className="rank-none" />}
+            <span className="rank-tick" />
+            <VolumeX className="rank-mute" size={10} />
           </div>
         </div>
       </div>
