@@ -35,6 +35,7 @@
 
 /* frame lines */
 .lobby-outline { position: absolute; inset: 0; overflow: visible; }
+.lobby-frame { z-index: 2; pointer-events: none; }
 .o-fill { fill: url(#lf-body); }
 .o-outer { fill: none; stroke: rgba(190, 225, 240, 0.2); stroke-width: 1; }
 .o-inner { fill: none; stroke: rgba(190, 225, 240, 0.22); stroke-width: 1; }
@@ -52,27 +53,32 @@
 /* art block: starts under the top bar. The art is never cropped (portrait art is fitted to the width, top aligned)
    and fades into the navy body right after it passes under the name plate. */
 .lobby-art-wrap {
-  position: absolute; left: 12px; top: 26px; width: 161px; height: 330px; overflow: hidden;
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 286px, rgba(0, 0, 0, 0.78) 296px, rgba(0, 0, 0, 0.42) 308px, rgba(0, 0, 0, 0.14) 320px, transparent 330px);
-  mask-image: linear-gradient(180deg, #000 0, #000 286px, rgba(0, 0, 0, 0.78) 296px, rgba(0, 0, 0, 0.42) 308px, rgba(0, 0, 0, 0.14) 320px, transparent 330px);
+  position: absolute; left: 7.5px; top: 26px; width: 170px; height: auto; min-height: 338px; overflow: hidden;
+  /* follow the card's own outline (it narrows into the V) so nothing can spill past the frame */
+  clip-path: polygon(0 0, 100% 0, 100% 316px, 50% 415px, 0 316px);
 }
-.lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: filter 0.4s ease; }
-.lobby-art.is-portrait { inset: 0 auto auto 0; height: auto; object-fit: fill; }
-.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); height: 100%; }
+.lobby-art {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: filter 0.4s ease;
+  /* smooth ease-out fade (smoothstep curve) from just above the name plate to the very last pixel of the art */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 76%, rgba(0,0,0,.93) 80%, rgba(0,0,0,.78) 84%, rgba(0,0,0,.58) 88%, rgba(0,0,0,.38) 92%, rgba(0,0,0,.2) 95%, rgba(0,0,0,.07) 98%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 76%, rgba(0,0,0,.93) 80%, rgba(0,0,0,.78) 84%, rgba(0,0,0,.58) 88%, rgba(0,0,0,.38) 92%, rgba(0,0,0,.2) 95%, rgba(0,0,0,.07) 98%, transparent 100%);
+}
+.lobby-art.is-portrait { position: relative; display: block; inset: auto; height: auto; object-fit: fill; }
+.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
 
 /* ── hover: VALORANT-style "scan + lock" (the card itself never moves) ── */
 .lobby-scan { position: absolute; left: 0; right: 0; top: 0; height: 56px; z-index: 2; pointer-events: none; opacity: 0; transform: translateY(-100%);
   background: linear-gradient(180deg, transparent 0%, rgba(150, 225, 255, 0.05) 45%, rgba(170, 235, 255, 0.26) 100%);
   border-bottom: 1.5px solid rgba(235, 252, 255, 0.9); box-shadow: 0 2px 12px rgba(150, 230, 255, 0.55); }
-.lobby-art-wrap::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; background: rgba(215, 245, 255, 0.5); }
+.lobby-art-wrap::after { content: ""; position: absolute; inset: 0 0 90px 0; z-index: 2; pointer-events: none; opacity: 0; background: rgba(215, 245, 255, 0.5); }
 
 .lobby-corner { position: absolute; width: 0; height: 0; z-index: 5; pointer-events: none; opacity: 0; border: 0 solid #eafcff;
   filter: drop-shadow(0 0 3px rgba(150, 235, 255, 0.9));
   transition: width 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.12s; }
-.lobby-corner.tl { top: 5px; left: 5px; border-top-width: 2px; border-left-width: 2px; }
-.lobby-corner.tr { top: 5px; right: 5px; border-top-width: 2px; border-right-width: 2px; transition-delay: 0.04s; }
-.lobby-corner.br { bottom: 86px; right: 5px; border-bottom-width: 2px; border-right-width: 2px; transition-delay: 0.08s; }
-.lobby-corner.bl { bottom: 86px; left: 5px; border-bottom-width: 2px; border-left-width: 2px; transition-delay: 0.12s; }
+.lobby-corner.tl { top: 8px; left: 8px; border-top-width: 2px; border-left-width: 2px; }
+.lobby-corner.tr { top: 8px; right: 8px; border-top-width: 2px; border-right-width: 2px; transition-delay: 0.04s; }
+.lobby-corner.br { bottom: 94px; right: 8px; border-bottom-width: 2px; border-right-width: 2px; transition-delay: 0.08s; }
+.lobby-corner.bl { bottom: 94px; left: 8px; border-bottom-width: 2px; border-left-width: 2px; transition-delay: 0.12s; }
 
 .lobby-card:hover .lobby-art { filter: brightness(1.07) saturate(1.1); }
 .lobby-card:hover .lobby-corner { width: 17px; height: 17px; opacity: 1; }
@@ -82,7 +88,7 @@
   0% { transform: translateY(-100%); opacity: 0; }
   12% { opacity: 1; }
   78% { opacity: 1; }
-  100% { transform: translateY(300px); opacity: 0; }
+  100% { transform: translateY(215px); opacity: 0; }
 }
 @keyframes sheen { to { transform: translateX(120%); } }
 @keyframes lobby-flash { 0% { opacity: 0.32; } 100% { opacity: 0; } }
@@ -94,7 +100,7 @@
 .lobby-card:hover .lobby-topbar { box-shadow: 0 0 12px rgba(224, 246, 248, 0.85); }
 .lobby-outline { transition: filter 0.3s; }
 
-.lobby-actions { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
+.lobby-actions { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
 .lobby-card:hover .lobby-actions, .lobby-actions:focus-within { opacity: 1; transform: none; }
 .lobby-actions button { width: 26px; height: 26px; display: grid; place-items: center; background: rgba(15, 25, 35, 0.72); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.75); transition: background 0.15s, color 0.15s, border-color 0.15s; }
 .lobby-actions button:hover { background: rgba(236, 232, 225, 0.2); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
@@ -106,8 +112,7 @@
 .lobby-plate { position: absolute; left: 8px; width: 169px; top: 291px; height: 24px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; background: #eaeeb8; overflow: hidden; }
 .lobby-plate::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-120%); background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%); }
 .lobby-card:hover .lobby-plate::after { animation: sheen 0.7s ease-out 0.15s 1 both; }
-.lobby-plate-name { transform: translateY(-0.5px); font: 600 14px/1 var(--lobby-font); color: #1f2622; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plate-mark { flex: none; color: #232a25; width: 7.5px; height: 8.5px; }
+.lobby-plate-name { font: 600 14px/1.4 var(--lobby-font); color: #1f2622; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 1px; }
 
 .lobby-sub { position: absolute; left: 0; width: 185px; top: 321px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 11.5px/1 var(--lobby-font); letter-spacing: 0.02em; color: rgba(232, 240, 246, 0.94); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 .lobby-sub > div:first-child { display: flex; align-items: center; gap: 5px; }

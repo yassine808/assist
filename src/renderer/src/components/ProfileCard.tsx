@@ -127,15 +127,6 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
                 </linearGradient>
               </defs>
               <path className="o-fill" d="M7.5 30L15 22H170L177.5 30V342L92.5 441L7.5 342Z" />
-              <path className="o-outer" d="M3.5 60V330M181.5 60V330" />
-              <path className="o-inner" d="M11.5 313V347L56 399M173.5 313V347L129 399" />
-              <path className="o-rail" d="M7.5 26V342L87.5 435M177.5 26V342L97.5 435" />
-              <polygon className="o-kite-fill" points="92.5,372 60,404 60,421 92.5,453 125,421 125,404" />
-              <polyline className="o-kite" points="60,404 60,421 92.5,453 125,421 125,404" />
-              <path className="o-bracket" d="M58 397L70 410V424M127 397L115 410V424" />
-              <path className="o-tick" d="M70 418V424M115 418V424" />
-              <polygon className="wing" points="19.9,349.3 54.1,383.6 54.1,400.7 19.9,366.4" />
-              <polygon className="wing" points="165.1,349.3 130.9,383.6 130.9,400.7 165.1,366.4" />
             </svg>
 
             <div className="lobby-topbar" />
@@ -153,9 +144,21 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
               </div>
             </div>
 
+            {/* frame lines are drawn ABOVE the art, so the art shows behind the frame */}
+            <svg className="lobby-outline lobby-frame" width="186" height="472" viewBox="0 0 186 472" aria-hidden>
+              <path className="o-outer" d="M3.5 60V330M181.5 60V330" />
+              <path className="o-inner" d="M11.5 313V347L56 399M173.5 313V347L129 399" />
+              <path className="o-rail" d="M7.5 26V342L87.5 435M177.5 26V342L97.5 435" />
+              <polygon className="o-kite-fill" points="92.5,372 60,404 60,421 92.5,453 125,421 125,404" />
+              <polyline className="o-kite" points="60,404 60,421 92.5,453 125,421 125,404" />
+              <path className="o-bracket" d="M58 397L70 410V424M127 397L115 410V424" />
+              <path className="o-tick" d="M70 418V424M115 418V424" />
+              <polygon className="wing" points="19.9,349.3 54.1,383.6 54.1,400.7 19.9,366.4" />
+              <polygon className="wing" points="165.1,349.3 130.9,383.6 130.9,400.7 165.1,366.4" />
+            </svg>
+
             <span className="lobby-status">{status}</span>
             <div className="lobby-plate" title={profile.profile_name}>
-              <svg className="plate-mark" width="7.5" height="8.5" viewBox="0 0 10 11" aria-hidden><path d="M5 10.6L.9 5.6C-.6 3.4 1.5.7 3.5 1.7L5 2.9l1.5-1.2c2-1 4.1 1.7 2.6 3.9z" fill="currentColor" /></svg>
               <span className="lobby-plate-name">{profile.profile_name}</span>
             </div>
 
