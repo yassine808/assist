@@ -1,697 +1,131 @@
-# RiotSwitcher v2.1.0
+# RiotSwitcher
 
-> Instantly switch between multiple Riot Games accounts — VALORANT, League of Legends, and more.
+[![Latest release](https://img.shields.io/github/v/release/yassine808/assist?label=download&sort=semver)](https://github.com/yassine808/assist/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4)](https://github.com/yassine808/assist/releases/latest)
 
-RiotSwitcher is a desktop application that lets you manage and switch between multiple Riot Games accounts with zero hassle. It swaps session files on disk so you never have to log out and log back in manually.
+**One click, another account.** RiotSwitcher keeps a copy of each Riot login
+and swaps it in before the Riot Client starts, so you never type a password
+or sit through a fresh login again.
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Desktop Shell | Electron 44.4.5 (Chromium) |
-| Frontend | React 19, TypeScript, Tailwind CSS |
-| Backend | Python 3.9+ |
-| IPC | JSON-line over stdin/stdout |
-| Encryption | PBKDF2-HMAC-SHA256 + Fernet (480k iterations) |
-| VALORANT API | HenrikDev API v3, valorant-api.com |
-| Presence Proxy | Custom MITM (ported from Deceive) |
+![RiotSwitcher home screen](docs/screenshots/home.png)
 
 ---
 
-## Architecture
+## TL;DR — how it works
 
-RiotSwitcher runs as **three cooperating processes**:
+1. **Add an account once.** RiotSwitcher saves the login the Riot Client just
+   wrote to disk (or opens the client and waits for you to log in).
+2. **Click a profile card.** It closes the Riot Client, backs up the current
+   login, writes the target login in its place, and relaunches the client.
+3. **That's it.** The client opens already signed in to the account you picked.
 
-```mermaid
-graph TB
-    subgraph "Electron Main Process"
-        EM[Main Process<br/>src/main/index.ts]
-        PB[PythonBridge<br/>python-bridge.ts]
-        TR[Tray<br/>tray.ts]
-        WIN[BrowserWindow<br/>window.ts]
-    end
+Nothing is sent to Riot, no game files are touched, and no passwords are
+stored. Only the Riot Client's own session files are copied, atomically, on
+your own machine.
 
-    subgraph "Python Backend"
-        PY[main.py<br/>Handler Dispatch]
-        PM[ProfileManager]
-        SM[SessionManager]
-        RC[RiotClientManager]
-        VT[ValorantTracker]
-        LO[LaunchOrchestrator]
-        AD[AccountDetector]
-        LS[LeagueSettingsSync]
-        DP[Deceive Proxy Stack]
-        AG[AgentDatabase]
-        CM[ConfigManager]
-    end
-
-    subgraph "React Renderer"
-        RN[main.tsx]
-        APP[App.tsx]
-        HV[HomeView]
-        SV[SettingsView]
-        AMV[AgentMapView<br/>?view=agent-maps]
-        PC[ProfileCard]
-        AB[AddAccountModal]
-        PP[PlayerCardPicker]
-        IE[ImportExportModal]
-    end
-
-    EM --> PB
-    EM --> WIN
-    EM --> TR
-    WIN --> RN
-
-    PB -- "JSON-line stdin/stdout" --> PY
-    PY -- "async events" --> PB
-
-    PY --> PM
-    PY --> SM
-    PY --> RC
-    PY --> VT
-    PY --> LO
-    PY --> AD
-    PY --> LS
-    PY --> DP
-    PY --> AG
-    PY --> CM
-
-    RN --> APP
-    APP --> HV
-    APP --> SV
-    APP --> AMV
-    HV --> PC
-    HV --> AB
-    HV --> PP
-    HV --> IE
-
-    HV -- "useIPC" --> PB
-    SV -- "useIPC" --> PB
-    AMV -- "useIPC" --> PB
-```
-
-The renderer runs in **two BrowserWindows**. `openViewWindow()` maintains a
-singleton per view, so Settings and Agent Maps each have at most one window
-open; a second click focuses the existing one. Which view a window shows is
-selected from the query string, not a router — `App.tsx` reads `?view=` from
-`URLSearchParams`.
+| You want to… | Do this |
+|---|---|
+| Switch account | Click the play button on a profile card |
+| Add a new account | **Add Account** → log in once in the window that opens |
+| Rename / delete a profile | Right-click its card |
+| Pick a player card | Click the card art on a profile |
+| See ranks and stats | They refresh automatically every 2 minutes |
+| Back up everything | **Import / Export** → encrypted `.rsprofile` file |
 
 ---
 
-## Features
+## Download
 
-### Account Management
-- **Instant account switching** — swap Riot Client session files without re-login (auto-kills running processes)
-- **Auto-detect new accounts** — detects when a new Riot account logs in and offers to save it
-- **Profile cards** — Valorant lobby-style cards with full playercard art, rank icon, agent icon, RR, wins/losses
-- **Drag-and-drop reorder** — arrange profiles however you like
-- **Playercard picker** — choose from 3000+ VALORANT playercards
+Grab the latest installer from the
+**[releases page](https://github.com/yassine808/assist/releases/latest)**.
 
-### VALORANT Integration
-- **Live rank tracking** — fetches MMR, RR, peak rank, win rate from HenrikDev API
-- **Agent stats** — top agent icon, ACS, per-agent performance breakdown
-- **Recent match history** — last 10 competitive games with detailed stats
-- **Agent visuals** — agent display icons, portraits, backgrounds, and role-colored accents
+- **`RiotSwitcher.Setup.x.y.z.exe`** — normal install (recommended)
+- **`RiotSwitcher-x.y.z-portable.exe`** — run without installing
 
-### Agent Map
-- **Per-map breakdown** — games, wins, win rate and average ACS for every map you have played
-- **Per-map agent breakdown** — the same stats drilled down per agent, on each map
-- **Map and agent artwork** — map splash art and agent display icons, resolved via valorant-api.com
-- **Second window** — opens in its own window so you can keep browsing profiles alongside it
-- **Collected in the background** — per-map stats accumulate inside the normal 2-minute refresh, no extra API cost
-
-### Cross-Platform Features
-- **League of Legends settings sync** — share hotkeys, video, audio, and interface settings across profiles
-- **Appear Offline** — MITM proxy (ported from Deceive) that makes you invisible to friends
-- **Import/Export** — encrypted backup of all profiles, transferable across PCs with a passkey
-
-### System
-- **Auto-kill on launch** — kills VALORANT + Riot Client automatically when switching profiles
-- **Close/Minimize to tray** — keep RiotSwitcher running in the background
-- **Auto-detect Riot Client** — finds install directory from registry, JSON, and metadata
+Windows 10/11, x64.
 
 ---
 
-## Use Cases
+## What it does
 
-```mermaid
-mindmap
-  root((RiotSwitcher))
-    Account Switching
-      Switch between personal and work accounts
-      Quick swap during stream breaks
-      Share a PC with friends
-      Test different account ranks
-    VALORANT Stats
-      Track rank across multiple accounts
-      Compare win rates and agent stats
-      Monitor peak rank progress
-      Review recent match performance
-    Backup & Transfer
-      Export encrypted profile backup
-      Transfer profiles to a new PC
-      Restore after a fresh Windows install
-      Share account list with a friend
-    Appear Offline
-      Hide from friends list while playing
-      Stream without interruptions
-      Avoid questions about which account
-    League Sync
-      Keep same hotkeys across VALORANT accounts
-      Share video settings everywhere
-      Avoid reconfiguring League each switch
-    Multi-Game
-      Switch between VALORANT and League
-      Launch different Riot games per profile
-```
+- **Instant switching** — session files are swapped on disk; no re-login.
+- **Profile cards** — VALORANT-style cards with player card art, rank, RR and
+  recent form.
+- **Live stats** — rank, peak rank, agent picks and win rate per account.
+- **Agent map breakdown** — per-map and per-agent performance in its own window.
+- **Appear Offline** — optional local proxy that hides your presence.
+- **League settings sync** — keep hotkeys and video settings across accounts.
+- **Encrypted import/export** — move every profile to another PC.
 
 ---
 
-## Key Flows
+## Updating
 
-### Profile Switch Sequence
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as React UI
-    participant BE as Python Backend
-    participant FS as File System
-    participant RC as Riot Client
-
-    U->>UI: Click "Play" on profile
-    UI->>BE: launch_profile(name)
-    
-    Note over BE: Step 1 — Kill existing processes
-    BE->>RC: taskkill /F /T
-    BE->>FS: Wait for processes to exit (8s timeout)
-
-    Note over BE: Step 2 — Save current session
-    BE->>FS: Backup RiotGamesPrivateSettings.yaml
-    BE->>FS: Backup Sessions/ directory
-    BE->>FS: Backup client.config.yaml
-
-    Note over BE: Step 3 — Restore target session
-    BE->>FS: Copy target profile files → live Riot dir
-    BE->>FS: Atomic rename (temp → final)
-
-    Note over BE: Step 4 — League Sync (optional)
-    BE->>FS: Deploy master snapshot to League/Config
-    BE->>FS: Verify SHA-256 hashes
-    BE->>FS: Set read-only flags (optional)
-
-    Note over BE: Step 5 — Appear Offline (optional)
-    BE->>BE: Start Deceive proxy stack
-    BE->>BE: Generate --client-config-url arg
-
-    Note over BE: Step 6 — Launch Riot Client
-    BE->>RC: Spawn RiotClientServices.exe
-    BE->>FS: Save LastRunningProfile
-    BE-->>UI: profile_switch_progress events
-    UI-->>U: Launching → Launched state
-```
-
-### Add Account Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as AddAccountModal
-    participant BE as Python Backend
-    participant RC as Riot Client
-    participant FS as File System
-
-    U->>UI: Click "Add Account"
-    UI->>BE: check_current_account()
-    BE->>FS: Read RiotGamesPrivateSettings.yaml
-    BE->>BE: Decode JWT id_token
-    BE-->>UI: {found, display, is_new}
-
-    alt New account already logged in
-        UI-->>U: Show suggestion: "Add [name]?"
-        U->>UI: Click "Add Account"
-        UI->>BE: create_profile(account_data)
-        BE->>FS: Write to profiles_data.json
-        BE->>FS: Copy live session files into the profile backup
-        BE-->>UI: profile_created event
-    else No account / already added
-        UI->>BE: start_account_detection()
-        BE->>RC: Kill all Riot processes
-        BE->>RC: Launch fresh Riot Client
-        BE-->>UI: "Waiting for login…"
-
-        U->>RC: Logs in with new account
-        BE->>FS: Polls live settings every 1.5s
-        BE->>BE: Decode JWT, check if PUUID is new
-
-        alt Account already saved
-            BE->>RC: Kill + re-launch fresh
-            BE-->>UI: "Already added. Launching again…"
-            Note over BE: Loops until new account
-        else New account detected
-            BE-->>UI: confirm_save event
-            UI-->>U: Show: "Detected: name#tag"
-            U->>UI: Click "Save Profile"
-            UI->>BE: confirm_account_save(accepted=true)
-            BE->>FS: Create profile in profiles_data.json
-            BE->>FS: Copy live session files into the profile backup
-            BE-->>UI: profile_created event
-            UI-->>U: "Profile Created!" ✓
-        end
-    end
-```
-
-### Per-Map Statistics Pipeline
-
-```mermaid
-graph LR
-    subgraph "HenrikDev API"
-        MM[50 most recent<br/>competitive matches]
-    end
-    ACC[_MatchAccumulator<br/>map / map+agent buckets]
-    OUT[profile_data]
-    WIN[AgentMapView<br/>secondary window]
-
-    MM -->|"every 2 min"| ACC
-    ACC -->|"map_stats"| OUT
-    OUT -->|"get_valorant"| WIN
-
-    MAPS["valorant-api.com<br/>/v1/maps"] -.->|"splash + display names"| WIN
-```
-
-One fetch of 50 matches feeds **two different outputs**, which is worth being
-precise about:
-
-| Output | Built from | Size |
-|--------|-----------|------|
-| `map_stats` (per-map + per-agent) | **all 50** fetched matches | grows with history |
-| `recent_matches` (home card list) | newest first, **capped at 10** | always 10 |
-
-`recent_matches` is the truncated list; the per-map aggregates are computed
-over the full fetched window. Collection is gated on the `PerMapStats` config
-key — when disabled, `map_stats` is emitted as `[]` and no accumulation cost
-is paid.
-
-#### `map_stats` shape
-
-Exactly what `valorant_tracker._build_map_stats()` emits — maps sorted by games
-descending, agents within each map likewise:
-
-```jsonc
-"map_stats": [
-  {
-    "map": "Ascent",
-    "games": 34,
-    "wins": 21,
-    "winrate": 62,            // round(wins / games * 100)
-    "avg_score": 214,         // round(score_sum / score_count), 0 if no scores
-    "agents": [               // sorted by games descending
-      {
-        "agent": "Jett",
-        "games": 15,
-        "wins": 9,
-        "winrate": 60,
-        "avg_score": 231,
-        "display_icon": "https://media.valorant-api.com/agents/…",
-        "role": "Duelist"
-      }
-    ]
-  }
-]
-```
-
-Map splash art and display names come from `https://valorant-api.com/v1/maps`
-via the `get_valorant_maps` handler. A failed fetch is **not** cached, so a
-transient network failure does not permanently blank every map.
-
-### Import/Export Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as ImportExportModal
-    participant BE as Python Backend
-    participant FS as File System
-
-    rect rgb(30, 40, 60)
-    Note over U,FS: Export Flow
-    U->>UI: Enter passkey + click Export
-    UI->>BE: export_profiles(passkey)
-    BE->>FS: Load profiles_data.json
-    BE->>BE: JSON serialize profiles
-    BE->>BE: PBKDF2 derive key (480k iterations)
-    BE->>BE: Fernet encrypt with derived key
-    BE-->>UI: Encrypted bytes
-    UI->>UI: Download as .rsprofile file
-    UI-->>U: "Exported!" ✓
-    end
-
-    rect rgb(30, 40, 60)
-    Note over U,FS: Import Flow
-    U->>UI: Select .rsprofile file + enter passkey
-    UI->>BE: import_profiles(passkey, data, merge=true)
-    BE->>BE: PBKDF2 derive key (480k iterations)
-    BE->>BE: Fernet decrypt with derived key
-    BE->>BE: JSON parse profiles
-    BE->>FS: Load existing profiles
-    BE->>BE: Deduplicate by PUUID + name
-    BE->>FS: Write merged profiles
-    BE-->>UI: {imported, skipped, total}
-    UI-->>U: "Imported X of Y profiles" ✓
-    end
-```
-
-### Appear Offline Proxy Stack
-
-```mermaid
-graph LR
-    subgraph "Riot Client"
-        RC[Client XMPP]
-    end
-
-    subgraph "Deceive Proxy (localhost)"
-        CP[ConfigProxy<br/>HTTP :auto]
-        CMP[ChatProxy<br/>TLS :auto]
-        XF[XMPP Filter]
-    end
-
-    subgraph "Riot Servers"
-        RS[Real Config<br/>clientconfig.rpg.riotgames.com]
-        CS[Real Chat<br/>chat.na2w.val.ncdns.net]
-    end
-
-    RC -- "HTTPS config request" --> CP
-    CP -- "Fetch real config" --> RS
-    CP -- "Patch: redirect chat to localhost" --> CP
-    CP -- "Return patched config" --> RC
-
-    RC -- "TLS XMPP connect" --> CMP
-    CMP -- "TLS bridge" --> CS
-    CMP --> XF
-    XF -- "Replace presence with unavailable" --> CMP
-    CMP -- "Filtered XMPP" --> RC
-```
+RiotSwitcher updates itself. On every start it asks GitHub for the newest
+release and compares it with the version you are running. If a newer one
+exists it downloads it in the background and applies it the next time you
+quit — the app then reopens on the new version. While it stays open it checks
+again every four hours. There is also a **Check for updates** button in
+Settings.
 
 ---
 
-## Component Architecture
+## Player cards
 
-```mermaid
-graph TB
-    subgraph "App Shell"
-        TB[TitleBar<br/>Gradient line + Orb logo]
-        SB[Sidebar<br/>Home / Settings nav]
-    end
-
-    subgraph "Home View"
-        HG[Header Bar]
-        PG[ProfileGrid]
-        PC1[ProfileCard 1]
-        PC2[ProfileCard 2]
-        PC3[ProfileCard N]
-    end
-
-    subgraph "Modals"
-        AAM[AddAccountModal]
-        IEM[ImportExportModal]
-        PCP[PlayerCardPicker]
-        CFD[ConfirmDelete]
-    end
-
-    subgraph "Settings View"
-        RC[Card: Riot Client]
-        GS[Card: Game Sync]
-        AO[Card: Appear Offline]
-        SY[Card: System]
-    end
-
-    TB --> SB
-    SB --> HG
-    SB --> PG
-    PG --> PC1
-    PG --> PC2
-    PG --> PC3
-    HG --> AAM
-    HG --> IEM
-    PC1 --> PCP
-    PC1 --> CFD
-    SB --> RC
-    SB --> GS
-    SB --> AO
-    SB --> SY
-```
+Player card art is downloaded **once**, into a small local database
+(`playercards.db` next to the other app data), and served from disk after
+that. There is no per-launch download and no delay when opening the picker.
+The catalogue is re-checked at most **once a week** so newly released cards
+show up; if that check fails you keep the cards you already have.
 
 ---
 
-## IPC Protocol
+## Development
 
-Communication between the Electron main process and Python backend uses a **JSON-line protocol** over stdin/stdout:
+Requirements: Node 22+, Python 3.9+, Windows.
 
-```mermaid
-sequenceDiagram
-    participant R as Renderer
-    participant E as Electron Main
-    participant P as Python Backend
-
-    R->>E: electronAPI.call("get_profiles", {})
-    E->>P: {"id": "req-1", "method": "get_profiles", "params": {}}
-    P->>P: profiles.load()
-    P-->>E: {"id": "req-1", "result": [...]}
-    E-->>R: Profile[]
-
-    Note over P: Async event
-    P-->>E: {"event": "valorant_data_updated", "params": {"profile_name": "x"}}
-    E-->>R: onEvent("valorant_data_updated", {...})
-```
-
-### All IPC Handlers
-
-| # | Handler | Description |
-|---|---------|-------------|
-| 1 | `ping` | Health check |
-| 2 | `get_profiles` | List all profiles |
-| 3 | `create_profile` | Create a new profile |
-| 4 | `delete_profile` | Delete a profile |
-| 5 | `update_profile` | Update profile data |
-| 6 | `rename_profile` | Rename a profile |
-| 7 | `reorder_profiles` | Reorder profile list |
-| 8 | `get_valorant` | Get VALORANT stats for a profile |
-| 9 | `get_valorant_maps` | Get map metadata (splash, display name) |
-| 10 | `refresh_valorant` | Trigger rank/stat refresh |
-| 11 | `refresh_valorant_all` | Refresh all profiles |
-| 12 | `has_api_key` | Check if HenrikDev API key exists |
-| 13 | `get_config` | Get all config values |
-| 14 | `set_config` | Set a config value |
-| 15 | `set_config_many` | Set multiple config values |
-| 16 | `set_riot_client_location` | Set Riot Client install path |
-| 17 | `detect_riot_client_location` | Auto-detect Riot Client path |
-| 18 | `get_riot_client_status` | Get Riot Client status |
-| 19 | `kill_riot_processes` | Kill all Riot processes |
-| 20 | `stop_riot_client` | Kill and wait for Riot Client |
-| 21 | `launch_riot_client` | Spawn Riot Client |
-| 22 | `close_all` | Close VALORANT and Riot Client |
-| 23 | `launch_profile` | Full profile switch sequence |
-| 24 | `stop_profile` | Stop profile switch |
-| 25 | `read_live_account` | Read current logged-in account |
-| 26 | `check_current_account` | Check if current account is new |
-| 27 | `detect_live_account_new` | Check if account is new vs saved |
-| 28 | `start_account_detection` | Start background account detection |
-| 29 | `stop_account_detection` | Stop account detection |
-| 30 | `account_detection_state` | Check if detection is running |
-| 31 | `confirm_account_save` | Accept/decline saving detected account |
-| 32 | `save_session` | Backup session files for a profile |
-| 33 | `restore_session` | Restore session files from backup |
-| 34 | `has_session` | Check if profile has saved session |
-| 35 | `league_find_dir` | Detect League install directory |
-| 36 | `league_capture` | Capture League settings snapshot |
-| 37 | `league_apply` | Deploy settings to League Config |
-| 38 | `league_refresh` | Validate master snapshot |
-| 39 | `league_dir_differs` | Compare live vs master settings |
-| 40 | `league_cleanup_readonly` | Remove read-only flags |
-| 41 | `league_resolve_source` | Get source profile info |
-| 42 | `league_get_metadata` | Get snapshot metadata |
-| 43 | `presence_start` | Start Appear Offline proxy |
-| 44 | `presence_stop` | Stop Appear Offline proxy |
-| 45 | `presence_state` | Get proxy state |
-| 46 | `presence_get_ports` | Get proxy port info |
-| 47 | `presence_get_launch_args` | Get Riot launch args with proxy |
-| 48 | `export_profiles` | Encrypt and export profiles |
-| 49 | `import_profiles` | Decrypt and import profiles |
-| 50 | `get_playercards` | Fetch all playercards |
-| 51 | `set_playercard` | Set profile playercard |
-
----
-
-## Data Flow
-
-```mermaid
-graph TB
-    subgraph "External APIs"
-        HK[HenrikDev API<br/>Rank + Match Data]
-        VA[valorant-api.com<br/>Playercards + Agents + Ranks]
-    end
-
-    subgraph "Local Files"
-        PD[profiles_data.json<br/>Profile Data]
-        CD[configs.json<br/>App Settings]
-        AE[agents.enc<br/>Encrypted Agent Cache]
-        RF[RiotGamesPrivateSettings.yaml<br/>Live Session]
-        LF[League Config dir<br/>Hotkeys + Video + Audio]
-    end
-
-    subgraph "Python Backend"
-        VT[ValorantTracker]
-        AD[AgentDatabase]
-        SM[SessionManager]
-        PM[ProfileManager]
-        LS[LeagueSettingsSync]
-        RC[RiotClientManager]
-    end
-
-    subgraph "React UI"
-        PC[ProfileCard]
-        SV[SettingsView]
-    end
-
-    HK --> VT
-    VA --> VT
-    VA --> AD
-    VT --> PD
-    AD --> AE
-    PD --> PM
-    PM --> PC
-    SM --> RF
-    LS --> LF
-    RC --> RF
-    CD --> SV
-```
-
----
-
-## Configuration
-
-| Config Key | Default | Description |
-|-----------|---------|-------------|
-| `RiotClientLocation` | `""` | Riot Client install directory |
-| `LaunchProduct` | `"valorant"` | `"valorant"` or `"riot"` |
-| `SyncGameSettings` | `false` | Enable League settings sync |
-| `SharedSettingsSourceProfile` | `""` | Which profile's League settings are master |
-| `AppearOffline` | `false` | Enable Deceive presence proxy |
-| `EnforceReadOnlySettings` | `true` | Set read-only on deployed League files |
-| `CloseToTray` | `true` | Hide to tray on window close |
-| `MinimizeToTray` | `false` | Hide to tray on minimize |
-| `PerMapStats` | `true` | Collect per-map and per-agent statistics |
-| `Language` | `"en"` | UI language |
-
----
-
-## Setup
-
-### Development
-
-```bash
-# Install dependencies
+```powershell
 npm install
-
-# Run in dev mode (Electron + React hot reload + Python backend)
-npm run dev
+npm run dev          # Electron + React + the Python backend it spawns
 ```
 
-> `npm run dev` starts only Electron. The Electron main process spawns the
-> Python backend itself (`python-bridge.ts`). Running `npm run dev:python`
-> alongside it creates a second backend on the same data directory and
-> corrupts `profiles_data.json`.
-
-### Build
-
-```bash
-npm run build
+```powershell
+npm run typecheck    # TypeScript
+npm run lint         # ESLint
+npm run test         # Vitest
+npm run test:py      # pytest
+npm run build        # production bundle
+npm run dist         # installer + portable exe in release/
 ```
 
-### API Key
+`npm run dev` starts Electron only; Electron spawns the Python backend itself.
+Running `npm run dev:python` at the same time creates a second backend on the
+same data directory and corrupts `profiles_data.json`.
 
-Create a `.env` file in the project root:
+Optional: put a HenrikDev key in `.env` for higher rate limits:
 
 ```
 HENRIKDEV_API_KEY=your_key_here
 ```
 
-Get a free key at [https://henrikdev.xyz](https://henrikdev.xyz).
+Free key at [henrikdev.xyz](https://henrikdev.xyz).
 
-### Dependency floor
+### Where data lives
 
-Electron is the app's entire security boundary, so its version is not a
-routine dependency bump:
+| What | Path |
+|---|---|
+| Profiles, config, player-card DB | `%APPDATA%\RiotSwitcher` (dev: `.\data`) |
+| Live Riot Client session | `%LOCALAPPDATA%\Riot Games\Riot Client` |
 
-| Concern | Detail |
-|---------|--------|
-| Minimum supported | **40.10.6** — the oldest line with no open high-severity advisories |
-| Currently pinned | **44.4.5** |
-| Why a floor | Electron 35 is end-of-life. `35.7.5` is its final release and cannot be patched in place; it carried a `contextIsolation` bypass, which is precisely the mechanism this app relies on to keep the renderer away from Node |
-
-A full `npm install` (not `--ignore-scripts`) is required after changing the
-Electron version, otherwise the binary is never downloaded and every
-typecheck still passes green against types alone.
-
-> **CI does not verify this.** The pipeline installs with
-> `npm ci --ignore-scripts` and runs only typecheck, lint and build — it
-> never downloads an Electron binary and never exercises the main process.
-> The runtime behaviour of an Electron major bump is only verified by
-> booting the app locally (`npm run preview`) and building a package
-> (`npm run dist`). Treat that as a required manual step after any
-> Electron change.
-
----
-
-## How Session Swapping Works
-
-RiotSwitcher doesn't use any Riot APIs or inject code into the game. It swaps **session files** on disk:
-
-```mermaid
-graph LR
-    subgraph "Profile A Session"
-        A1[A.yaml]
-        A2[A Sessions/]
-        A3[A client.config]
-    end
-
-    subgraph "Live Riot Client Dir"
-        L1[RiotGamesPrivateSettings.yaml]
-        L2[Sessions/]
-        L3[client.config.yaml]
-    end
-
-    subgraph "Profile B Session"
-        B1[B.yaml]
-        B2[B Sessions/]
-        B3[B client.config]
-    end
-
-    A1 -- "restore" --> L1
-    A2 -- "restore" --> L2
-    A3 -- "restore" --> L3
-
-    L1 -- "backup" --> B1
-    L2 -- "backup" --> B2
-    L3 -- "backup" --> B3
-```
-
-When you click **Play**, RiotSwitcher:
-1. Auto-kills any running Riot Client / VALORANT processes
-2. Backs up the current live session files into the current profile's directory
-3. Copies the target profile's saved session files over the live files
-4. Relaunches the Riot Client — it starts with the target account already logged in
-
-All file operations are **atomic** (write to temp file, then rename) to prevent corruption.
+The app reads and writes **Riot Client files only** — never VALORANT, never
+Vanguard, never game memory.
 
 ---
 
 ## License
 
-**Unresolved — needs an owner decision.** `package.json` declares `GPL-3.0`,
-while this file previously said `MIT`, and there is no `LICENSE` file in the
-repository. MIT and GPL-3.0 are not interchangeable (copyleft vs permissive),
-so this must be settled deliberately rather than picked by whoever edits next.
-Do not assume the value here is correct until it has been confirmed.
+GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+Technical reference (architecture, IPC protocol, flows):
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

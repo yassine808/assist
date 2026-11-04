@@ -10,12 +10,12 @@
 - [x] Redesign "Add Account": capture the live session when it is new, otherwise
       open a fresh Riot Client and auto-save the account on login
 - [x] Map the detector's `canceled` status to a real UI phase (currently stuck)
-- [ ] Player-card catalogue in a local SQLite DB: download once, serve from
+- [x] Player-card catalogue in a local SQLite DB: download once, serve from
       disk, re-check for new cards at most once a week
-- [ ] Auto-update: check GitHub on start and periodically, packaged builds only
-- [ ] Rewrite README (TL;DR, screenshots, license, latest-release link)
-- [ ] Add `LICENSE` (GPL-3.0 full text)
-- [ ] Bump to v3.0.0 and add an annotated release tag
+- [x] Auto-update: check GitHub on start and periodically, packaged builds only
+- [x] Rewrite README (TL;DR, screenshots, license, latest-release link)
+- [x] Add `LICENSE` (GPL-3.0 full text)
+- [x] Bump to v3.0.0 and add an annotated release tag
 
 ## Log
 
@@ -99,3 +99,18 @@
   visible `Riot Client` window (pid 2340 → window pid 18036). 115 pytest, 35
   Vitest, typecheck, ESLint, Ruff, build.
 - Next: user clicks Add Account again; expect the login window and auto-save.
+
+### 2026-11-04 — README, v3.0.0 tag, verification
+
+- Goal: finish the release polish on top of the player-card DB and updater work.
+- Done:
+  - `README.md` replaced: badges, one-screen TL;DR of how switching works,
+    screenshots, download links, update behaviour, player-card cache, dev setup,
+    data locations, GPL-3.0. The long technical content lives in
+    `docs/ARCHITECTURE.md`.
+  - `electron.d.ts`: declared `getVersion` so the TitleBar version pill passes
+    typecheck.
+  - Annotated tag `v3.0.0`.
+- Verified: 128 pytest, 37 Vitest, typecheck, ESLint, Ruff, compileall,
+  `npm run build`.
+- Next: push tag + build the 3.0.0 release.

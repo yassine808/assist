@@ -8,6 +8,7 @@ declare global {
       minimize: () => Promise<void>;
       close: () => Promise<void>;
       toggleMaximize: () => Promise<void>;
+      getVersion: () => Promise<string>;
       call: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
       onEvent: (
         callback: (data: { event: string; params: unknown }) => void
