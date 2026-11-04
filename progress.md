@@ -72,3 +72,24 @@
   - Tests: auto-save detector, name dedup, handler dispatch.
 - Verified: 115 pytest, 35 Vitest, typecheck, ESLint, Ruff, `npm run build`.
 - Next: manual check of the new flow in the running app.
+
+### 2026-11-04 — Riot Client did not open on Add Account
+
+- Goal: fix "clicked Add Account, modal says waiting, no Riot Client window".
+- Cause 1: `dev` script ran `dev:python` while `python-bridge.ts` also spawns a
+  backend. Two backends shared `data/` (source of the `WinError 32` spam and
+  inconsistent profiles).
+- Cause 2: the detector killed the client with the fire-and-forget
+  `riot.kill_all()` and launched immediately. The async `taskkill` could reach
+  the freshly spawned client and kill it, leaving no window.
+- Fix:
+  - `package.json`: `dev` is now `electron-vite dev` only; `dev:python` kept for
+    standalone backend runs. README documents this.
+  - `RiotClientManager.kill_all_and_wait()`; the detector uses it as its killer,
+    so the old client is fully dead before credentials are cleared and the new
+    one starts.
+  - stderr log line `[AddAccount] Riot Client launched, pid=…` for diagnosis.
+- Verified: probe calling `kill_all_and_wait()` then `launch_client()` opened the
+  visible `Riot Client` window (pid 2340 → window pid 18036). 115 pytest, 35
+  Vitest, typecheck, ESLint, Ruff, build.
+- Next: user clicks Add Account again; expect the login window and auto-save.

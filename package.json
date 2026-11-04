@@ -9,7 +9,7 @@
     "node": ">=22.22.2"
   },
   "scripts": {
-    "dev": "concurrently -n electron,python -c blue,green \"npm run dev:electron\" \"npm run dev:python\"",
+    "dev": "electron-vite dev",
     "dev:electron": "electron-vite dev",
     "dev:python": "python src/backend/main.py --dev",
     "build": "electron-vite build",

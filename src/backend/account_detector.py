@@ -9,6 +9,7 @@ The detector owns its own polling thread; start_detection() returns immediately
 and stop_detection() joins the thread.
 """
 
+import sys
 import threading
 import time
 
@@ -127,10 +128,12 @@ class AccountDetector:
         if not self.launcher:
             return True
         try:
-            self.launcher()
+            pid = self.launcher()
         except Exception as exc:  # noqa: BLE001
+            sys.stderr.write(f"[AddAccount] launch failed: {exc}\n")
             self._emit("account_detection_progress", {"status": "error", "message": f"Failed to launch Riot Client: {exc}"})
             return False
+        sys.stderr.write(f"[AddAccount] Riot Client launched, pid={pid}\n")
         return True
 
     def _clear_riot_saved_credentials(self):

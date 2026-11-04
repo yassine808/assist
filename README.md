@@ -599,6 +599,11 @@ npm install
 npm run dev
 ```
 
+> `npm run dev` starts only Electron. The Electron main process spawns the
+> Python backend itself (`python-bridge.ts`). Running `npm run dev:python`
+> alongside it creates a second backend on the same data directory and
+> corrupts `profiles_data.json`.
+
 ### Build
 
 ```bash

@@ -372,7 +372,7 @@ def main():
     detector = AccountDetector(
         profiles, on_event=_handle_event, launcher=riot.launch_client,
         on_profile_created=_on_profile_created,
-        killer=riot.kill_all,
+        killer=riot.kill_all_and_wait,
     )
 
     def _league_config_dir():

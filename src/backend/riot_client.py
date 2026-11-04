@@ -301,6 +301,16 @@ class RiotClientManager:
         """Queue a background taskkill for every Riot process."""
         self._enqueue("kill")
 
+    def kill_all_and_wait(self, timeout_s=8.0):
+        """Kill every Riot process and block until they are gone.
+
+        The Add Account flow needs this: launching immediately after a
+        fire-and-forget kill lets taskkill reach the *new* client process and
+        kill it too, so no window ever appears.
+        """
+        rp.kill_all()
+        return rp.wait_until_all_dead(timeout_s)
+
     def stop_and_wait(self):
         """Queue a background kill followed by a wait-until-all-dead drain."""
         self._enqueue("stop")
