@@ -20,9 +20,9 @@ body,
 
 body {
   background:
-    radial-gradient(ellipse 80% 55% at 50% -5%, rgba(40, 90, 140, 0.32), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 70, 85, 0.07), transparent 70%),
-    #0b121b;
+    radial-gradient(ellipse 75% 65% at 50% 38%, rgba(38, 98, 135, 0.55), transparent 75%),
+    radial-gradient(ellipse 90% 70% at 50% 120%, rgba(255, 70, 85, 0.07), transparent 70%),
+    #0b1b29;
   color: #ece8e1;
   -webkit-font-smoothing: antialiased;
   user-select: none;

@@ -1,112 +1,89 @@
-/* VALORANT-lobby style profile cards. Palette: navy #0f1923, bone #ece8e1, red #ff4655 */
-
+/* VALORANT-lobby profile cards, 1:1 anatomy. Navy #0f1923, bone #ece8e1, red #ff4655 */
 @property --reveal { syntax: "<percentage>"; inherits: false; initial-value: 112%; }
 
-.lobby-slot { width: 220px; display: flex; flex-direction: column; }
+.lobby-slot { width: 196px; display: flex; flex-direction: column; padding-top: 18px; }
 
 .lobby-card {
-  --cut: 46px;
-  position: relative;
-  width: 220px;
-  height: 430px;
+  position: relative; width: 196px; height: 470px; cursor: default; user-select: none;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45));
-  cursor: default;
-  user-select: none;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.4));
 }
-.lobby-card:hover { transform: translateY(-6px); filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.55)); }
+.lobby-card:hover { transform: translateY(-6px); filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.5)); }
 .lobby-card.is-busy { filter: drop-shadow(0 0 16px rgba(90, 150, 230, 0.4)); }
 
-.lobby-frame,
-.lobby-body {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 50% 100%, 0 calc(100% - var(--cut)));
-}
-/* 1px border: gradient frame with an inset body on top */
-.lobby-frame {
+.lobby-inner {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(236, 232, 225, 0.55), rgba(140, 170, 200, 0.22) 60%, rgba(140, 170, 200, 0.4));
-  transition: background 0.25s ease;
   -webkit-mask-image: linear-gradient(180deg, #000 calc(var(--reveal) - 14%), transparent var(--reveal));
   mask-image: linear-gradient(180deg, #000 calc(var(--reveal) - 14%), transparent var(--reveal));
   animation: lobby-in 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: calc(var(--i, 0) * 90ms);
 }
-.lobby-card:hover .lobby-frame { background: linear-gradient(180deg, #fff, rgba(190, 215, 240, 0.5) 60%, rgba(190, 215, 240, 0.7)); }
-.lobby-card.is-me .lobby-frame { background: linear-gradient(180deg, #ece8e1, rgba(236, 232, 225, 0.35) 60%, rgba(236, 232, 225, 0.55)); }
-
 @keyframes lobby-in { from { --reveal: 0%; } to { --reveal: 112%; } }
 
-.lobby-body { position: absolute; inset: 1px; background: #0f1923; overflow: hidden; }
+/* hollow banner outline */
+.lobby-outline { position: absolute; inset: 0; overflow: visible; }
+.o-fill { fill: rgba(8, 24, 40, 0.42); }
+.o-line { fill: none; stroke: rgba(170, 205, 235, 0.55); stroke-width: 1; transition: stroke 0.25s; }
+.o-inner { stroke: rgba(170, 205, 235, 0.28); }
+.lobby-card:hover .o-line { stroke: rgba(235, 245, 255, 0.95); }
+.lobby-card:hover .o-inner { stroke: rgba(235, 245, 255, 0.5); }
+.lobby-card.is-me .o-line { stroke: rgba(236, 232, 225, 0.9); }
 
-.lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #1d2f44 0%, #0f1923 75%); }
-
-.lobby-shade {
-  position: absolute; inset: 0;
-  background:
-    linear-gradient(to top, rgba(15, 25, 35, 0.96) 0%, rgba(15, 25, 35, 0.75) 32%, transparent 58%),
-    linear-gradient(to bottom, rgba(15, 25, 35, 0.5), transparent 20%);
-}
-
-/* one light pass on hover */
-.lobby-sheen {
-  position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.14) 50%, transparent 62%);
-  transform: translateX(-120%);
-}
-.lobby-card:hover .lobby-sheen { animation: sheen 0.9s ease-out 1; }
-@keyframes sheen { to { transform: translateX(120%); } }
-
-.lobby-topbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(236, 232, 225, 0.5); transition: background 0.25s; }
+.lobby-topbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 3; background: rgba(236, 232, 225, 0.6); transition: background 0.25s; }
 .lobby-card:hover .lobby-topbar { background: #fff; }
 .lobby-card.is-me .lobby-topbar { background: #ece8e1; box-shadow: 0 0 12px rgba(236, 232, 225, 0.7); }
 
-.lobby-signal { position: absolute; top: 12px; left: 12px; color: rgba(236, 232, 225, 0.35); }
+.lobby-signal { position: absolute; top: -16px; right: 2px; color: rgba(190, 215, 235, 0.45); }
 .lobby-card.is-me .lobby-signal { color: #3ddc97; }
 
-.lobby-actions { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; }
-.lobby-card:hover .lobby-actions, .lobby-actions:focus-within { opacity: 1; transform: none; }
-.lobby-actions button {
-  width: 24px; height: 24px; display: grid; place-items: center;
-  background: rgba(15, 25, 35, 0.7); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.7);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.lobby-actions button:hover { background: rgba(236, 232, 225, 0.18); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
-.lobby-actions button.danger:hover { background: rgba(255, 70, 85, 0.25); color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
+/* art block: rectangle with the plate sitting on its bottom edge */
+.lobby-art-wrap { position: absolute; left: 5px; right: 5px; top: 3px; height: 318px; overflow: hidden; background: #0f1923; }
+.lobby-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
+.lobby-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8, 18, 30, 0.7) 0%, transparent 26%); }
 
-/* name plate stack, anchored to the bottom like the lobby */
-.lobby-info { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: 0 0 12px; }
-.lobby-status { font: 700 10px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.16em; color: rgba(236, 232, 225, 0.85); margin-bottom: 5px; }
-.lobby-card.is-me .lobby-status { color: #3ddc97; }
+.lobby-sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.16) 50%, transparent 62%); transform: translateX(-120%); }
+.lobby-card:hover .lobby-sheen { animation: sheen 0.9s ease-out 1; }
+@keyframes sheen { to { transform: translateX(120%); } }
+
+.lobby-actions { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
+.lobby-card:hover .lobby-actions, .lobby-actions:focus-within { opacity: 1; transform: none; }
+.lobby-actions button { width: 24px; height: 24px; display: grid; place-items: center; background: rgba(15, 25, 35, 0.72); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.75); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.lobby-actions button:hover { background: rgba(236, 232, 225, 0.2); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
+.lobby-actions button.danger:hover { background: rgba(255, 70, 85, 0.28); color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
+
+.lobby-status { position: absolute; left: 0; right: 0; bottom: 29px; text-align: center; font: 600 10px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.08em; color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
 .lobby-card.is-busy .lobby-status { color: #8ab8f0; }
 
-.lobby-plate {
-  width: 100%; height: 30px; display: flex; align-items: center; justify-content: center; padding: 0 14px;
-  background: rgba(120, 140, 165, 0.55); backdrop-filter: blur(2px);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-}
-.lobby-card.is-me .lobby-plate { background: #e8ecc4; }
-.lobby-plate-name {
-  font: 600 16px/1 "Rajdhani", "Noto Sans JP", system-ui, sans-serif; letter-spacing: 0.02em; color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.lobby-plate { position: absolute; left: 0; right: 0; bottom: 0; height: 24px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; background: rgba(150, 168, 188, 0.62); backdrop-filter: blur(3px); }
+.lobby-card.is-me .lobby-plate { background: #eaeebc; }
+.lobby-plate-name { font: 600 15px/1 "Rajdhani", "Noto Sans JP", system-ui, sans-serif; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lobby-card.is-me .lobby-plate-name { color: #0f1923; }
+.plate-mark { width: 8px; height: 8px; flex: none; transform: rotate(45deg); background: #0f1923; }
 
-.lobby-sub { display: flex; align-items: center; gap: 6px; margin-top: 6px; font: 500 11px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.04em; color: rgba(236, 232, 225, 0.65); }
-.lobby-sub img { width: 16px; height: 16px; object-fit: contain; }
-.lobby-wl { margin-left: 4px; padding-left: 8px; border-left: 1px solid rgba(236, 232, 225, 0.2); font-style: normal; }
+/* title lines in the hollow area under the plate */
+.lobby-sub { position: absolute; left: 0; right: 0; top: 328px; display: flex; flex-direction: column; align-items: center; gap: 5px; font: 500 11px/1 "Rajdhani", system-ui, sans-serif; letter-spacing: 0.03em; color: rgba(236, 232, 225, 0.72); }
+.lobby-sub > div:first-child { display: flex; align-items: center; gap: 5px; }
+.lobby-sub img { width: 15px; height: 15px; object-fit: contain; }
+.lobby-wl { display: flex; gap: 8px; font-size: 11px; }
 .lobby-wl b { color: #4ade80; font-weight: 700; }
 .lobby-wl i { color: #f87171; font-style: normal; font-weight: 700; }
 
+/* active-card wings, parallel to the point edges */
+.lobby-wing { position: absolute; top: 385px; width: 54px; height: 9px; background: #f3f0d2; box-shadow: 0 0 12px rgba(243, 240, 210, 0.65); }
+.lobby-wing.l { left: 3px; transform: rotate(45deg); }
+.lobby-wing.r { right: 3px; transform: rotate(-45deg); }
+
 /* ── rank emblem, sitting in the card's point ── */
-.rank-emblem { position: relative; width: 70px; height: 70px; margin-top: 8px; display: grid; place-items: center; }
-.rank-emblem img { position: relative; z-index: 2; width: 58px; height: 58px; object-fit: contain; animation: rank-breathe 3s ease-in-out infinite; transition: transform 0.25s; }
+.rank-emblem { position: absolute; left: 50%; bottom: 16px; width: 80px; height: 80px; margin-left: -40px; display: grid; place-items: center; }
+.rank-emblem img { position: relative; z-index: 2; width: 44px; height: 44px; object-fit: contain; animation: rank-breathe 3s ease-in-out infinite; transition: transform 0.25s; }
 .lobby-card:hover .rank-emblem img { transform: scale(1.08); }
 .rank-diamond {
   position: absolute; width: 46px; height: 46px; transform: rotate(45deg);
   background: rgba(15, 25, 35, 0.8); border: 1px solid color-mix(in srgb, var(--rank) 55%, transparent);
   box-shadow: inset 0 0 14px color-mix(in srgb, var(--rank) 25%, transparent);
 }
+.rank-diamond::after { content: ""; position: absolute; inset: -6px; border: 1px solid color-mix(in srgb, var(--rank) 25%, transparent); }
 .rank-none { position: relative; z-index: 2; width: 12px; height: 12px; transform: rotate(45deg); background: rgba(236, 232, 225, 0.25); }
 .rank-sweep { display: none; position: absolute; inset: -4px; border-radius: 50%; opacity: 0.55;
   background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--rank) 80%, white) 100%);
@@ -124,7 +101,7 @@
 
 /* ── START → "in queue" style button ── */
 .lobby-start {
-  position: relative; overflow: hidden; width: 100%; height: 52px; margin-top: 16px;
+  position: relative; overflow: hidden; width: 100%; height: 52px; margin-top: 18px;
   display: flex; align-items: center; justify-content: center;
   font: 700 22px/1 "Rajdhani", "Impact", system-ui, sans-serif; letter-spacing: 0.16em; color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -151,8 +128,8 @@
   box-shadow: inset 0 0 24px rgba(80, 140, 220, 0.18), 0 0 20px rgba(80, 140, 220, 0.18);
 }
 .lobby-start.is-launched { animation: launched-pop 0.7s ease-out; }
-.lobby-start.is-launched .lobby-start-label { letter-spacing: 0.22em; }
-.lobby-start-label { transition: letter-spacing 0.5s ease; margin-right: 22px; }
+.lobby-start.is-launched .lobby-start-label { letter-spacing: 0.22em; padding-left: 0.22em; }
+.lobby-start-label { transition: letter-spacing 0.5s ease; padding-left: 0.16em; }
 .start-icon { position: absolute; right: 14px; top: 50%; margin-top: -13px; color: rgba(236, 244, 255, 0.9); }
 .start-icon.spin path { transform-origin: 12px 12px; animation: rank-spin 1.6s linear infinite; }
 .start-icon .check { stroke-dasharray: 22; stroke-dashoffset: 22; animation: draw 0.4s ease-out 0.1s forwards; }
@@ -165,6 +142,6 @@
 @keyframes bar-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lobby-frame, .rank-emblem img, .rank-sweep, .lobby-bar, .start-icon.spin path { animation: none !important; }
+  .lobby-inner, .rank-emblem img, .rank-sweep, .lobby-bar, .start-icon.spin path { animation: none !important; }
   .lobby-card, .lobby-card:hover { transform: none; }
 }
