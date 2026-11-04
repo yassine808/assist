@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openSettings: () => ipcRenderer.invoke("open:settings"),
   openAgentMaps: () => ipcRenderer.invoke("open:agent-maps"),
 
+  // Local animated player cards (APNG) shipped with the app
+  getAnimatedCards: () => ipcRenderer.invoke("cards:animated"),
+
   // Python backend proxy
   call: (method: string, params?: Record<string, unknown>) =>
     ipcRenderer.invoke("python:call", method, params),

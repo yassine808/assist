@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { X, Shuffle, Loader2 } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 
@@ -14,6 +14,8 @@ interface PlayerCard {
   largeArt: string;
 }
 
+type Category = "static" | "animated";
+
 interface PlayerCardPickerProps {
   profileName: string;
   currentCardUrl: string;
@@ -21,19 +23,41 @@ interface PlayerCardPickerProps {
   onApplied: () => void;
 }
 
+const CATEGORIES: { id: Category; label: string }[] = [
+  { id: "static", label: "Normal" },
+  { id: "animated", label: "Animated" },
+];
+
 export default function PlayerCardPicker({ profileName, currentCardUrl, onClose, onApplied }: Readonly<PlayerCardPickerProps>) {
   const { call } = useIPC();
   const [cards, setCards] = useState<PlayerCard[]>([]);
+  const [animated, setAnimated] = useState<PlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [filter, setFilter] = useState("");
+  const [category, setCategory] = useState<Category>("static");
+  // The two sets have different art shapes: normal cards are wide/square,
+  // the animated agent cards are tall portraits (268x640). Cropping them to
+  // the same box cut off the art, so each category gets its own frame.
+  const tileShape = category === "animated" ? "aspect-[67/160]" : "aspect-[3/4]";
 
   useEffect(() => {
-    void call<PlayerCard[]>("get_playercards").then((result) => {
-      setCards(result ?? []);
+    let alive = true;
+    void Promise.all([
+      call<PlayerCard[]>("get_playercards").catch(() => [] as PlayerCard[]),
+      window.electronAPI.getAnimatedCards().catch(() => [] as { name: string; url: string }[]),
+    ]).then(([remote, local]) => {
+      if (!alive) return;
+      setCards(remote ?? []);
+      setAnimated(
+        (local ?? []).map((c) => ({ uuid: c.url, displayName: c.name, largeArt: c.url }))
+      );
       setLoading(false);
     });
+    return () => { alive = false; };
   }, [call]);
+
+  const active = category === "animated" ? animated : cards;
 
   const handleSelect = useCallback(async (card: PlayerCard) => {
     setApplying(true);
@@ -49,13 +73,14 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   }, [call, profileName, onApplied, onClose]);
 
   const handleRandom = useCallback(() => {
-    if (cards.length === 0) return;
-    const randomCard = cards[Math.floor(Math.random() * cards.length)]; // SonarCloud: safe — used for UI shuffle only
+    if (active.length === 0) return;
+    const randomCard = active[Math.floor(Math.random() * active.length)]; // SonarCloud: safe — used for UI shuffle only
     void handleSelect(randomCard);
-  }, [cards, handleSelect]);
+  }, [active, handleSelect]);
 
-  const filtered = cards.filter((c) =>
-    c.displayName.toLowerCase().includes(filter.toLowerCase())
+  const filtered = useMemo(
+    () => active.filter((c) => c.displayName.toLowerCase().includes(filter.toLowerCase())),
+    [active, filter]
   );
 
   let gridContent: ReactNode;
@@ -66,7 +91,11 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
       </div>
     );
   } else if (filtered.length === 0) {
-    gridContent = <p className="text-white/40 text-sm text-center py-12">No playercards found</p>;
+    gridContent = (
+      <p className="text-white/40 text-sm text-center py-12">
+        {category === "animated" ? "No animated cards found" : "No playercards found"}
+      </p>
+    );
   } else {
     gridContent = (
       <div className="grid grid-cols-4 gap-2">
@@ -75,7 +104,7 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
             key={card.uuid}
             onClick={() => void handleSelect(card)}
             disabled={applying}
-            className={`relative aspect-[3/4] rounded-md overflow-hidden border-2 transition-all
+            className={`relative ${tileShape} rounded-md overflow-hidden border-2 transition-all
                        disabled:opacity-40 group ${
               card.largeArt === currentCardUrl
                 ? "border-riot-red shadow-[0_0_12px_rgba(255,70,85,0.4)]"
@@ -141,7 +170,7 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void handleRandom()}
-                disabled={applying || cards.length === 0}
+                disabled={applying || active.length === 0}
                 className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-semibold
                            text-white/70 hover:text-white bg-white/5 hover:bg-white/10
                            disabled:opacity-40 transition-colors"
@@ -158,11 +187,35 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
             </div>
           </div>
 
+          {/* Categories */}
+          <div className="flex items-center gap-1.5 px-5 pt-3">
+            {CATEGORIES.map((c) => {
+              const count = c.id === "animated" ? animated.length : cards.length;
+              const selected = category === c.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => { setCategory(c.id); setFilter(""); }}
+                  className={`h-7 px-3 rounded-md text-xs font-semibold transition-colors ${
+                    selected
+                      ? "bg-riot-red/15 text-riot-red border border-riot-red/40"
+                      : "text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-transparent"
+                  }`}
+                >
+                  {c.label}
+                  <span className={`ml-1.5 text-[10px] ${selected ? "text-riot-red/70" : "text-white/30"}`}>
+                    {count || ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Search */}
           <div className="px-5 py-3 border-b border-white/5">
             <input
               type="text"
-              placeholder="Search playercards…"
+              placeholder={category === "animated" ? "Search animated cards…" : "Search playercards…"}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="w-full h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm

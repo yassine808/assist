@@ -21,6 +21,7 @@ declare global {
       ) => () => void;
       openSettings: () => Promise<void>;
       openAgentMaps: () => Promise<void>;
+      getAnimatedCards: () => Promise<{ name: string; url: string }[]>;
     };
   }
 }

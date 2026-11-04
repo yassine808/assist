@@ -12,6 +12,7 @@
 - [x] Map the detector's `canceled` status to a real UI phase (currently stuck)
 - [x] Player-card catalogue in a local SQLite DB: download once, serve from
       disk, re-check for new cards at most once a week
+- [x] Customize playercard: Normal / Animated categories (local APNGs)
 - [x] Auto-update: check GitHub on start and periodically, packaged builds only
 - [x] Rewrite README (TL;DR, screenshots, license, latest-release link)
 - [x] Add `LICENSE` (GPL-3.0 full text)
@@ -211,3 +212,75 @@
   the card, screen/over, per-card fit for Hush/Neon/Sova). The compositor and
   the extracted `_Sequence` textures are still in
   `%TEMP%\opencode\{wikidl,bloomline}`.
+
+### 2026-11-04 — Animated cards fixed and added to the Customize picker
+
+- Goal: make the shipped APNGs look like the real in-game cards, then offer
+  them as an "Animated" category next to the normal cards.
+- Fix:
+  - Rebuilt all 30 APNGs. Placement rule taken from the wiki's animated cards
+    (`Astra/Jett/Fade/Neon/Sova/KAYO` downloaded as reference, best variant
+    picked per card): square cell → scale 1.10, anchor (-6, 36); non-square
+    cell → stretch to 268x640. Alpha-over blending.
+  - Result matches the wiki for Astra (mean abs error 48 vs 70 for the base
+    alone) and keeps the same framing for every other card.
+  - `tools/cards/compose.py` + `tools/cards/build_mastery.py` reproduce the
+    files byte-for-byte from `CARDS_TEX`.
+  - `manifest.csv` rewritten with the new frame counts and sizes.
+- Feature:
+  - `src/main/playercards.ts`: `card://` scheme serving the APNGs from
+    `official playercards/AgentMastery/Animated` (dev) or
+    `resources/playercards/animated` (packaged); `cards:animated` IPC lists
+    them. Chosen over `file://` because the renderer runs on an http origin in
+    dev and the page CSP only allows `card:`.
+  - `PlayerCardPicker`: Normal / Animated tabs with counts, per-category search
+    and Random; picking an animated card stores its `card://` URL as the
+    profile's card art, so the lobby card animates.
+  - `electron-builder.yml`: the 30 APNGs are copied to `playercards/animated`.
+- Verified: typecheck, ESLint, 41 Vitest, 128 pytest, `npm run build`; a real
+  Electron renderer loaded `card://animated/Astra_Mastery_Card_animated.apng`
+  under the production CSP at 268x640; 30/30 APNGs decode, loop, and differ
+  between frames.
+- Note: the running app (started 16:10) predates these changes and needs a
+  restart to show the new tab.
+- Next: done.
+### 2026-11-04 — overlay placement fixed (was stretched over full card)
+- Goal: explain and fix the stretched/cropped look of the 30 animated mastery cards.
+- Found: the files were 268x640 with correct aspect and preview.html cannot
+  distort them, but compose.py resized each square flipbook cell to 268x640.
+  That is a 2.4x vertical stretch of art drawn for a square.
+- Proof: the in-game Astra lobby capture. A fit of the cell to that capture
+  (NCC 0.83, landmarks within 2%) puts the overlay in a 284x343 box at (-8,-2),
+  not across the whole card. At full stretch the capture scores 0.08.
+- Cross-check: at 284x343 the overlay lines up with the game's own static _L
+  art for all tested agents (no doubling in 50% blends); the game _S
+  thumbnails share the same scale.
+- Done: compose.py now pastes the cell into that box (FIT_SX/SY/OX/OY) and all
+  30 APNGs were rebuilt at 268x640, 66 ms/frame, loop=0.
+- Verified: every file 268x640; loop continuity unchanged (loopjam ~= avgstep);
+  Astra frame 0 matches the lobby capture side by side; manifest.csv sizes
+  refreshed; preview reopened in Brave.
+- Next: none.
+
+### 2026-11-04 — Customize playercard: Normal / Animated categories
+
+- Goal: make the animated Agent Mastery cards selectable in the "Customize
+  playercard" dialog, split into Normal (online catalogue) and Animated
+  (30 local APNGs) categories.
+- Done:
+  - `src/main/playercards.ts`: `card://` scheme serving
+    `AgentMastery/Animated`, `cards:animated` IPC, dev + packaged paths.
+  - `PlayerCardPicker`: category tabs with counts, per-category tile shape
+    (portrait 67/160 for animated cards, 3/4 for normal), filter resets on
+    switch, selection still goes through `set_playercard`.
+  - Hardened the protocol handler: 404 instead of a rejected `net.fetch` for
+    missing files, and a `relative()` inside-folder check so `../` and
+    sibling-folder (`animated2/`) paths cannot escape the card folder.
+  - Tests: `PlayerCardPicker.test.tsx` (category switch, apply animated card,
+    current-card highlight); 40 Vitest total.
+- Verified: all 30 APNGs carry an `acTL` chunk; live Electron probe returned
+  `200 image/apng` (3,321,707 B) for Astra and `404` for missing/traversal/
+  sibling paths; typecheck, ESLint, 40 Vitest, `npm run build`.
+- Note: `official playercards/` is gitignored, so a release build needs the
+  assets staged locally for `extraResources` to include them.
+- Next: manual visual check of the Animated tab in the running app.

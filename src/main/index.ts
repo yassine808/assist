@@ -3,9 +3,12 @@ import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
 import { createAppWindow, AppWindow, openSettingsWindow, openAgentMapWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
+import { registerCardScheme, handleCardProtocol, listAnimatedCards } from "./playercards";
 
 let python: PythonBridge | null = null;
 let appWindow: AppWindow | null = null;
+
+registerCardScheme();
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -26,6 +29,7 @@ function setup(): void {
     python = new PythonBridge();
     python.start();
 
+    handleCardProtocol();
     setupIpc();
 
     appWindow = await createAppWindow(python, {
@@ -88,6 +92,9 @@ function setupIpc(): void {
   ipcMain.handle("update:install", () => quitAndInstall());
   ipcMain.handle("open:settings", () => openSettingsWindow(python!));
   ipcMain.handle("open:agent-maps", () => openAgentMapWindow());
+
+  // Animated player cards live on disk, next to the app.
+  ipcMain.handle("cards:animated", () => listAnimatedCards());
 
   ipcMain.handle(
     "python:call",

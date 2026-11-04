@@ -21,6 +21,10 @@ extraResources:
     to: python
     filter:
       - "**/*"
+  - from: official playercards/AgentMastery/Animated
+    to: playercards/animated
+    filter:
+      - "*.apng"
 
 win:
   target:
