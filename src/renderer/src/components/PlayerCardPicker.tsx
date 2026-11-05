@@ -24,8 +24,8 @@ interface PlayerCardPickerProps {
 }
 
 const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "static", label: "Normal" },
   { id: "animated", label: "Animated" },
+  { id: "static", label: "Normal" },
 ];
 
 export default function PlayerCardPicker({ profileName, currentCardUrl, onClose, onApplied }: Readonly<PlayerCardPickerProps>) {
@@ -35,7 +35,9 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [filter, setFilter] = useState("");
-  const [category, setCategory] = useState<Category>("static");
+  // New profiles start with an animated card, so the picker opens on that tab
+  // and the static catalogue lives one click away.
+  const [category, setCategory] = useState<Category>("animated");
   // The two sets have different art shapes: normal cards are wide/square,
   // the animated agent cards are tall portraits (268x640). Cropping them to
   // the same box cut off the art, so each category gets its own frame.

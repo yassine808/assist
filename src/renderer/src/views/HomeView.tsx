@@ -132,12 +132,10 @@ export default function HomeView() {
     <div className="px-9 py-8">
       <header className="flex items-end justify-between mb-9 pb-5 border-b border-white/[0.06]">
         <div>
-          <div className="page-eyebrow mb-2.5">Account manager</div>
           <h1 className="page-title">
             Profiles
             {!loading && <span className="count-pill">{profiles.length}</span>}
           </h1>
-          <p className="page-sub mt-2">Switch between Riot accounts instantly{profiles.length > 1 ? " · drag cards to reorder" : ""}</p>
         </div>
         <div className="flex items-center gap-2.5">
           <button

@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 
+import animated_cards
 import riot_account_detect as rad
 from account_detector import AccountDetector, unique_profile_name
 from agent_database import AgentDatabase
@@ -43,6 +44,38 @@ def _make_tracker(protocol, profiles, agent_db, playercards, config=None):
     )
     tracker.start()
     return tracker
+
+
+def _seed_random_animated_card(profiles, protocol, profile_name):
+    """Give a brand-new profile a random animated playercard.
+
+    Runs at creation time rather than waiting for the first rank refresh: the
+    tracker only resolves a card once it has stats to write, and a profile
+    without an API key would otherwise stay blank. An existing card is never
+    replaced, so re-running this is harmless. Returns True when a card was
+    written.
+    """
+    if not profile_name:
+        return False
+    profile = profiles.get(profile_name)
+    if not profile:
+        return False
+    valorant_data = profile.get("valorant_data")
+    if not isinstance(valorant_data, dict):
+        valorant_data = {}
+    if valorant_data.get("player_card_bg"):
+        return False
+    card_url = animated_cards.random_card_url()
+    if not card_url:
+        return False
+
+    valorant_data = dict(valorant_data)
+    valorant_data["player_card_bg"] = card_url
+    # Same provenance value the tracker writes for its random fallback.
+    valorant_data["player_card_source"] = "random"
+    profiles.update(profile_name, {"valorant_data": valorant_data})
+    protocol.send_event("valorant_data_updated", {"profile_name": profile_name})
+    return True
 
 
 def _determine_data_dir():
@@ -144,6 +177,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         switched back to later.
         """
         profile = profiles.create(params)
+        _seed_random_animated_card(profiles, protocol, profile.get("profile_name", ""))
         _capture_session(profile.get("profile_name", ""))
         return profile
 
@@ -346,6 +380,7 @@ def main():
         return _capture_session(name, sessions, profiles, config, _install_dir)
 
     def _on_profile_created(name):
+        _seed_random_animated_card(profiles, protocol, name)
         _capture_profile_session(name)
         tracker.refresh_profile(name)
 
@@ -428,6 +463,7 @@ def main():
                 pass
             return {"added": False, "reason": "capture_failed", "display": display}
 
+        _seed_random_animated_card(profiles, protocol, name)
         tracker.refresh_profile(name)
         return {"added": True, "reason": "created", "display": display, "profile": profile}
 

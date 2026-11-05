@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import { app } from "electron";
+import { animatedCardDir } from "./playercards";
 /**
  * Spawns the Python backend as a child process and communicates via
  * JSON-line protocol over stdin/stdout.
@@ -71,7 +72,13 @@ export class PythonBridge extends EventEmitter {
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, PYTHONUTF8: "1", HENRIKDEV_API_KEY: loadEnvKey() },
+      env: {
+        ...process.env,
+        PYTHONUTF8: "1",
+        HENRIKDEV_API_KEY: loadEnvKey(),
+        // Lets the backend seed a new profile with a random animated card.
+        RIOTSWITCHER_ANIMATED_CARDS_DIR: animatedCardDir(),
+      },
     });
 
     this.process.stdout?.on("data", (chunk: Buffer) => {

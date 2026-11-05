@@ -44,16 +44,26 @@ function renderPicker() {
 }
 
 describe("PlayerCardPicker categories", () => {
-  it("shows normal cards by default and animated cards on the other tab", async () => {
+  it("shows animated cards by default and normal cards on the second tab", async () => {
     renderPicker();
-
-    expect(await screen.findByText("Jett Card")).toBeDefined();
-    expect(screen.queryByText("Astra")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: /^Animated/ }));
 
     expect(await screen.findByText("Astra")).toBeDefined();
     expect(screen.queryByText("Jett Card")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Normal/ }));
+
+    expect(await screen.findByText("Jett Card")).toBeDefined();
+    expect(screen.queryByText("Astra")).toBeNull();
+  });
+
+  it("lists the animated tab before the normal one", async () => {
+    renderPicker();
+
+    const tabs = await screen.findAllByRole("button", { name: /^(Animated|Normal)/ });
+    expect(tabs.map((tab) => tab.textContent?.match(/^(Animated|Normal)/)?.[0])).toEqual([
+      "Animated",
+      "Normal",
+    ]);
   });
 
   it("counts both sources independently", async () => {
@@ -65,7 +75,6 @@ describe("PlayerCardPicker categories", () => {
 
   it("sends the animated card URL to set_playercard", async () => {
     renderPicker();
-    fireEvent.click(await screen.findByRole("button", { name: /^Animated/ }));
     fireEvent.click(await screen.findByText("Astra"));
 
     await waitFor(() =>
@@ -80,7 +89,6 @@ describe("PlayerCardPicker categories", () => {
     getAnimatedCards.mockResolvedValue([]);
     renderPicker();
 
-    fireEvent.click(await screen.findByRole("button", { name: /^Animated/ }));
     expect(await screen.findByText("No animated cards found")).toBeDefined();
   });
 });

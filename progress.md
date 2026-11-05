@@ -637,3 +637,28 @@
   arrow tip landing on the "Stay signed in" label.
 - Pushed to `origin/main`.
 - Next: look at it once in the running app.
+
+### 2026-11-05 — New profiles start with a random animated card; picker opens on Animated
+
+- Goal: a fresh profile should get a random animated playercard right away, and
+  the Customize picker should show animated cards first, normal ones second.
+- Done:
+  - `animated_cards.py`: reads `RIOTSWITCHER_ANIMATED_CARDS_DIR`, lists the
+    installed APNGs as `card://animated/<file>` URLs, picks one at random.
+  - `python-bridge.ts` passes `animatedCardDir()` to the backend through that
+    env var, so the same folder works in dev and in the packaged build.
+  - `main.py`: `_seed_random_animated_card` writes a random animated card into
+    a newly created profile before the tracker refresh. Wired into
+    `create_profile`, `capture_current_account`, and detection's
+    `_on_profile_created`. Existing cards are never replaced.
+  - `PlayerCardPicker`: tab order is Animated then Normal, and the default
+    category is Animated.
+- Verified: `pytest` 132 passed (incl. 4 new `test_animated_cards.py`),
+  `vitest` 32 passed, `ruff` clean, `compileall` clean, `npm run build` OK;
+  the picker's 5 tests pass.
+- Known pre-existing failures (untouched files): `npm run typecheck` fails in
+  `src/main/window.singleton.test.ts` (missing `openSettingsWindow` /
+  `openAgentMapWindow` exports), `npm run lint` fails in `ProfileGrid.tsx` and
+  `SettingsView.tsx`, and `npm run test` fails in `window.singleton.test.ts`.
+- Next: run the app and confirm a new account shows an animated card and the
+  picker lands on the Animated tab.
