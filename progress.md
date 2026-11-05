@@ -555,3 +555,35 @@
   - POST /api/save with cropT/B=3 changed the Hush APNG (6,458,666 B), then
     re-saved with crop 0 back to 6,444,445 B (55 frames, 268x640, 69 ms).
 - Next: tune cards in the browser at http://127.0.0.1:8787/.
+
+### 2026-11-05 — tuner: mouse stretch and crop grips
+- Goal: scale and crop the animation with the mouse instead of only fields.
+- Done:
+  - Pushed 8eac8d0 (To-DO split) and 279fff2 (stretch/crop fields) to origin/main.
+  - index.html: 8 grips on the quad edges, clamped inside the card so quads
+    larger than the card (Gekko 640) keep their grips on the card border.
+    Body drag moves, grip drag stretches both axes freely (Shift keeps the
+    start ratio), Alt or the "crop drag" toggle trims the source while the
+    art keeps its size and position.
+  - Cursor changes per grip; handles are drawn every frame.
+- Verified:
+  - node --check on the embedded script passes.
+  - 16/16 numeric checks of the grip math: opposite edge/corner anchored,
+    ratio lock, crop keeps the art in place, 0-45 clamp, 15px accumulated
+    crop, 640px quad resize.
+- Next: try it in the browser, then commit the .html.
+### 2026-11-05 - card speed set to the tuner default; Miks at its wiki speed
+
+- Goal: ship all 30 mastered APNGs at the default playback speed and make Miks
+  match its reference capture.
+- Done:
+  - Rebuilt all 30 APNGs from placement.json at 69 ms/frame (the tuner's
+    default 3x). Miks is 125 ms/frame: the wiki capture of its card loops every
+    2.00 s (period found by frame autocorrelation: 58-59 frames of a 10 s,
+    291-frame GIF) over the 16-frame flipbook.
+  - placement.json and manifest.csv carry the new ms values; placements
+    themselves (Gekko/Hush/Sova fixes) are unchanged.
+- Verified: 30/30 files 268x640, frame counts unchanged (16/10/55), exactly one
+  constant frame duration per file (69 ms, Miks 125); 29 files byte-identical to
+  before, only Miks changed.
+- Next: none.

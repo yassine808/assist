@@ -7,7 +7,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Breach": {
     "cx": 136.901,
@@ -17,7 +21,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Brimstone": {
     "cx": 136.901,
@@ -27,7 +35,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Chamber": {
     "cx": 134.0,
@@ -37,7 +49,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Clove": {
     "cx": 122.397,
@@ -47,7 +63,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Cypher": {
     "cx": 132.529,
@@ -57,7 +77,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Iso": {
     "cx": 133.4,
@@ -81,7 +105,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Vyse": {
     "cx": 134.967,
@@ -91,7 +119,11 @@
     "rot": 0.0,
     "blend": 0.31,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Tejo": {
     "cx": 132.066,
@@ -101,7 +133,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Veto": {
     "cx": 134.0,
@@ -111,7 +147,11 @@
     "rot": 0.0,
     "blend": 0.31,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Viper": {
     "cx": 134.3,
@@ -121,7 +161,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Waylay": {
     "cx": 134.967,
@@ -131,7 +175,11 @@
     "rot": 0.0,
     "blend": 0.502667,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Yoru": {
     "cx": 134.0,
@@ -141,7 +189,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Skye": {
     "cx": 147.124,
@@ -151,7 +203,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Killjoy": {
     "cx": 154.032,
@@ -161,7 +217,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Omen": {
     "cx": 134.48,
@@ -171,7 +231,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Neon": {
     "cx": 133.52,
@@ -181,7 +245,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Raze": {
     "cx": 132.56,
@@ -191,7 +259,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Phoenix": {
     "cx": 136.4,
@@ -201,7 +273,11 @@
     "rot": 0.0,
     "blend": 0.31,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Sage": {
     "cx": 133.04,
@@ -211,7 +287,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Deadlock": {
     "cx": 134.0,
@@ -221,7 +301,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Fade": {
     "cx": 129.169,
@@ -231,7 +315,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Jett": {
     "cx": 123.518,
@@ -241,7 +329,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "KAYO": {
     "cx": 125.42,
@@ -251,7 +343,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Miks": {
     "cx": 134.0,
@@ -261,7 +357,11 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 172
+    "ms": 125,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Reyna": {
     "cx": 142.19,
@@ -271,23 +371,17 @@
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.0
   },
   "Gekko": {
-    "cx": 134.0,
-    "cy": 320.0,
-    "w": 640.0,
-    "h": 640.0,
-    "rot": 0.0,
-    "blend": 0.309278,
-    "opacity": 1.0,
-    "ms": 69
-  },
-  "Hush": {
-    "cx": 134.0,
-    "cy": 147.4,
-    "w": 268.0,
-    "h": 294.8,
+    "cx": 139.873,
+    "cy": 258.255,
+    "w": 229.5,
+    "h": 322.367,
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
@@ -295,16 +389,34 @@
     "cropL": 0.0,
     "cropR": 0.0,
     "cropT": 0.0,
-    "cropB": 0.0
+    "cropB": 1.05
   },
-  "Sova": {
-    "cx": 134.0,
-    "cy": 320.0,
-    "w": 268.0,
-    "h": 670.0,
+  "Hush": {
+    "cx": 133.913,
+    "cy": 179.717,
+    "w": 254.497,
+    "h": 327.11,
     "rot": 0.0,
     "blend": 0.309278,
     "opacity": 1.0,
-    "ms": 69
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 0.0,
+    "cropB": 0.69
+  },
+  "Sova": {
+    "cx": 134.0,
+    "cy": 223.412,
+    "w": 268.0,
+    "h": 418.872,
+    "rot": 0.0,
+    "blend": 0.309278,
+    "opacity": 1.0,
+    "ms": 69,
+    "cropL": 0.0,
+    "cropR": 0.0,
+    "cropT": 3.34,
+    "cropB": 0.22
   }
 }
