@@ -54,7 +54,6 @@ Windows 10/11, x64.
   recent form.
 - **Live stats** — rank, peak rank, agent picks and win rate per account.
 - **Agent map breakdown** — per-map and per-agent performance in its own window.
-- **Appear Offline** — optional local proxy that hides your presence.
 - **League settings sync** — keep hotkeys and video settings across accounts.
 - **Encrypted import/export** — move every profile to another PC.
 

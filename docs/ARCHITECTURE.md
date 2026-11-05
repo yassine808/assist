@@ -18,7 +18,6 @@ RiotSwitcher is a desktop application that lets you manage and switch between mu
 | IPC | JSON-line over stdin/stdout |
 | Encryption | PBKDF2-HMAC-SHA256 + Fernet (480k iterations) |
 | VALORANT API | HenrikDev API v3, valorant-api.com |
-| Presence Proxy | Custom MITM (ported from Deceive) |
 
 ---
 
@@ -44,7 +43,6 @@ graph TB
         LO[LaunchOrchestrator]
         AD[AccountDetector]
         LS[LeagueSettingsSync]
-        DP[Deceive Proxy Stack]
         AG[AgentDatabase]
         CM[ConfigManager]
     end
@@ -76,7 +74,6 @@ graph TB
     PY --> LO
     PY --> AD
     PY --> LS
-    PY --> DP
     PY --> AG
     PY --> CM
 
@@ -126,7 +123,6 @@ selected from the query string, not a router — `App.tsx` reads `?view=` from
 
 ### Cross-Platform Features
 - **League of Legends settings sync** — share hotkeys, video, audio, and interface settings across profiles
-- **Appear Offline** — MITM proxy (ported from Deceive) that makes you invisible to friends
 - **Import/Export** — encrypted backup of all profiles, transferable across PCs with a passkey
 
 ### System
@@ -156,10 +152,6 @@ mindmap
       Transfer profiles to a new PC
       Restore after a fresh Windows install
       Share account list with a friend
-    Appear Offline
-      Hide from friends list while playing
-      Stream without interruptions
-      Avoid questions about which account
     League Sync
       Keep same hotkeys across VALORANT accounts
       Share video settings everywhere
@@ -204,11 +196,7 @@ sequenceDiagram
     BE->>FS: Verify SHA-256 hashes
     BE->>FS: Set read-only flags (optional)
 
-    Note over BE: Step 5 — Appear Offline (optional)
-    BE->>BE: Start Deceive proxy stack
-    BE->>BE: Generate --client-config-url arg
-
-    Note over BE: Step 6 — Launch Riot Client
+    Note over BE: Step 5 — Launch Riot Client
     BE->>RC: Spawn RiotClientServices.exe
     BE->>FS: Save LastRunningProfile
     BE-->>UI: profile_switch_progress events
@@ -365,37 +353,6 @@ sequenceDiagram
     end
 ```
 
-### Appear Offline Proxy Stack
-
-```mermaid
-graph LR
-    subgraph "Riot Client"
-        RC[Client XMPP]
-    end
-
-    subgraph "Deceive Proxy (localhost)"
-        CP[ConfigProxy<br/>HTTP :auto]
-        CMP[ChatProxy<br/>TLS :auto]
-        XF[XMPP Filter]
-    end
-
-    subgraph "Riot Servers"
-        RS[Real Config<br/>clientconfig.rpg.riotgames.com]
-        CS[Real Chat<br/>chat.na2w.val.ncdns.net]
-    end
-
-    RC -- "HTTPS config request" --> CP
-    CP -- "Fetch real config" --> RS
-    CP -- "Patch: redirect chat to localhost" --> CP
-    CP -- "Return patched config" --> RC
-
-    RC -- "TLS XMPP connect" --> CMP
-    CMP -- "TLS bridge" --> CS
-    CMP --> XF
-    XF -- "Replace presence with unavailable" --> CMP
-    CMP -- "Filtered XMPP" --> RC
-```
-
 ---
 
 ## Component Architecture
@@ -425,7 +382,6 @@ graph TB
     subgraph "Settings View"
         RC[Card: Riot Client]
         GS[Card: Game Sync]
-        AO[Card: Appear Offline]
         SY[Card: System]
     end
 
@@ -441,7 +397,6 @@ graph TB
     PC1 --> CFD
     SB --> RC
     SB --> GS
-    SB --> AO
     SB --> SY
 ```
 
@@ -514,15 +469,10 @@ sequenceDiagram
 | 40 | `league_cleanup_readonly` | Remove read-only flags |
 | 41 | `league_resolve_source` | Get source profile info |
 | 42 | `league_get_metadata` | Get snapshot metadata |
-| 43 | `presence_start` | Start Appear Offline proxy |
-| 44 | `presence_stop` | Stop Appear Offline proxy |
-| 45 | `presence_state` | Get proxy state |
-| 46 | `presence_get_ports` | Get proxy port info |
-| 47 | `presence_get_launch_args` | Get Riot launch args with proxy |
-| 48 | `export_profiles` | Encrypt and export profiles |
-| 49 | `import_profiles` | Decrypt and import profiles |
-| 50 | `get_playercards` | Fetch all playercards |
-| 51 | `set_playercard` | Set profile playercard |
+| 43 | `export_profiles` | Encrypt and export profiles |
+| 44 | `import_profiles` | Decrypt and import profiles |
+| 45 | `get_playercards` | Fetch all playercards |
+| 46 | `set_playercard` | Set profile playercard |
 
 ---
 
@@ -580,7 +530,6 @@ graph TB
 | `LaunchProduct` | `"valorant"` | `"valorant"` or `"riot"` |
 | `SyncGameSettings` | `false` | Enable League settings sync |
 | `SharedSettingsSourceProfile` | `""` | Which profile's League settings are master |
-| `AppearOffline` | `false` | Enable Deceive presence proxy |
 | `EnforceReadOnlySettings` | `true` | Set read-only on deployed League files |
 | `CloseToTray` | `true` | Hide to tray on window close |
 | `MinimizeToTray` | `false` | Hide to tray on minimize |

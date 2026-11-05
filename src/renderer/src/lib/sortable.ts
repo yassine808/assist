@@ -58,6 +58,7 @@ export class SortableEngine {
   private suppress = false;
   private enabled = true;
   private reduce = false;
+  private captured: HTMLElement | null = null;
 
   setHandlers(h: SortableHandlers) { this.handlers = h; }
   setEnabled(v: boolean) { this.enabled = v; }
@@ -106,13 +107,18 @@ export class SortableEngine {
   }
 
   pointerDown(id: string, e: PointerEvent) {
-    if (!this.enabled || this.drag || e.button !== 0) return;
-    if ((e.target as HTMLElement).closest("button, a, input, select, textarea, [data-no-drag]")) return;
+    if (!this.enabled || e.button !== 0) return;
+    // A drag whose pointerup was lost (released outside the window, alt-tab)
+    // used to leave `this.drag` set forever, which made every later press a
+    // no-op and kept the stuck card following the cursor. Clear it first.
+    if (this.drag) this.finish(false);
+    if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [data-no-drag]")) return;
     this.drag = { id, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, px: e.clientX, py: e.clientY, gx: 0, gy: 0, active: false, startOrder: [...this.order] };
     window.addEventListener("pointermove", this.onMove);
     window.addEventListener("pointerup", this.onUp);
-    window.addEventListener("pointercancel", this.onUp);
+    window.addEventListener("pointercancel", this.onCancel);
     window.addEventListener("keydown", this.onKey);
+    window.addEventListener("blur", this.onBlur);
   }
 
   /** Keyboard reorder: shift an item by `delta` slots. */
@@ -141,13 +147,22 @@ export class SortableEngine {
   private detach() {
     window.removeEventListener("pointermove", this.onMove);
     window.removeEventListener("pointerup", this.onUp);
-    window.removeEventListener("pointercancel", this.onUp);
+    window.removeEventListener("pointercancel", this.onCancel);
     window.removeEventListener("keydown", this.onKey);
+    window.removeEventListener("blur", this.onBlur);
   }
 
   private onMove = (e: PointerEvent) => {
     const d = this.drag;
     if (!d || e.pointerId !== d.pointerId) return;
+    // The button was released while the pointer was outside the window, so
+    // pointerup never reached us: finish the drag instead of letting the card
+    // chase the cursor forever.
+    if (e.buttons === 0) {
+      if (d.active) this.finish(true);
+      else this.cancelPending();
+      return;
+    }
     d.px = e.clientX; d.py = e.clientY;
     if (!d.active && Math.hypot(d.px - d.sx, d.py - d.sy) > THRESHOLD) this.activate();
     if (d.active) this.kick();
@@ -159,9 +174,25 @@ export class SortableEngine {
     this.finish(true);
   };
 
+  private onCancel = (e: PointerEvent) => {
+    const d = this.drag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    this.finish(false);
+  };
+
+  /** Window lost focus mid-drag: put everything back instead of leaving a stuck card. */
+  private onBlur = () => {
+    if (this.drag) this.finish(false);
+  };
+
   private onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape" && this.drag?.active) this.finish(false);
   };
+
+  private cancelPending() {
+    this.detach();
+    this.drag = null;
+  }
 
   private activate() {
     const d = this.drag!;
@@ -175,6 +206,14 @@ export class SortableEngine {
     b.el.classList.add("is-lifted");
     b.lifted = true;
     b.idle = false;
+    // Capture the pointer so pointerup still arrives when the cursor leaves the
+    // window while the button is held. Without this the drag could be lost.
+    try {
+      b.el.setPointerCapture(d.pointerId);
+      this.captured = b.el;
+    } catch {
+      this.captured = null;
+    }
     document.body.classList.add("is-sorting");
     window.getSelection()?.removeAllRanges();
     if (this.slot) {
@@ -193,6 +232,10 @@ export class SortableEngine {
     this.drag = null;
     if (!d) return;
     if (!d.active) return; // a plain click / double click: leave it alone
+    if (this.captured) {
+      try { this.captured.releasePointerCapture(d.pointerId); } catch { /* element may be gone */ }
+      this.captured = null;
+    }
     document.body.classList.remove("is-sorting");
     this.slot?.classList.remove("is-on");
     this.suppress = true;
@@ -236,18 +279,32 @@ export class SortableEngine {
       .map((b) => ({ x: b.lx + b.el.offsetWidth / 2, y: b.ly + b.el.offsetHeight / 2 }))
       .sort((a, b) => a.y - b.y || a.x - b.x);
     if (slots.length !== this.order.length) return;
+    // Unlaid-out grid (hidden pane, display:none): every slot is at 0,0. Treat
+    // that as "no geometry" instead of reordering everything to the first slot.
+    if (slots.length > 1 && slots[0].x === slots[slots.length - 1].x && slots[0].y === slots[slots.length - 1].y) return;
 
     // Where the lifted card's centre is right now (it is what "covers" the other cards).
     const cx = d.px - cr.left - d.gx + me.el.offsetWidth / 2;
     const cy = d.py - cr.top - d.gy + me.el.offsetHeight / 2;
 
-    let best = cur, bestDist = Infinity;
-    const curDist = Math.hypot(cx - slots[cur].x, cy - slots[cur].y);
+    // The physical slot the card currently sits in, by geometry. `order` can be
+    // one React render ahead of the CSS `order`, so its index is not reliable
+    // for this comparison.
+    const mcx = me.lx + me.el.offsetWidth / 2;
+    const mcy = me.ly + me.el.offsetHeight / 2;
+    let curSlot = 0, curSlotDist = Infinity;
+    slots.forEach((s, i) => {
+      const dist = Math.hypot(mcx - s.x, mcy - s.y);
+      if (dist < curSlotDist) { curSlotDist = dist; curSlot = i; }
+    });
+
+    let best = curSlot, bestDist = Infinity;
+    const curDist = Math.hypot(cx - slots[curSlot].x, cy - slots[curSlot].y);
     slots.forEach((s, i) => {
       const dist = Math.hypot(cx - s.x, cy - s.y);
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
-    if (best === cur || bestDist > curDist - HYSTERESIS) return;
+    if (best === curSlot || bestDist > curDist - HYSTERESIS) return;
 
     const next = [...this.order];
     next.splice(cur, 1);

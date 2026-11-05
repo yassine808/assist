@@ -775,3 +775,44 @@
 - Verified: new `lib/ranks.test.ts` 3/3, `tsc -p tsconfig.web.json` exit 0,
   dev app hot-reloaded.
 - Next: none.
+
+### 2026-11-05 — Drag-and-drop: lost pointerup left cards undraggable
+
+- Goal: dragging sometimes died and the card landed in the first slot.
+- Root cause: the engine listens for `pointerup` on `window`. Releasing the
+  button outside the window (or alt-tabbing) meant no `pointerup`; the drag
+  stayed active, `body.is-sorting` set `pointer-events: none` on every other
+  card (so nothing else could be picked up), and the stuck card kept chasing
+  the cursor until the nearest slot — usually slot 0 — was committed.
+- Done in `lib/sortable.ts`:
+  - `setPointerCapture` on lift, released on finish, so `pointerup` arrives
+    even outside the window.
+  - `pointermove` with `buttons === 0` ends an active drag / drops a pending
+    press; `pointercancel` now cancels instead of committing; window `blur`
+    cancels.
+  - A new `pointerdown` clears any stale drag first.
+  - Hit-testing uses the card's physical slot (geometry) for the
+    current-slot comparison instead of `order.indexOf`, and ignores fully
+    degenerate layouts (all slots at 0,0) instead of collapsing to slot 0.
+- Verified: new `lib/sortable.test.ts` 4/4 (lost button, blur, stale press,
+  capture/release); `vitest` 48 passed (10 known `window.singleton` failures);
+  `tsc -p tsconfig.web.json` exit 0; ESLint clean; dev app hot-reloaded.
+- Next: check a real drag released over the desktop and after Alt+Tab.
+
+### 2026-11-05 — Remove Appear Offline feature
+
+- Goal: drop the Deceive-style presence-masking stack from the app.
+- Done: deleted `src/backend/deceive/` (config/chat proxies, XMPP filter,
+  crypto helper, presence manager/constants); removed the `presence_*` IPC
+  handlers, `PresenceManager` wiring and `set_launch_args_provider` from
+  `main.py` / `riot_client.py`; `LaunchOrchestrator` lost its `presence`
+  parameter and start step; `AppearOffline` removed from the config defaults;
+  the Settings "Privacy" card and its `EyeOff` import are gone; docs
+  (`README`, `docs/ARCHITECTURE.md`, `AGENTS.md`, `ruff.toml`) updated.
+- Verified: 136 pytest pass; Ruff clean; compileall clean; `npm run build`
+  exit 0; `main`, `launch_orchestrator`, `riot_client`, `config_manager`
+  import clean; no `presence`/`deceive`/`AppearOffline` left in `src/backend`.
+  Pre-existing and unrelated: 10 `window.singleton` Vitest failures and
+  matching typecheck errors, plus ESLint errors in `ProfileGrid.tsx` and
+  `SettingsView.tsx:234`.
+- Next: none. `plans/electron-rewrite.md` kept as a historical record.

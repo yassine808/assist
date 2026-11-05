@@ -5,8 +5,7 @@ Sequence (mirrors the RiotSwitcher launch flow):
   2. Save the currently-active profile's live session files (if any).
   3. Restore the target profile's saved session files.
   4. Optionally sync League settings (if SyncGameSettings is enabled).
-  5. Optionally start the Appear Offline proxy (if enabled).
-  6. Launch the Riot Client with the correct product.
+  5. Launch the Riot Client with the correct product.
 
 Every step is synchronous so callers know the full switch completed (or exactly
 where it failed) before the Riot Client is spawned. Progress is reported
@@ -19,13 +18,12 @@ from riot_client import RiotClientError
 
 
 class LaunchOrchestrator:
-    def __init__(self, riot, sessions, profiles, config, league=None, presence=None):
+    def __init__(self, riot, sessions, profiles, config, league=None):
         self.riot = riot
         self.sessions = sessions
         self.profiles = profiles
         self.config = config
         self.league = league
-        self.presence = presence
         self._listener = None
 
     def set_listener(self, callback):
@@ -104,27 +102,11 @@ class LaunchOrchestrator:
         except Exception as exc:  # noqa: BLE001
             self._emit("league", "failed", f"League sync failed: {exc}")
 
-    def _start_presence_proxy(self):
-        """Optionally start the Appear Offline proxy if enabled."""
-        if self.presence is None:
-            return
-        from deceive.presence_constants import CONFIG_KEY_APPEAR_OFFLINE
-        if not bool(self.config.get(CONFIG_KEY_APPEAR_OFFLINE, False)):
-            return
-        self._emit("presence", "started", "Starting Appear Offline proxy")
-        try:
-            self.presence.start_proxy()
-            self._emit("presence", "done", "Appear Offline proxy started")
-        except Exception as exc:  # noqa: BLE001
-            self._emit("presence", "failed", f"Presence proxy failed: {exc}")
-
     def _launch_client(self, profile_name):
         """Launch the Riot Client. Returns result dict."""
         self._emit("launch", "started", "Launching Riot Client")
         self.config.set("LastRunningProfile", profile_name)
         pid = self.riot.launch_client()
-        if self.presence is not None:
-            self.presence.notify_client_started(pid)
         self._emit("launch", "done", "Riot Client launched", pid=pid)
         return {"ok": True, "pid": pid, "profile": profile_name}
 
@@ -150,7 +132,6 @@ class LaunchOrchestrator:
                 return {"ok": False, "step": "restore", "error": error}
 
             self._sync_league_settings()
-            self._start_presence_proxy()
             return self._launch_client(profile_name)
 
         except RiotClientError as exc:

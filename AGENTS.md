@@ -21,7 +21,6 @@ src/
     riot_client.py      locate/kill/launch the Riot Client
     riot_processes.py   process table helpers
     valorant_tracker.py HenrikDev API rank/stats refresh
-    deceive/            optional "Appear Offline" proxy stack
 tests/        pytest suites
 ```
 
@@ -57,7 +56,7 @@ Full pre-commit gate: `typecheck`, `lint`, `test`, `test:py`, `ruff`,
   dependency without asking.
 - Tests: pytest in `tests/`, Vitest colocated as `*.test.ts(x)`. Do not weaken
   or delete a test to get green.
-- Ruff line length 120; `E501` is ignored for `protocol.py` and `deceive/`.
+- Ruff line length 120; `E501` is ignored for `protocol.py`.
 
 ## Hard invariants
 

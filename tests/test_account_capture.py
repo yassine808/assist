@@ -130,7 +130,6 @@ class HandlerWiringTests(_TempDirMixin):
             orchestrator=mock.MagicMock(),
             sessions=self._sm(),
             league=mock.MagicMock(),
-            presence=mock.MagicMock(),
             protocol=mock.MagicMock(),
             data_dir=self.root,
             playercards=mock.MagicMock(),

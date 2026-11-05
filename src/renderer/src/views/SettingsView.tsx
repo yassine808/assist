@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Archive, Check, Copy, Download, EyeOff, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
+import { Archive, Check, Copy, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useToast } from "../components/Toast";
@@ -354,18 +354,6 @@ export default function SettingsView() {
             />
           )}
         </>
-      ),
-    },
-    {
-      id: "privacy", nav: "Privacy", icon: EyeOff, blurb: "Control how you show up to friends.",
-      title: "Privacy",
-      rows: (
-          <SettingToggle
-            label="Appear Offline"
-            description="Mask your presence while Riot Client is running"
-            checked={!!config.AppearOffline}
-            onChange={(v) => update("AppearOffline", v)}
-          />
       ),
     },
     {

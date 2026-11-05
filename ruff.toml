@@ -27,5 +27,4 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"src/backend/deceive/*.py" = ["E501", "B", "UP", "SIM"]
 "src/backend/protocol.py" = ["E501"]

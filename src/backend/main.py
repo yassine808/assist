@@ -9,7 +9,6 @@ import riot_account_detect as rad
 from account_detector import AccountDetector, unique_profile_name
 from agent_database import AgentDatabase
 from config_manager import ConfigManager
-from deceive.presence_manager import PresenceManager
 from launch_orchestrator import LaunchOrchestrator
 from league_settings_sync import LeagueSettingsSync
 from playercard_store import PlayercardStore
@@ -22,14 +21,6 @@ from valorant_tracker import ValorantTracker
 
 # Cached valorant-api.com map metadata (static list, fetched at most once).
 _MAPS_CACHE = None
-
-
-def _pid_is_running(pid):
-    try:
-        import psutil
-        return psutil.pid_exists(pid)
-    except Exception:  # noqa: BLE001
-        return False
 
 
 def _make_tracker(protocol, profiles, agent_db, playercards, config=None):
@@ -161,7 +152,7 @@ def _capture_session(name, sessions, profiles, config, install_dir_provider):
 
 
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
-                     sessions, league, presence, protocol, data_dir,
+                     sessions, league, protocol, data_dir,
                      playercards,
                      _league_config_dir, _swap_profile, _set_playercard,
                      _check_current_account, _capture_current_account, _close_all,
@@ -269,17 +260,6 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         "league_cleanup_readonly": lambda p: (_cleanup_league_readonly(), None)[1],
         "league_resolve_source": lambda p: league.resolve_source_profile(),
         "league_get_metadata": lambda p: league.get_snapshot_metadata(),
-        "presence_start": lambda p: (presence.start_proxy(), None)[1],
-        "presence_stop": lambda p: (presence.stop_proxy(), None)[1],
-        "presence_state": lambda p: presence.get_state(),
-        "presence_get_ports": lambda p: {
-            "config": presence.get_config_port(),
-            "chat": presence.get_chat_port(),
-            "running": presence.get_state() in ("READY", "RUNNING"),
-        },
-        "presence_get_launch_args": lambda p: presence.get_launch_args(
-            riot.build_launch_args()
-        ),
         "export_profiles": lambda p: {
             "data": __import__("base64").b64encode(
                 profiles.export_profiles(p.get("passkey", ""), p.get("names"))
@@ -342,12 +322,9 @@ def main():
         os.path.join(data_dir, "shared", "settings"),
         install_dir_provider=lambda: riot.ensure_location(),
     )
-    presence = PresenceManager(config, is_process_running=_pid_is_running)
-    riot.set_launch_args_provider(presence.get_launch_args)
-
     orchestrator = LaunchOrchestrator(
         riot, sessions, profiles, config,
-        league=league, presence=presence,
+        league=league,
     )
     orchestrator.set_listener(
         lambda step, status, message, extra: protocol.send_event(
@@ -476,7 +453,7 @@ def main():
 
     handlers = _build_handlers(
         profiles, config, riot, tracker, detector, orchestrator,
-        sessions, league, presence, protocol, data_dir,
+        sessions, league, protocol, data_dir,
         playercards,
         _league_config_dir, _swap_profile, _set_playercard,
         _check_current_account, _capture_current_account, _close_all,

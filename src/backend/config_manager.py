@@ -32,8 +32,6 @@ class ConfigManager:
             "SharedSettingsSourceProfile": "",
             # Profile the app believes is currently running (for adoption).
             "LastRunningProfile": "",
-            # Appear Offline / Deceive presence-masking toggle.
-            "AppearOffline": False,
             # Enforce read-only flags when applying shared League settings.
             "EnforceReadOnlySettings": True,
             # Close / minimize to system tray behavior.
