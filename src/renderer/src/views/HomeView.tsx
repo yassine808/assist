@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
 import ImportExportModal from "../components/ImportExportModal";
+import DeleteProfileModal from "../components/DeleteProfileModal";
 import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
@@ -18,6 +19,7 @@ export default function HomeView() {
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
   const [showImportExport, setShowImportExport] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -61,6 +63,7 @@ export default function HomeView() {
   const doDelete = useCallback(async () => {
     if (!confirmDelete) return;
     setDeleteError("");
+    setDeleting(true);
     try {
       await call("delete_profile", { name: confirmDelete.profile_name });
       toast.show({ kind: "success", title: "Profile deleted", message: confirmDelete.profile_name });
@@ -70,6 +73,8 @@ export default function HomeView() {
       console.error("delete failed", e);
       setDeleteError(String(e));
       toast.show({ kind: "error", title: "Delete failed", message: String(e) });
+    } finally {
+      setDeleting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmDelete, call, load]);
@@ -142,12 +147,14 @@ export default function HomeView() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
             Import / Export
           </button>
-          <button
-            onClick={() => setShowAddAccount(true)}
-            className="btn-primary h-9 px-5 text-[11px]"
-          >
-            <Plus size={14} strokeWidth={3} /> Add Account
-          </button>
+          {(loading || profiles.length > 0) && (
+            <button
+              onClick={() => setShowAddAccount(true)}
+              className="btn-primary h-9 px-5 text-[11px]"
+            >
+              <Plus size={14} strokeWidth={3} /> Add Account
+            </button>
+          )}
         </div>
       </header>
 
@@ -163,57 +170,27 @@ export default function HomeView() {
       />
 
       {!loading && profiles.length === 0 && (
-        <div className="empty-state">
-          <p className="text-white/80 text-base font-semibold tracking-wide">No profiles yet</p>
-          <p className="text-white/45 text-sm mb-4">Add your first Riot account to start switching.</p>
-          <button onClick={() => setShowAddAccount(true)} className="btn-primary h-9 px-5 text-[11px]">
-            <Plus size={14} strokeWidth={3} /> Add Account
-          </button>
+        <div className="empty-hero">
+          <div className="empty-add-wrap">
+            <button type="button" className="empty-add" onClick={() => setShowAddAccount(true)}>
+              <Plus size={64} strokeWidth={2} className="empty-add-plus" />
+              <span className="empty-add-label">Add account</span>
+            </button>
+          </div>
+          <p className="empty-hint">
+            Sign in to your Riot account once and RiotSwitcher will <b>save it</b>.
+            After that you can <b>switch</b> between accounts in a single click.
+          </p>
         </div>
       )}
 
-      {confirmDelete && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-[2px]"
-          onClick={() => setConfirmDelete(null)}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setConfirmDelete(null); }}
-          role="button"
-          tabIndex={0}
-        >
-          <div
-            className="modal-panel w-[360px] p-6"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            role="button"
-            tabIndex={0}
-          >
-            <h3 className="text-white font-bold text-base tracking-wide uppercase mb-2">
-              Delete profile?
-            </h3>
-            <p className="text-sm text-white/60 mb-5">
-              "{confirmDelete.profile_name}" will be permanently removed. Saved
-              session data for this profile will be deleted.
-            </p>
-            {deleteError && (
-              <p className="text-xs text-red-400 mb-3">{deleteError}</p>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="btn-ghost h-9 px-4 text-[11px]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void doDelete()}
-                className="btn-primary h-9 px-5 text-[11px]"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteProfileModal
+        profile={confirmDelete}
+        busy={deleting}
+        error={deleteError}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => void doDelete()}
+      />
 
       {editingCard && (
         <PlayerCardPicker

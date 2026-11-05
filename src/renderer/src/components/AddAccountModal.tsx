@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Check, LogIn, UserPlus } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 import { useAccountDetection } from "../hooks/useAccountDetection";
+import Modal from "./Modal";
 
 interface AddAccountModalProps {
   open: boolean;
@@ -22,6 +24,17 @@ interface CaptureResult {
   display: string;
   profile?: { profile_name?: string };
   message?: string;
+}
+
+type StepState = "done" | "active" | "todo";
+
+function Step({ n, state, children }: Readonly<{ n: number; state: StepState; children: React.ReactNode }>) {
+  return (
+    <li className={`aa-step is-${state}`}>
+      <span className="aa-step-n">{state === "done" ? <Check size={12} strokeWidth={3} /> : n}</span>
+      <span className="aa-step-t">{children}</span>
+    </li>
+  );
 }
 
 export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
@@ -70,7 +83,7 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
     }
   }, [phase, active, start]);
 
-  // Derive phase from progress — use useMemo to avoid setState in effect
+  // Derive phase from progress
   const phaseFromStatus: Partial<Record<string, ModalPhase>> = {
     waiting: "waiting",
     already_added: "already_added",
@@ -94,93 +107,74 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
     onClose();
   }, [onAccountAdded, onClose]);
 
-  if (!open) return null;
+  const name = createdName || progress?.profile_name || progress?.display || "Account";
+  const waitingForLogin = effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added";
+  const finished = effectivePhase === "created";
+  const failed = effectivePhase === "error";
+
+  let footer = (
+    <button type="button" onClick={() => void handleClose()} className="btn-ghost h-10 px-5 text-[11px]">Cancel</button>
+  );
+  if (finished) {
+    footer = <button type="button" data-autofocus onClick={handleDone} className="btn-primary h-10 px-8 text-[11px]"><Check size={14} strokeWidth={3} /> Done</button>;
+  } else if (failed) {
+    footer = (
+      <>
+        <button type="button" onClick={() => void handleClose()} className="btn-ghost h-10 px-5 text-[11px]">Close</button>
+        <button type="button" data-autofocus onClick={() => setPhase("opening")} className="btn-primary h-10 px-6 text-[11px]">Try again</button>
+      </>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={handleClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClose(); }}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+    <Modal
+      open={open}
+      onClose={() => void handleClose()}
+      tone={failed ? "danger" : finished ? "success" : "default"}
+      eyebrow="New profile"
+      title={finished ? "Account added" : failed ? "Something went wrong" : "Add account"}
+      icon={finished ? <Check size={18} strokeWidth={2.6} /> : failed ? <AlertTriangle size={18} /> : <UserPlus size={18} />}
+      width={440}
+      footer={footer}
+    >
+      {effectivePhase === "checking" && (
+        <div className="aa-center">
+          <span className="aa-ring"><span className="spinner-icon" /></span>
+          <p className="aa-headline">Checking for a signed-in account…</p>
+          <p className="rs-text-sm">If you are already logged in to Riot, it will be saved right away.</p>
+        </div>
+      )}
 
-      <div
-        className="relative w-[380px] modal-panel p-6"
-        onClick={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.stopPropagation()}
-        style={{ animation: "fadeIn 0.2s ease-out" }}
-      >
-        <button
-          onClick={handleClose}
-          className="absolute top-3 right-3 text-white/40 hover:text-white transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
-
-        <h2 className="text-white font-bold text-base mb-1">Add Account</h2>
-
-        {effectivePhase === "checking" && (
-          <div className="flex items-center gap-2 py-4 text-white/60 text-sm">
-            <span className="spinner-icon" /> Checking for logged-in account…
+      {waitingForLogin && (
+        <div>
+          <div className="aa-radar" aria-hidden>
+            <span className="aa-radar-ring" /><span className="aa-radar-ring" style={{ animationDelay: "0.9s" }} />
+            <span className="aa-radar-core"><LogIn size={22} /></span>
           </div>
-        )}
+          <p className="aa-headline text-center">
+            {effectivePhase === "already_added" ? "Already saved — opening the login again…" : "Waiting for you to sign in"}
+          </p>
+          <ol className="aa-steps">
+            <Step n={1} state="done">Riot Client is open</Step>
+            <Step n={2} state="active">Sign in with the account you want to add</Step>
+            <Step n={3} state="todo">It is saved automatically</Step>
+          </ol>
+        </div>
+      )}
 
-        {(effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added") && (
-          <div className="flex items-start gap-2 py-4 text-white/60 text-sm">
-            <span className="spinner-icon mt-0.5" />
-            <div>
-              {effectivePhase === "opening" && "Waiting for login…"}
-              {effectivePhase === "waiting" && "Waiting for login…"}
-              {effectivePhase === "already_added" && "Account already added. Opening the login screen again…"}
-              {effectivePhase !== "already_added" && (
-                <p className="text-white/40 text-xs mt-1">
-                  The Riot Client is open. Sign in with the account you want to add — it is saved automatically.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+      {finished && (
+        <div className="aa-center">
+          <span className="aa-success"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path className="toast-check" d="M5 12.5l4.2 4.2L19 7.5" /></svg></span>
+          <div className="del-chip is-ok" title={name}><span className="del-chip-dot" /><span className="del-chip-name">{name}</span></div>
+          <p className="rs-text-sm">is ready. Pick it from the list and press START to switch.</p>
+        </div>
+      )}
 
-        {effectivePhase === "created" && (
-          <div className="py-2 text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            </div>
-            <p className="text-white font-semibold text-sm mb-1">Account Added</p>
-            <p className="text-white/50 text-xs mb-4">
-              {createdName || progress?.profile_name || progress?.display || "Account"} saved
-            </p>
-            <button
-              onClick={handleDone}
-              className="w-full h-9 rounded-md text-xs font-semibold btn-primary transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        )}
-
-        {effectivePhase === "error" && (
-          <div className="py-2 text-center">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-500/20 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-            </div>
-            <p className="text-white font-semibold text-sm mb-1">Something went wrong</p>
-            <p className="text-white/50 text-xs mb-4">{progress?.message ?? "Unknown error"}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleClose}
-                className="flex-1 h-9 rounded-md text-xs font-semibold text-white/70 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => { setPhase("opening"); }}
-                className="flex-1 h-9 rounded-md text-xs font-semibold btn-primary transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      {failed && (
+        <div className="aa-center">
+          <p className="rs-text">{progress?.message ?? "Unknown error"}</p>
+        </div>
+      )}
+    </Modal>
   );
 }

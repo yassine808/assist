@@ -120,6 +120,13 @@
 .lobby-plate { position: absolute; left: 8px; width: 169px; top: 291px; height: 24px; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; background: #eaeeb8; overflow: hidden; }
 .lobby-plate::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-120%); background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%); }
 .lobby-card:hover .lobby-plate::after { animation: sheen 0.7s ease-out 0.15s 1 both; }
+/* copy-username button: slides out of the plate, right next to the name, while the card is hovered */
+.lobby-copy { flex: none; display: grid; place-items: center; width: 0; height: 18px; margin-left: -5px; padding: 0; border: 0; overflow: hidden; opacity: 0; cursor: pointer;
+  color: rgba(31, 38, 34, 0.7); background: transparent;
+  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s, background 0.15s, color 0.15s; }
+.lobby-card:hover .lobby-copy, .lobby-copy:focus-visible, .lobby-copy.is-copied { width: 18px; margin-left: 0; opacity: 1; }
+.lobby-copy:hover { background: rgba(31, 38, 34, 0.14); color: #0f1923; }
+.lobby-copy.is-copied { color: #14783f; }
 .lobby-plate-name { font: 600 14px/1.4 var(--lobby-font); color: #1f2622; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 1px; }
 
 .lobby-sub { position: absolute; left: 0; width: 185px; top: 321px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; font: 600 11.5px/1 var(--lobby-font); letter-spacing: 0.02em; color: rgba(232, 240, 246, 0.94); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }

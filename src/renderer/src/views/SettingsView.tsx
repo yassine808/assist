@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Archive, Download, EyeOff, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
@@ -152,6 +152,7 @@ export default function SettingsView() {
   const lockUntil = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [spacer, setSpacer] = useState(0);
 
   const computeActive = useCallback(() => {
     const sc = scrollRef.current;
@@ -159,6 +160,8 @@ export default function SettingsView() {
     const y = sc.scrollTop + 110;
     let idx = 0;
     secRefs.current.forEach((el, i) => { if (el && el.offsetTop <= y) idx = i; });
+    // scrolled all the way down: the last category is the one in view
+    if (sc.scrollHeight > sc.clientHeight && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2) idx = secRefs.current.length - 1;
     setActiveIdx(idx);
   }, []);
 
@@ -169,6 +172,26 @@ export default function SettingsView() {
   }, [computeActive]);
 
   useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
+
+  // Every section must be able to reach the top of the panel, otherwise the last (short) ones can
+  // never become "active". The spacer is exactly the extra room the last section needs.
+  const measureSpacer = useCallback(() => {
+    const sc = scrollRef.current;
+    const last = secRefs.current[secRefs.current.length - 1];
+    if (!sc || !last) return;
+    setSpacer(Math.max(0, sc.clientHeight - last.offsetHeight - 44));
+  }, []);
+
+  useLayoutEffect(() => {
+    measureSpacer();
+    const sc = scrollRef.current;
+    const content = sc?.firstElementChild;
+    if (typeof ResizeObserver === "undefined" || !sc || !content) return;
+    const ro = new ResizeObserver(measureSpacer);
+    ro.observe(sc);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [measureSpacer]);
 
   const goTo = (i: number) => {
     const sc = scrollRef.current, el = secRefs.current[i];
@@ -515,7 +538,7 @@ export default function SettingsView() {
               </div>
             </section>
           ))}
-          <div className="settings-spacer" />
+          <div className="settings-spacer" style={{ height: spacer }} />
         </div>
       </div>
     </div>

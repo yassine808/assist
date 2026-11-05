@@ -1,6 +1,6 @@
 ## FRONTEND
 
-- [] make cards draggable with really good animation.
+- [x] make cards draggable with really good animation.
 - [] message toast
 - [] add SFX on/off setting
 - [] in-app player cards scaling setting

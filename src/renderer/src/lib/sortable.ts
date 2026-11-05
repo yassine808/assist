@@ -5,14 +5,15 @@
 //  - Every item owns a spring (x, y, scale, rotation). When the layout changes, the item keeps its
 //    *visual* position and the spring carries it to the new slot, so interrupted moves re-target
 //    smoothly instead of snapping.
-//  - The lifted card follows the cursor on a stiff spring, pivots around the grab point, tilts
-//    with velocity and lands with a small bounce.
+//  - The lifted card follows the cursor on a stiff spring (no tilt) and lands with a small bounce.
+//  - Slots are derived from the items' own layout positions, sorted in reading order. That set of
+//    positions is the same before and after any reorder, so hit-testing can never see stale geometry
+//    (even when the pointer moves faster than React re-renders).
 
 interface Body {
   el: HTMLElement;
   x: number; y: number; vx: number; vy: number;
   s: number; vs: number;
-  r: number; vr: number;
   lx: number; ly: number; // layout position (offsetLeft/Top, unaffected by transforms)
   hasLayout: boolean;
   idle: boolean;
@@ -54,7 +55,6 @@ export class SortableEngine {
   private drag: DragState | null = null;
   private raf = 0;
   private last = 0;
-  private awaitLayout = false;
   private suppress = false;
   private enabled = true;
   private reduce = false;
@@ -78,12 +78,11 @@ export class SortableEngine {
     if (!el) { this.bodies.delete(id); return; }
     const cur = this.bodies.get(id);
     if (cur?.el === el) return;
-    this.bodies.set(id, { el, x: 0, y: 0, vx: 0, vy: 0, s: 1, vs: 0, r: 0, vr: 0, lx: 0, ly: 0, hasLayout: false, idle: true, lifted: false });
+    this.bodies.set(id, { el, x: 0, y: 0, vx: 0, vy: 0, s: 1, vs: 0, lx: 0, ly: 0, hasLayout: false, idle: true, lifted: false });
   }
 
   /** Call after any DOM/layout change (order, resize, scale). Existing items glide to their new slots. */
   layoutChanged() {
-    this.awaitLayout = false;
     for (const b of this.bodies.values()) {
       const nx = b.el.offsetLeft, ny = b.el.offsetTop;
       if (!b.hasLayout) { b.lx = nx; b.ly = ny; b.hasLayout = true; continue; }
@@ -226,25 +225,34 @@ export class SortableEngine {
 
   private hitTest(cr: DOMRect) {
     const d = this.drag!;
-    if (this.awaitLayout) return;
-    const px = d.px - cr.left, py = d.py - cr.top;
+    const me = this.bodies.get(d.id);
     const cur = this.order.indexOf(d.id);
-    if (cur < 0) return;
-    let best = cur, bestDist = Infinity, curDist = Infinity;
-    this.order.forEach((id, i) => {
-      const b = this.bodies.get(id);
-      if (!b) return;
-      const dist = Math.hypot(px - (b.lx + b.el.offsetWidth / 2), py - (b.ly + b.el.offsetHeight / 2));
-      if (i === cur) curDist = dist;
+    if (!me || cur < 0) return;
+
+    // Slot positions in reading order (row by row). Independent of which item currently sits in which slot.
+    const slots = this.order
+      .map((id) => this.bodies.get(id))
+      .filter((b): b is Body => !!b)
+      .map((b) => ({ x: b.lx + b.el.offsetWidth / 2, y: b.ly + b.el.offsetHeight / 2 }))
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    if (slots.length !== this.order.length) return;
+
+    // Where the lifted card's centre is right now (it is what "covers" the other cards).
+    const cx = d.px - cr.left - d.gx + me.el.offsetWidth / 2;
+    const cy = d.py - cr.top - d.gy + me.el.offsetHeight / 2;
+
+    let best = cur, bestDist = Infinity;
+    const curDist = Math.hypot(cx - slots[cur].x, cy - slots[cur].y);
+    slots.forEach((s, i) => {
+      const dist = Math.hypot(cx - s.x, cy - s.y);
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     if (best === cur || bestDist > curDist - HYSTERESIS) return;
+
     const next = [...this.order];
     next.splice(cur, 1);
     next.splice(best, 0, d.id);
     this.order = next;
-    this.awaitLayout = true;
-    setTimeout(() => { this.awaitLayout = false; }, 140); // safety net if the view never re-lays out
     this.handlers.onOrderChange(next);
     this.handlers.onSwap?.();
   }
@@ -279,19 +287,19 @@ export class SortableEngine {
       const isDrag = !!d && d.id === id;
       if (b.idle && !isDrag) continue;
 
-      let tx = 0, ty = 0, ts = 1, tr = 0;
-      let kPos = this.reduce ? 900 : 330, cPos = damping(kPos, this.reduce ? 1 : 0.66);
-      let kS = 520, cS = damping(kS, 0.72), kR = 260, cR = damping(kR, 0.75);
+      let tx = 0, ty = 0, ts = 1;
+      let kPos = this.reduce ? 900 : 440, cPos = damping(kPos, this.reduce ? 1 : 0.8);
+      let kS = 520, cS = damping(kS, 0.72);
       if (isDrag && d && cr) {
         tx = d.px - cr.left - d.gx - b.lx;
         ty = d.py - cr.top - d.gy - b.ly;
-        if (!this.reduce) { ts = 1.045; tr = clamp(b.vx * 0.006, -9, 9); }
+        if (!this.reduce) ts = 1.045;
         kPos = 950; cPos = damping(kPos, 0.84);
       } else if (b.lifted && !this.reduce) {
         // just dropped: a livelier landing
-        kPos = 300; cPos = damping(kPos, 0.58);
+        kPos = 400; cPos = damping(kPos, 0.66);
       }
-      if (this.reduce) { kS = 900; cS = damping(kS, 1); kR = 900; cR = damping(kR, 1); }
+      if (this.reduce) { kS = 900; cS = damping(kS, 1); }
 
       const n = Math.max(1, Math.ceil(dt / (1 / 120)));
       const h = dt / n;
@@ -299,20 +307,19 @@ export class SortableEngine {
         b.vx += (kPos * (tx - b.x) - cPos * b.vx) * h; b.x += b.vx * h;
         b.vy += (kPos * (ty - b.y) - cPos * b.vy) * h; b.y += b.vy * h;
         b.vs += (kS * (ts - b.s) - cS * b.vs) * h; b.s += b.vs * h;
-        b.vr += (kR * (tr - b.r) - cR * b.vr) * h; b.r += b.vr * h;
       }
 
       const atRest = !isDrag
-        && Math.abs(b.x) < 0.08 && Math.abs(b.y) < 0.08 && Math.abs(b.vx) < 0.6 && Math.abs(b.vy) < 0.6
-        && Math.abs(b.s - 1) < 0.002 && Math.abs(b.vs) < 0.03 && Math.abs(b.r) < 0.05 && Math.abs(b.vr) < 0.4;
+        && Math.abs(b.x) < 0.25 && Math.abs(b.y) < 0.25 && Math.abs(b.vx) < 1.6 && Math.abs(b.vy) < 1.6
+        && Math.abs(b.s - 1) < 0.002 && Math.abs(b.vs) < 0.03;
       if (atRest) {
-        b.x = b.y = b.vx = b.vy = b.vs = b.vr = 0; b.s = 1; b.r = 0;
+        b.x = b.y = b.vx = b.vy = b.vs = 0; b.s = 1;
         b.idle = true;
         b.el.style.transform = "";
         if (b.lifted) { b.lifted = false; b.el.classList.remove("is-lifted"); b.el.style.transformOrigin = ""; }
       } else {
         busy = true;
-        b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) rotate(${b.r.toFixed(3)}deg) scale(${b.s.toFixed(4)})`;
+        b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) scale(${b.s.toFixed(4)})`;
       }
     }
 

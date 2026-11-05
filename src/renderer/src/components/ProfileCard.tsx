@@ -137,7 +137,6 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
                 : <div className="lobby-art lobby-art-empty" />}
               <span className="lobby-scan" />
               <div className="lobby-actions">
-                <button onClick={copy} title="Copy username">{copied ? <Check size={12} /> : <Copy size={12} />}</button>
                 {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
                 <button className="danger" onClick={(e) => { e.stopPropagation(); onDelete(profile); }} title="Delete profile"><Trash2 size={12} /></button>
               </div>
@@ -159,6 +158,9 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
             <span className="lobby-status">{status}</span>
             <div className="lobby-plate" title={profile.profile_name}>
               <span className="lobby-plate-name">{profile.profile_name}</span>
+              <button type="button" className={`lobby-copy${copied ? " is-copied" : ""}`} onClick={copy} title="Copy username" aria-label="Copy username">
+                {copied ? <Check size={12} strokeWidth={2.6} /> : <Copy size={12} strokeWidth={2.2} />}
+              </button>
             </div>
 
             <div className="lobby-sub">

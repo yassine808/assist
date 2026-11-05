@@ -1,5 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowDownToLine, ArrowUpFromLine, Check, Eye, EyeOff, FileUp, Lock, X } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
+import { base64ToBlob } from "../utils/base64";
+import { useToast } from "./Toast";
+import Modal from "./Modal";
 
 interface ImportExportModalProps {
   open: boolean;
@@ -7,16 +11,69 @@ interface ImportExportModalProps {
   onImported?: () => void;
 }
 
+type Tab = "export" | "import";
+
+const MIN_KEY = 4;
+
+function strength(pw: string): { level: number; label: string } {
+  if (pw.length === 0) return { level: 0, label: "" };
+  if (pw.length < MIN_KEY) return { level: 1, label: "Too short" };
+  let score = 2;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12 && /[a-z]/.test(pw) && /[A-Z0-9]/.test(pw)) score++;
+  return { level: score, label: ["", "Too short", "OK", "Good", "Strong"][score] };
+}
+
+function formatSize(n: number): string {
+  if (n < 1024) return `${n} B`;
+  return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
+}
+
+function PasskeyField({ value, onChange, placeholder, autoFocus }: Readonly<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean }>) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="ie-field">
+      <Lock size={14} className="ie-field-lead" />
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        data-autofocus={autoFocus ? "" : undefined}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <button type="button" className="ie-field-eye" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide passkey" : "Show passkey"} tabIndex={-1}>
+        {show ? <EyeOff size={14} /> : <Eye size={14} />}
+      </button>
+    </div>
+  );
+}
+
 export default function ImportExportModal({ open, onClose, onImported }: Readonly<ImportExportModalProps>) {
   const { call } = useIPC();
+  const toast = useToast();
+  const [tab, setTab] = useState<Tab>("export");
   const [exportPasskey, setExportPasskey] = useState("");
   const [importPasskey, setImportPasskey] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<string>("");
+  const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wasOpen = useRef(false);
+
+  // fresh state every time the dialog opens
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setTab("export");
+      setExportPasskey(""); setImportPasskey(""); setImportFile(null); setImportResult(null);
+      setExportSuccess(false); setDragOver(false);
+    }
+    wasOpen.current = open;
+  }, [open]);
 
   const handleExport = useCallback(async () => {
     if (!exportPasskey) return;
@@ -24,11 +81,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
     try {
       const result = await call<{ data: string }>("export_profiles", { passkey: exportPasskey });
       if (result?.data) {
-        const binaryStr = atob(result.data);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const blob = new Blob([bytes], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(base64ToBlob(result.data));
         const a = document.createElement("a");
         a.href = url;
         a.download = `riotswitcher-profiles-${new Date().toISOString().slice(0, 10)}.rsprofile`;
@@ -36,156 +89,141 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
         URL.revokeObjectURL(url);
         setExportPasskey("");
         setExportSuccess(true);
-        setTimeout(() => setExportSuccess(false), 2000);
+        setTimeout(() => setExportSuccess(false), 2500);
+        toast.show({ kind: "success", title: "Profiles exported", message: "Backup file downloaded" });
       }
     } catch (e) {
       console.error("export failed", e);
+      toast.show({ kind: "error", title: "Export failed", message: String(e) });
     } finally {
       setExporting(false);
     }
-  }, [call, exportPasskey]);
+  }, [call, exportPasskey, toast]);
 
   const handleImport = useCallback(async () => {
     if (!importPasskey || !importFile) return;
     setImporting(true);
-    setImportResult("");
+    setImportResult(null);
     try {
-      const arrayBuffer = await importFile.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
+      const bytes = new Uint8Array(await importFile.arrayBuffer());
       let binary = "";
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const data = btoa(binary);
       const result = await call<{ imported: number; skipped: number; total: number }>(
         "import_profiles",
-        { passkey: importPasskey, data, merge: true }
+        { passkey: importPasskey, data: btoa(binary), merge: true }
       );
       if (result) {
-        setImportResult(
-          `Imported ${result.imported} of ${result.total} profiles` +
-          (result.skipped > 0 ? ` (${result.skipped} already existed)` : "")
-        );
+        const text = `Imported ${result.imported} of ${result.total} profiles` + (result.skipped > 0 ? ` (${result.skipped} already existed)` : "");
+        setImportResult({ ok: true, text });
+        toast.show({ kind: "success", title: "Import complete", message: text });
         setImportPasskey("");
         setImportFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         onImported?.();
       }
     } catch (e) {
-      setImportResult("Import failed: " + String(e));
+      setImportResult({ ok: false, text: "Import failed: " + String(e) });
+      toast.show({ kind: "error", title: "Import failed", message: "Wrong passkey or damaged file" });
       setImportFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } finally {
       setImporting(false);
     }
-  }, [call, importPasskey, importFile, onImported]);
+  }, [call, importPasskey, importFile, onImported, toast]);
 
-  if (!open) return null;
+  const pickFile = (f: File | null | undefined) => {
+    if (!f) return;
+    setImportFile(f);
+    setImportResult(null);
+  };
 
-  const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
+  const exStrength = strength(exportPasskey);
+  const canExport = exportPasskey.length >= MIN_KEY && !exporting;
+  const canImport = importPasskey.length >= MIN_KEY && !!importFile && !importing;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClose(); }}
-      role="button"
-      tabIndex={0}
+    <Modal
+      open={open}
+      onClose={onClose}
+      dismissible={!exporting && !importing}
+      eyebrow="Backup"
+      title="Import / Export"
+      icon={<ArrowDownToLine size={18} />}
+      width={470}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-ghost h-10 px-5 text-[11px]">Close</button>
+          {tab === "export" ? (
+            <button type="button" onClick={() => void handleExport()} disabled={!canExport} className="btn-primary h-10 px-6 text-[11px]">
+              {exporting ? <span className="spinner-icon" /> : exportSuccess ? <Check size={14} strokeWidth={3} /> : <ArrowDownToLine size={14} />}
+              {exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export backup"}
+            </button>
+          ) : (
+            <button type="button" onClick={() => void handleImport()} disabled={!canImport} className="btn-primary h-10 px-6 text-[11px]">
+              {importing ? <span className="spinner-icon" /> : <ArrowUpFromLine size={14} />}
+              {importing ? "Importing…" : "Import backup"}
+            </button>
+          )}
+        </>
+      }
     >
-      <div
-        className="w-[420px] modal-panel p-5"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={0}
-        style={{ animation: "fadeIn 0.2s ease-out" }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-bold text-base">Import / Export Profiles</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-        </div>
+      <div className="ie-tabs" style={{ ["--t" as string]: tab === "export" ? 0 : 1 }} role="tablist">
+        <button type="button" role="tab" aria-selected={tab === "export"} className={tab === "export" ? "is-on" : ""} onClick={() => setTab("export")}>
+          <ArrowDownToLine size={13} /> Export
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "import"} className={tab === "import" ? "is-on" : ""} onClick={() => setTab("import")}>
+          <ArrowUpFromLine size={13} /> Import
+        </button>
+        <span className="ie-tabs-ind" aria-hidden />
+      </div>
 
-        <div className="space-y-4">
-          {/* Export */}
-          <div>
-            <p className="text-white/70 text-sm font-medium mb-1">Export</p>
-            <p className="text-white/40 text-xs mb-2">Encrypt and download all profiles as a backup file</p>
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                placeholder="Encryption passkey"
-                value={exportPasskey}
-                onChange={(e) => setExportPasskey(e.target.value)}
-                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
-                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
-              />
-              <button
-                onClick={() => void handleExport()}
-                disabled={!exportPasskey || exportPasskey.length < 4 || exporting}
-                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-                           inline-flex items-center gap-1.5"
-              >
-                {exporting && <span className="spinner-icon" />}
-                {exportSuccess && (
-                  <svg className="checkmark-icon" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {exportLabel}
-              </button>
+      <div className="ie-stage">
+        {tab === "export" ? (
+          <div key="export" className="ie-pane">
+            <p className="rs-text-sm">Saves <b>all your profiles</b> into one encrypted <code>.rsprofile</code> file you can keep as a backup or move to another PC.</p>
+            <label className="ie-label">Choose a passkey</label>
+            <PasskeyField value={exportPasskey} onChange={setExportPasskey} placeholder="Encryption passkey" autoFocus />
+            <div className="ie-meter" data-level={exStrength.level}>
+              <span /><span /><span /><span />
+              <em>{exStrength.label}</em>
             </div>
-            {exportPasskey.length > 0 && exportPasskey.length < 4 && (
-              <p className="text-amber-400/70 text-xs mt-1">Passkey should be at least 4 characters</p>
-            )}
+            <p className="ie-note">You will need this passkey to import the file. It cannot be recovered if you forget it.</p>
           </div>
-
-          <div className="border-t border-white/5" />
-
-          {/* Import */}
-          <div>
-            <p className="text-white/70 text-sm font-medium mb-1">Import</p>
-            <p className="text-white/40 text-xs mb-2">Restore profiles from a backup file (duplicates are skipped)</p>
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept=".rsprofile"
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                className="flex-1 text-xs text-white/50 file:mr-2 file:py-1 file:px-2 file:rounded-md
-                           file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white/70
-                           hover:file:bg-white/20 file:cursor-pointer"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                placeholder="Decryption passkey"
-                value={importPasskey}
-                onChange={(e) => setImportPasskey(e.target.value)}
-                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
-                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
-              />
+        ) : (
+          <div key="import" className="ie-pane">
+            <p className="rs-text-sm">Restores profiles from a backup file. Profiles that already exist are <b>skipped</b>, nothing is overwritten.</p>
+            <input ref={fileInputRef} type="file" accept=".rsprofile" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
+            {importFile ? (
+              <div className="ie-file">
+                <FileUp size={18} />
+                <div className="ie-file-meta"><span title={importFile.name}>{importFile.name}</span><em>{formatSize(importFile.size)}</em></div>
+                <button type="button" onClick={() => { setImportFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} aria-label="Remove file"><X size={14} /></button>
+              </div>
+            ) : (
               <button
-                onClick={() => void handleImport()}
-                disabled={!importPasskey || importPasskey.length < 4 || !importFile || importing}
-                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-                           inline-flex items-center gap-1.5"
+                type="button"
+                className={`ie-drop ${dragOver ? "is-over" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); pickFile(e.dataTransfer.files?.[0]); }}
               >
-                {importing && <span className="spinner-icon" />}
-                {importing ? "Importing…" : "Import"}
+                <FileUp size={22} />
+                <span><b>Drop your backup here</b> or click to browse</span>
+                <em>.rsprofile</em>
               </button>
-            </div>
-            {importPasskey.length > 0 && importPasskey.length < 4 && (
-              <p className="text-amber-400/70 text-xs mt-1">Passkey should be at least 4 characters</p>
             )}
+            <label className="ie-label">Passkey</label>
+            <PasskeyField value={importPasskey} onChange={setImportPasskey} placeholder="Decryption passkey" />
             {importResult && (
-              <p key={importResult} className={`result-message text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
-                {importResult}
+              <p key={importResult.text} className={`ie-result ${importResult.ok ? "is-ok" : "is-bad"}`}>
+                {importResult.ok ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
+                {importResult.text}
               </p>
             )}
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

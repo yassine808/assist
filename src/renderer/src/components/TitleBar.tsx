@@ -22,7 +22,8 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
     void window.electronAPI?.getVersion?.().then((v) => setVersion(v ?? ""));
   }, []);
 
-  const idx = TABS.findIndex((t) => t.id === page);
+  // the red underline sits on Settings while the panel is open, otherwise on the current page
+  const idx = settingsOpen ? TABS.length : TABS.findIndex((t) => t.id === page);
 
   return (
     <div className="drag-region flex items-center justify-between h-10 titlebar-surface backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
@@ -66,31 +67,30 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
           <button
             key={t.id}
             type="button"
-            className={`nav-tab ${page === t.id ? "is-on" : ""}`}
+            className={`nav-tab ${!settingsOpen && page === t.id ? "is-on" : ""}`}
             onClick={() => onNavigate(t.id)}
             title={t.hint}
-            aria-current={page === t.id ? "page" : undefined}
+            aria-current={!settingsOpen && page === t.id ? "page" : undefined}
           >
             <t.icon size={13} />
             <span>{t.label}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className={`nav-tab ${settingsOpen ? "is-on" : ""}`}
+          onClick={onToggleSettings}
+          title="Settings (Ctrl+,)"
+          aria-pressed={settingsOpen}
+        >
+          <Settings size={13} className={`transition-transform duration-500 ${settingsOpen ? "rotate-90" : ""}`} />
+          <span>Settings</span>
+        </button>
         <span className="nav-tab-ind" aria-hidden />
       </nav>
 
-      {/* Right: settings + window controls */}
+      {/* Right: window controls */}
       <div className="no-drag flex h-full">
-        <button
-          className={`w-11 h-full flex items-center justify-center transition-all duration-200 ${
-            settingsOpen ? "text-white bg-white/[0.08]" : "text-white/30 hover:text-white/90 hover:bg-white/[0.06]"
-          }`}
-          onClick={onToggleSettings}
-          aria-label="Settings"
-          aria-pressed={settingsOpen}
-          title="Settings (Ctrl+,)"
-        >
-          <Settings size={14} className={`transition-transform duration-500 ${settingsOpen ? "rotate-90" : ""}`} />
-        </button>
         <button
           className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200 relative group/btn"
           onClick={() => window.electronAPI.minimize()}
