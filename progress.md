@@ -816,3 +816,31 @@
   matching typecheck errors, plus ESLint errors in `ProfileGrid.tsx` and
   `SettingsView.tsx:234`.
 - Next: none. `plans/electron-rewrite.md` kept as a historical record.
+
+### 2026-11-05 - Drag-and-drop: second reorder broke the grid
+
+- Goal: dragging worked once, then the second drag misbehaved/stuck.
+- Root cause: the stable ref callbacks in `ProfileGrid` deleted their own cache
+  entry when React detached them (`if (!el) refCache.current.delete(name)`).
+  That made the next render hand React a brand-new callback for every card, so
+  React detached/re-attached all refs, `register()` rebuilt every `Body`
+  (idle, not lifted) and the dragged card's spring state was lost. Its drop
+  animation never ran again, leaving `is-lifted` + a stale transform forever;
+  every later reorder repeated the churn.
+- Done:
+  - `ProfileGrid`: ref callbacks are cached for the component's lifetime and
+    never pruned.
+  - `sortable.register`: when a card's element is replaced, the spring/lift
+    state moves to the new node and the old node is cleaned; unregistering a
+    lifted element clears its chrome and cancels the drag quietly.
+  - `tick`: a `lifted` body is always animated, so its drop can finish even
+    if the body was flagged idle.
+  - Two regression tests in `lib/sortable.test.ts` (state transfer on element
+    replacement, chrome cleanup on unregister).
+- Verified: reproduced the stuck `scale(1.045)`/`is-lifted` card in the live
+  app over CDP, then three consecutive drags (left->right, right->left,
+  third->second) each settled with no lifted leftovers; `tsc` web 0,
+  `vitest` 50 passed + 10 known `window.singleton` failures, ESLint clean on
+  the changed engine/test files.
+- Next: none. Note: the concurrent `d4c7aef` commit captured the temporary
+  CDP hook in `src/main/index.ts`; its removal is in the working tree.

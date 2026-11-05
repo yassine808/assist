@@ -115,4 +115,38 @@ describe("SortableEngine pointer lifecycle", () => {
     window.dispatchEvent(pointerEvent("pointerup", { x: 40, y: 40 }));
     expect(release).toHaveBeenCalledWith(1);
   });
+
+  it("carries a lift over to a replacement element instead of dropping it", () => {
+    startDrag();
+    expect(a.classList.contains("is-lifted")).toBe(true);
+
+    const a2 = makeItem();
+    a2.setPointerCapture = vi.fn();
+    a2.releasePointerCapture = vi.fn();
+    engine.register("A", a2);
+
+    // The old node is cleaned up, the new one inherits the lift.
+    expect(a.classList.contains("is-lifted")).toBe(false);
+    expect(a2.classList.contains("is-lifted")).toBe(true);
+
+    window.dispatchEvent(pointerEvent("pointerup", { x: 40, y: 40 }));
+    expect(handlers.onCommit).toHaveBeenCalledTimes(1);
+    expect(handlers.onCommit).toHaveBeenCalledWith(["A", "B"], false);
+    a2.remove();
+  });
+
+  it("clears the drag chrome when a lifted element is unregistered", () => {
+    startDrag();
+    expect(document.body.classList.contains("is-sorting")).toBe(true);
+
+    engine.register("A", null);
+
+    expect(a.classList.contains("is-lifted")).toBe(false);
+    expect(a.style.transform).toBe("");
+    expect(document.body.classList.contains("is-sorting")).toBe(false);
+    // After React re-registers the node, a later press starts a fresh drag.
+    engine.register("A", a);
+    startDrag();
+    expect(handlers.onLift).toHaveBeenCalledTimes(2);
+  });
 });
