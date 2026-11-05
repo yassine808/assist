@@ -878,3 +878,51 @@
   Note: an external auto-commit (`9e8100d "2"`) captured the in-progress edits
   mid-task; the remaining working-tree diff is the TO-DO ticks, the shortcut
   sanitizer fix, and the new/replaced window/shortcut tests.
+
+### 2026-11-06 — Portable launch fix, new icons, encrypted session backups
+
+- Goal: portable exe looked like it never started; adopt the new icon set
+  everywhere; keep the saved Riot session tokens unreadable outside the app;
+  confirm data survives no matter where the exe is launched from.
+- Done:
+  - `window.ts`: the window is revealed by `ready-to-show`, by a 5 s fallback
+    timer, or right after the load settles — a stalled renderer can no longer
+    leave an invisible window holding the single-instance lock. Load errors are
+    logged instead of aborting start-up. `index.ts` logs unhandled rejections
+    and a second launch shows any surviving window when `appWindow` is still
+    null.
+  - Icons: `build/icon.ico` + `build/icon.png` and the renderer `favicon.*` /
+    `icon-512.png` come from the new artwork; the title-bar mark is the same
+    new logo with the red glow removed.
+  - `secure_store.py` (new): DPAPI (`CryptProtectData`, current-user scope +
+    app entropy) seals the session backups; a tar stream for directory backups,
+    one blob per file, magic header `RSENC1`. Legacy plaintext backups still
+    restore. Non-Windows hosts use a 0600 Fernet key (dev/CI only).
+  - `session_manager.py` seals on save and decrypts on restore; tar members are
+    path-validated before extraction.
+- Verified: `pytest` 148 passed (the dir-session test now asserts the sealed
+  blob and a working restore), Ruff and compileall clean, `vitest` 68 passed,
+  `npm run typecheck` clean.
+- Next: publish the rebuilt installer + portable.
+
+### 2026-11-06 — VALORANT is never closed (and the test suite was closing it)
+
+- Goal: the app must never terminate Riot Client or VALORANT, and a test run
+  must never do it either.
+- Found: `tests/test_account_capture.py` drove `orchestrator.switch_to()`, which
+  called the real `riot_processes.kill_all()` -> `taskkill /F /T /IM
+  VALORANT.exe`. Every `pytest` run force-closed the running game and Riot
+  Client. `orchestrator.stop()` and `riot_client.stop_and_wait()` also used
+  `kill_all`, despite the latter being the "stop_riot_client" path.
+- Done:
+  - `tests/conftest.py`: autouse fixture disarms `riot_processes.kill_all` and
+    both wait helpers for the whole suite; `is_running` stays real (read-only).
+  - `launch_orchestrator._kill_riot_processes()`: refuses with "Close VALORANT
+    before switching accounts" while the game is running, otherwise stops the
+    Riot Client only. `kill_all_and_wait()` (Add Account) is client-only too.
+  - `tests/test_shutdown_safety.py` now covers: shutdown/client-only stop, stop
+    job, switch-when-idle, and the refusal when VALORANT is running.
+  - Bumped to 3.1.1 for the rebuilt artifacts.
+- Verified: `pytest` 154 passed with the VALORANT/RiotClientServices PIDs
+  identical before and after the run; ruff and compileall clean.
+- Next: publish v3.1.1 and verify the exe icons + 30 bundled cards.

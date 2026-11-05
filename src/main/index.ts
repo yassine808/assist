@@ -4,7 +4,7 @@ import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
 import { createAppWindow, AppWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
-import { registerCardScheme, handleCardProtocol, listAnimatedCards } from "./playercards";
+import { registerCardScheme, handleCardProtocol, listAnimatedCards, animatedCardDir } from "./playercards";
 import { createProfileShortcut, launchProfileFromArgv } from "./shortcuts";
 
 // Bound the on-disk log. electron-log rotates the current file to `<name>.old.log`
@@ -70,6 +70,9 @@ function setup(): void {
     python.start();
 
     handleCardProtocol();
+    // One line so a support report can answer "are the cards even in the
+    // build?" without guessing: the packaged exe ships them under resources.
+    log.info(`Animated cards: ${listAnimatedCards().length} in ${animatedCardDir()}`);
     setupIpc();
 
     appWindow = await createAppWindow(python, {

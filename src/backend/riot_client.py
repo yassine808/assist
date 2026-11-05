@@ -285,17 +285,21 @@ class RiotClientManager:
         self._enqueue("kill")
 
     def kill_all_and_wait(self, timeout_s=8.0):
-        """Kill every Riot process and block until they are gone.
+        """Stop the Riot Client and block until it is gone.
 
         The Add Account flow needs this: launching immediately after a
         fire-and-forget kill lets taskkill reach the *new* client process and
-        kill it too, so no window ever appears.
+        kill it too, so no window ever appears. VALORANT is deliberately not
+        part of it — the app never closes the game.
         """
-        rp.kill_all()
-        return rp.wait_until_all_dead(timeout_s)
+        return rp.shutdown_stop()
 
     def stop_and_wait(self):
-        """Queue a background kill followed by a wait-until-all-dead drain."""
+        """Queue a background stop of the Riot Client, leaving VALORANT alone.
+
+        The "stop_riot_client" request is what the app issues when it shuts
+        down, so it must never reach the game processes.
+        """
         self._enqueue("stop")
 
     def _emit(self, status):
@@ -322,7 +326,8 @@ class RiotClientManager:
                 rp.kill_all()
                 self._emit("killed")
             elif kind == "stop":
-                rp.kill_all()
-                ok = rp.wait_until_all_dead()
+                # Shutdown path: the Riot Client only. VALORANT is not ours to
+                # close just because the switcher is going away.
+                ok = rp.shutdown_stop()
                 self._last_error = None if ok else "Timed out waiting for Riot processes to exit."
                 self._emit("stopped" if ok else "stop_failed")

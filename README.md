@@ -31,7 +31,6 @@ your own machine.
 | Rename / delete a profile | Right-click its card |
 | Pick a player card | Click the card art on a profile |
 | See ranks and stats | They refresh automatically every 2 minutes |
-| Back up everything | **Import / Export** → encrypted `.rsprofile` file |
 
 ---
 
@@ -55,7 +54,8 @@ Windows 10/11, x64.
 - **Live stats** — rank, peak rank, agent picks and win rate per account.
 - **Agent map breakdown** — per-map and per-agent performance in its own window.
 - **League settings sync** — keep hotkeys and video settings across accounts.
-- **Encrypted import/export** — move every profile to another PC.
+- **Encrypted sessions** — saved Riot Client sessions are sealed with Windows
+  DPAPI, so only your Windows account can read them.
 
 ---
 
@@ -114,8 +114,14 @@ Free key at [henrikdev.xyz](https://henrikdev.xyz).
 
 | What | Path |
 |---|---|
-| Profiles, config, player-card DB | `%APPDATA%\RiotSwitcher` (dev: `.\data`) |
+| Profiles, config, player-card DB | `C:\ProgramData\RiotSwitcher` (dev: `.\data`) |
 | Live Riot Client session | `%LOCALAPPDATA%\Riot Games\Riot Client` |
+
+On first launch of a new version, data from the old `%APPDATA%\RiotSwitcher`
+folder is moved into `C:\ProgramData\RiotSwitcher` once. The old copy is
+removed as part of the move, so the saved session tokens exist in one place
+only. Sessions are encrypted with DPAPI; the folder itself is restricted to
+your Windows user.
 
 The app reads and writes **Riot Client files only** — never VALORANT, never
 Vanguard, never game memory.

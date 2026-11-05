@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Archive, Check, Coffee, Copy, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
+import { Coffee, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useToast } from "../components/Toast";
@@ -7,7 +7,6 @@ import { useAppearance } from "../hooks/useAppearance";
 import { CUSTOM_ID, SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES, customTheme } from "../lib/appearance";
 import { useIPC } from "../hooks/useIPC";
 import { sfx } from "../lib/sfx";
-import { base64ToBlob } from "../utils/base64";
 import type { Profile } from "../types/profile";
 
 interface ConfigState {
@@ -23,17 +22,6 @@ export default function SettingsView() {
   const mirrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [exportPasskey, setExportPasskey] = useState("");
-  const [exportScope, setExportScope] = useState<"all" | "selected">("all");
-  const [exportPicked, setExportPicked] = useState<Set<string>>(new Set());
-  const [passCopied, setPassCopied] = useState(false);
-  const [importPasskey, setImportPasskey] = useState("");
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<string>("");
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateState, setUpdateState] = useState<string>("idle");
   const [updateVersion, setUpdateVersion] = useState<string>("");
   const [updatePercent, setUpdatePercent] = useState<number>(0);
@@ -94,93 +82,9 @@ export default function SettingsView() {
   const scalePct = Math.round((scale / SCALE_DEFAULT) * 100);
   const scaleFill = `${((scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`;
 
-  const handleExport = useCallback(async () => {
-    if (!exportPasskey) return;
-    setExporting(true);
-    try {
-      const names = exportScope === "selected" ? [...exportPicked] : undefined;
-      const result = await call<{ data: string }>(
-        "export_profiles",
-        names ? { passkey: exportPasskey, names } : { passkey: exportPasskey }
-      );
-      if (result?.data) {
-        // The backend returns base64 text, not raw bytes. Passing the string
-        // straight to Uint8Array silently produced a 0-byte backup file.
-        const blob = base64ToBlob(result.data);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `riotswitcher-profiles-${new Date().toISOString().slice(0, 10)}.rsprofile`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setExportPasskey("");
-        setExportSuccess(true);
-        setTimeout(() => setExportSuccess(false), 2000);
-        toast.show({ kind: "success", title: "Profiles exported", message: "Backup file downloaded" });
-      }
-    } catch (e) {
-      console.error("export failed", e);
-      toast.show({ kind: "error", title: "Export failed", message: String(e) });
-    } finally {
-      setExporting(false);
-    }
-  }, [call, exportPasskey, exportScope, exportPicked, toast]);
-
-  const copyExportPasskey = useCallback(async () => {
-    if (!exportPasskey) return;
-    try {
-      await navigator.clipboard.writeText(exportPasskey);
-      setPassCopied(true);
-      setTimeout(() => setPassCopied(false), 1500);
-    } catch (e) {
-      console.error("copy passkey failed", e);
-    }
-  }, [exportPasskey]);
-
-  const toggleExportPick = (name: string) =>
-    setExportPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-
-  const handleImport = useCallback(async () => {
-    if (!importPasskey || !importFile) return;
-    setImporting(true);
-    setImportResult("");
-    try {
-      const arrayBuffer = await importFile.arrayBuffer();
-      const data = Array.from(new Uint8Array(arrayBuffer));
-      const result = await call<{ imported: number; skipped: number; total: number }>(
-        "import_profiles",
-        { passkey: importPasskey, data, merge: true }
-      );
-      if (result) {
-        setImportResult(
-          `Imported ${result.imported} of ${result.total} profiles` +
-          (result.skipped > 0 ? ` (${result.skipped} already existed)` : "")
-        );
-        setImportPasskey("");
-        setImportFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        toast.show({ kind: "success", title: "Import complete", message: `${result.imported} of ${result.total} profiles imported` });
-        // Refresh profiles list
-        void call<Profile[]>("get_profiles").then((p) => setProfiles(p ?? []));
-      }
-    } catch (e) {
-      setImportResult("Import failed: " + String(e));
-      toast.show({ kind: "error", title: "Import failed", message: String(e) });
-    } finally {
-      setImporting(false);
-    }
-  }, [call, importPasskey, importFile, toast]);
-
   const sourceDir = String(config.SharedSettingsSourceDirectory ?? "");
   const sourceProfile = String(config.SharedSettingsSourceProfile ?? "");
   const sourceName = sourceDir || sourceProfile;
-
-  const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
 
   // Scrollspy: the rail follows what you're reading; clicking a category glides to it.
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -443,160 +347,6 @@ export default function SettingsView() {
               />
             </div>
           )}
-        </div>
-      ),
-    },
-    {
-      id: "backup", nav: "Backup", icon: Archive, blurb: "Move your profiles between machines with an encrypted file.",
-      title: "Import / Export Profiles",
-      rows: (
-        <div className="py-2 space-y-4">
-          {/* Export */}
-          <div>
-            <p className="text-white/70 text-sm font-medium mb-1.5">Export</p>
-            <p className="text-white/40 text-xs mb-2">
-              {exportScope === "all"
-                ? "Encrypt and download all profiles as a backup file"
-                : `Encrypt and download ${exportPicked.size || "no"} selected ${exportPicked.size === 1 ? "profile" : "profiles"}`}
-            </p>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <button
-                onClick={() => setExportScope("all")}
-                role="radio"
-                aria-checked={exportScope === "all"}
-                className={`h-8 rounded-md text-[11px] font-bold uppercase tracking-wider border transition-colors ${
-                  exportScope === "all"
-                    ? "text-white bg-riot-red/15 border-riot-red/50"
-                    : "text-white/50 bg-white/5 border-white/10 hover:text-white/80"
-                }`}
-              >
-                All profiles ({profiles.length})
-              </button>
-              <button
-                onClick={() => setExportScope("selected")}
-                role="radio"
-                aria-checked={exportScope === "selected"}
-                disabled={profiles.length === 0}
-                className={`h-8 rounded-md text-[11px] font-bold uppercase tracking-wider border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  exportScope === "selected"
-                    ? "text-white bg-riot-red/15 border-riot-red/50"
-                    : "text-white/50 bg-white/5 border-white/10 hover:text-white/80"
-                }`}
-              >
-                Select accounts ({exportPicked.size})
-              </button>
-            </div>
-            {exportScope === "selected" && (
-              <div className="mb-2 rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10 text-[11px] text-white/50">
-                  <span>{exportPicked.size} of {profiles.length} selected</span>
-                  <button
-                    onClick={() =>
-                      setExportPicked(
-                        exportPicked.size === profiles.length ? new Set() : new Set(profiles.map((p) => p.profile_name))
-                      )
-                    }
-                    className="text-[10px] font-bold uppercase tracking-wider text-white/60 hover:text-white"
-                  >
-                    {exportPicked.size === profiles.length ? "Clear" : "Select all"}
-                  </button>
-                </div>
-                <div className="max-h-32 overflow-y-auto">
-                  {profiles.map((p) => (
-                    <label
-                      key={p.profile_name}
-                      className={`flex items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer border-b border-white/5 last:border-0 ${
-                        exportPicked.has(p.profile_name) ? "text-white bg-riot-red/10" : "text-white/70 hover:bg-white/5"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={exportPicked.has(p.profile_name)}
-                        onChange={() => toggleExportPick(p.profile_name)}
-                        className="w-3.5 h-3.5 accent-riot-red"
-                      />
-                      <span className="truncate">{p.profile_name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                placeholder="Encryption passkey"
-                value={exportPasskey}
-                onChange={(e) => setExportPasskey(e.target.value)}
-                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
-                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
-              />
-              <button
-                onClick={() => void copyExportPasskey()}
-                disabled={!exportPasskey}
-                title={passCopied ? "Copied" : "Copy passkey"}
-                aria-label="Copy passkey"
-                className="h-8 w-8 flex items-center justify-center rounded-md bg-white/5 border border-white/10
-                           text-white/50 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {passCopied ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-              <button
-                onClick={() => void handleExport()}
-                disabled={!exportPasskey || exporting || (exportScope === "selected" && exportPicked.size === 0)}
-                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-                           inline-flex items-center gap-1.5"
-              >
-                {exporting && <span className="spinner-icon" />}
-                {exportSuccess && (
-                  <svg className="checkmark-icon" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {exportLabel}
-              </button>
-            </div>
-          </div>
-
-          {/* Import */}
-          <div>
-            <p className="text-white/70 text-sm font-medium mb-1.5">Import</p>
-            <p className="text-white/40 text-xs mb-2">Restore profiles from a backup file (duplicates are skipped)</p>
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept=".rsprofile"
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                className="flex-1 text-xs text-white/50 file:mr-2 file:py-1 file:px-2 file:rounded-md
-                           file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white/70
-                           hover:file:bg-white/20 file:cursor-pointer"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                placeholder="Decryption passkey"
-                value={importPasskey}
-                onChange={(e) => setImportPasskey(e.target.value)}
-                className="flex-1 h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-sm
-                           placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
-              />
-              <button
-                onClick={() => void handleImport()}
-                disabled={!importPasskey || !importFile || importing}
-                className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
-                           inline-flex items-center gap-1.5"
-              >
-                {importing && <span className="spinner-icon" />}
-                {importing ? "Importing…" : "Import"}
-              </button>
-            </div>
-            {importResult && (
-              <p key={importResult} className={`result-message text-xs mt-1.5 ${importResult.includes("failed") ? "text-riot-red" : "text-emerald-400"}`}>
-                {importResult}
-              </p>
-            )}
-          </div>
         </div>
       ),
     },

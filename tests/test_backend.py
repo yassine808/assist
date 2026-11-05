@@ -553,7 +553,59 @@ class TestSessionManager(_TempDirMixin, unittest.TestCase):
         with mock.patch.object(SessionManager, "_resolve_path", return_value=source_dir):
             ret = sm._backup_one_file(file_def, profile_dir, install)
         self.assertTrue(ret)
-        self.assertTrue(os.path.isdir(os.path.join(profile_dir, "Sessions")))
+
+        # The backup is one sealed blob, not a readable copy of the session
+        # files: no member names and no file contents in plaintext.
+        backup_path = os.path.join(profile_dir, "Sessions")
+        self.assertTrue(os.path.isfile(backup_path))
+        with open(backup_path, "rb") as handle:
+            raw = handle.read()
+        self.assertTrue(raw.startswith(b"RSENC1"))
+        self.assertNotIn(b"data.json", raw)
+
+        # ...and it still restores into the live client location.
+        live = os.path.join(self._tmpdir, "live_sessions")
+        with mock.patch.object(SessionManager, "_resolve_path", return_value=live):
+            self.assertTrue(sm._restore_one_file(file_def, profile_dir, install))
+        with open(os.path.join(live, "sess1", "data.json")) as handle:
+            self.assertEqual(handle.read(), "{}")
+
+    def test_seal_existing_backups_encrypts_legacy_plaintext(self):
+        """A plaintext backup from an older build is sealed in place."""
+        sm = self._sm()
+        profile_dir = sm.profile_dir("Legacy")
+        os.makedirs(profile_dir, exist_ok=True)
+        plain = os.path.join(profile_dir, "RiotGamesPrivateSettings.yaml")
+        with open(plain, "w") as handle:
+            handle.write("id_token: SECRET-VALUE\n")
+        legacy_dir = os.path.join(profile_dir, "Sessions")
+        os.makedirs(legacy_dir, exist_ok=True)
+        with open(os.path.join(legacy_dir, "state.json"), "w") as handle:
+            handle.write('{"token": "SECRET-VALUE"}')
+
+        self.assertGreaterEqual(sm.seal_existing_backups(), 2)
+
+        with open(plain, "rb") as handle:
+            raw = handle.read()
+        self.assertTrue(raw.startswith(b"RSENC1"))
+        self.assertNotIn(b"SECRET-VALUE", raw)
+        self.assertFalse(os.path.isdir(legacy_dir))
+
+        # The sealed data still restores to the live client location.
+        live = os.path.join(self._tmpdir, "live")
+        file_def = {
+            "id": "private_settings",
+            "filename": "RiotGamesPrivateSettings.yaml",
+            "base": "local_app_data",
+            "rel_path": "RiotGamesPrivateSettings.yaml",
+        }
+        with mock.patch.object(SessionManager, "_resolve_path", return_value=live):
+            self.assertTrue(sm._restore_one_file(file_def, profile_dir, ""))
+        with open(live) as handle:
+            self.assertEqual(handle.read(), "id_token: SECRET-VALUE\n")
+
+        # Idempotent: nothing left to seal on a second pass.
+        self.assertEqual(sm.seal_existing_backups(), 0)
 
 
 # ===================================================================

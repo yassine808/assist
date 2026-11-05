@@ -5,6 +5,9 @@ Mirrors the original Godot RiotProcesses utility. The blocking helpers
 never stalls other requests; call them through the job worker.
 
 Uses taskkill /F /T (force + tree kill) per process for fastest termination.
+
+VALORANT is never terminated by this module. `VALORANT_PROCESSES` is used only
+to detect the game so a profile switch can be refused while it is running.
 """
 
 import subprocess
@@ -83,11 +86,6 @@ VALORANT_PROCESSES = [
 ]
 
 
-def kill_valorant():
-    """Force-kill only VALORANT processes (not the Riot Client)."""
-    kill_all(VALORANT_PROCESSES)
-
-
 RIOT_CLIENT_PROCESSES = [
     "RiotClientServices.exe",
     "RiotClientUx.exe",
@@ -98,26 +96,6 @@ RIOT_CLIENT_PROCESSES = [
 def kill_riot_client():
     """Force-kill only Riot Client processes."""
     kill_all(RIOT_CLIENT_PROCESSES)
-
-
-def close_valorant_then_client():
-    """Kill VALORANT first, wait for it to exit, then kill Riot Client.
-
-    This is the fast-close flow: VALORANT dies immediately, then the
-    client is cleaned up. Returns True if both exited cleanly.
-    """
-    kill_valorant()
-    # Wait up to 6s for VALORANT to fully exit
-    elapsed = 0.0
-    while elapsed < 6.0:
-        val_running = any(is_running(p) for p in VALORANT_PROCESSES)
-        if not val_running:
-            break
-        time.sleep(POLL_INTERVAL_S)
-        elapsed += POLL_INTERVAL_S
-    # Now kill Riot Client
-    kill_riot_client()
-    return wait_until_all_dead(timeout_s=5.0)
 
 
 def wait_until_all_dead(timeout_s=KILL_TIMEOUT_S):
@@ -132,3 +110,26 @@ def wait_until_all_dead(timeout_s=KILL_TIMEOUT_S):
         time.sleep(POLL_INTERVAL_S)
         elapsed += POLL_INTERVAL_S
     return False
+
+
+def wait_until_dead(names, timeout_s=KILL_TIMEOUT_S):
+    """Poll until the given process names are gone or the timeout elapses."""
+    elapsed = 0.0
+    while elapsed < timeout_s:
+        if not any(is_running(name) for name in names):
+            return True
+        time.sleep(POLL_INTERVAL_S)
+        elapsed += POLL_INTERVAL_S
+    return False
+
+
+def shutdown_stop():
+    """Stop the Riot Client only. Used when the app itself is closing.
+
+    The game process is never part of this: VALORANT may be running from the
+    launcher before or after RiotSwitcher started, and closing the switcher is
+    not a request to close the game. `kill_all` stays reserved for an explicit
+    profile switch, which really does need the client tree gone.
+    """
+    kill_riot_client()
+    return wait_until_dead(RIOT_CLIENT_PROCESSES)

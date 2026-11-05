@@ -46,10 +46,10 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
 
       {/* Left: Logo + brand */}
       <div className="flex items-center px-3 gap-2.5">
-        <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden className="drop-shadow-[0_0_6px_rgba(255,70,85,0.45)]">
-          <polygon points="10,0 64,0 64,54 54,64 0,64 0,10" fill="#0f1923" />
-          <polygon points="12,18 36,18 36,12 52,22 36,32 36,26 12,26" fill="#ff4655" />
-          <polygon points="52,46 28,46 28,52 12,42 28,32 28,38 52,38" fill="#ece8e1" />
+        <svg width="20" height="20" viewBox="0 0 512 512" aria-hidden>
+          <rect width="512" height="512" rx="116" fill="#111111" />
+          <path d="M240 98H316L436 173L316 248H240L360 173Z" fill="#ffffff" />
+          <path d="M272 414H196L76 339L196 264H272L152 339Z" fill="#9A9A9A" />
         </svg>
         <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">
           RIOTSWITCHER

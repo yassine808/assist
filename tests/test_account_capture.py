@@ -139,7 +139,6 @@ class HandlerWiringTests(_TempDirMixin):
             _set_playercard=mock.MagicMock(),
             _check_current_account=mock.MagicMock(),
             _capture_current_account=capture_current or mock.MagicMock(),
-            _close_all=mock.MagicMock(),
             _profile_dir_name=lambda name: name,
             _cleanup_league_readonly=mock.MagicMock(),
             _capture_session=capture,
@@ -250,7 +249,8 @@ class SwitchFlowTests(_TempDirMixin):
             riot.launch_client.return_value = 4242
             orchestrator = LaunchOrchestrator(riot, sessions, profiles, config)
 
-            with mock.patch.object(launch_orchestrator.rp, "wait_until_all_dead", return_value=True):
+            with mock.patch.object(launch_orchestrator.rp, "is_running", return_value=False), \
+                    mock.patch.object(launch_orchestrator.rp, "shutdown_stop", return_value=True):
                 result = orchestrator.switch_to("One")
 
             self.assertEqual({"ok": True, "pid": 4242, "profile": "One"}, result)
@@ -272,7 +272,8 @@ class SwitchFlowTests(_TempDirMixin):
         orchestrator = LaunchOrchestrator(riot, sessions, profiles, config)
 
         with mock.patch.dict(os.environ, {"LOCALAPPDATA": local}), \
-                mock.patch.object(launch_orchestrator.rp, "wait_until_all_dead", return_value=True), \
+                mock.patch.object(launch_orchestrator.rp, "is_running", return_value=False), \
+                mock.patch.object(launch_orchestrator.rp, "shutdown_stop", return_value=True), \
                 mock.patch.object(sessions, "restore_session", return_value=False):
             result = orchestrator.switch_to("One")
 

@@ -1,6 +1,8 @@
 """RiotSwitcher Python backend entry point."""
 
 import os
+import shutil
+import subprocess
 import sys
 import threading
 
@@ -15,7 +17,6 @@ from playercard_store import PlayercardStore
 from profile_manager import ProfileManager
 from protocol import Protocol, ensure_utf8_streams
 from riot_client import RiotClientManager
-from riot_processes import close_valorant_then_client
 from running_profile import RunningProfileWatcher
 from session_manager import SessionManager, sanitize_directory_name
 from valorant_tracker import ValorantTracker
@@ -70,12 +71,122 @@ def _seed_random_animated_card(profiles, protocol, profile_name):
     return True
 
 
+DATA_DIR_NAME = "RiotSwitcher"
+
+# Items the backend itself owns. Anything else in the old Electron userData
+# folder (Chromium cache, logs, updater state) is left alone.
+APP_DATA_ITEMS = (
+    "profiles",
+    "profiles_data.json",
+    "configs.json",
+    "playercards.db",
+    "agents.enc",
+    "shared",
+    "local.key",
+)
+
+
+def _program_data_dir():
+    """Machine-wide data folder, independent of where the exe was launched."""
+    base = (
+        os.environ.get("PROGRAMDATA")
+        or os.environ.get("ALLUSERSPROFILE")
+        or r"C:\ProgramData"
+    )
+    return os.path.join(base, DATA_DIR_NAME)
+
+
+def _legacy_data_dir():
+    """Where older builds kept the backend data (Electron userData)."""
+    return os.path.join(os.environ.get("APPDATA", "."), DATA_DIR_NAME)
+
+
 def _determine_data_dir():
     """Determine the data directory for persistence."""
+    override = os.environ.get("RIOTSWITCHER_DATA_DIR", "")
+    if override:
+        return override
     if "--dev" in sys.argv or os.environ.get("RIOTSWITCHER_DEV"):
         return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-    base = os.environ.get("APPDATA", ".")
-    return os.path.join(base, "RiotSwitcher")
+    return _program_data_dir()
+
+
+def _restrict_data_dir(path):
+    """Limit the data folder to this Windows user, SYSTEM and Administrators.
+
+    The session files inside are already DPAPI-sealed, but the profile list
+    still names the accounts. Denying other local users read access keeps the
+    folder private as well. Best effort: a failure must never block start-up.
+    """
+    if not sys.platform.startswith("win"):
+        return
+    account = os.environ.get("USERNAME", "")
+    domain = os.environ.get("USERDOMAIN", "")
+    if not account:
+        return
+    if domain:
+        account = f"{domain}\\{account}"
+    try:
+        subprocess.run(
+            [
+                "icacls", path,
+                "/inheritance:r",
+                "/grant:r", f"{account}:(OI)(CI)F",
+                "/grant:r", "*S-1-5-18:(OI)(CI)F",
+                "/grant:r", "*S-1-5-32-544:(OI)(CI)F",
+            ],
+            capture_output=True,
+            timeout=15,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def _move_item(source, destination):
+    """Move a file or folder, falling back to copy-then-delete across volumes."""
+    try:
+        shutil.move(source, destination)
+        return True
+    except OSError:
+        pass
+    try:
+        if os.path.isdir(source):
+            shutil.copytree(source, destination)
+        else:
+            shutil.copy2(source, destination)
+        if os.path.isdir(source):
+            shutil.rmtree(source)
+        else:
+            os.remove(source)
+        return True
+    except OSError:
+        return False
+
+
+def _migrate_legacy_data(target):
+    """Move backend data from %APPDATA%\\RiotSwitcher into the new location.
+
+    Done once, by moving rather than copying: the user asked for no second copy
+    of the saved session tokens on disk. Existing target items are never
+    overwritten, so an already-migrated install is untouched.
+    """
+    if os.path.normcase(os.path.abspath(target)) != os.path.normcase(
+        os.path.abspath(_program_data_dir())
+    ):
+        return 0
+    legacy = _legacy_data_dir()
+    if not os.path.isdir(legacy):
+        return 0
+    moved = 0
+    for name in APP_DATA_ITEMS:
+        source = os.path.join(legacy, name)
+        destination = os.path.join(target, name)
+        if not os.path.exists(source) or os.path.exists(destination):
+            continue
+        if _move_item(source, destination):
+            moved += 1
+    return moved
 
 
 def _fetch_valorant_maps():
@@ -156,7 +267,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
                      sessions, league, protocol, data_dir,
                      playercards, running,
                      _league_config_dir, _swap_profile, _set_playercard,
-                     _check_current_account, _capture_current_account, _close_all,
+                     _check_current_account, _capture_current_account,
                      _profile_dir_name, _cleanup_league_readonly,
                      _capture_session):
     """Build the dispatch table mapping method names to handler functions."""
@@ -204,26 +315,6 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
             pass
         return result
 
-    def _import_profiles(params):
-        raw = params.get("data", "")
-        if isinstance(raw, str):
-            encrypted_data = __import__("base64").b64decode(raw)
-        else:
-            encrypted_data = bytes(raw)
-        result = profiles.import_profiles(
-            params.get("passkey", ""),
-            encrypted_data,
-            merge=bool(params.get("merge", True)),
-        )
-        # Clean up orphaned session dirs when replacing all profiles
-        replaced = result.get("replaced_names", [])
-        for name in replaced:
-            try:
-                sessions.delete_profile_dir(name)
-            except Exception:  # noqa: BLE001
-                pass
-        return result
-
     return {
         "ping": lambda p: "pong",
         "get_profiles": _get_profiles,
@@ -242,9 +333,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         "set_riot_client_location": lambda p: riot.set_location(p.get("folder")),
         "detect_riot_client_location": lambda p: riot.detect_install_dir(),
         "get_riot_client_status": lambda p: {**riot.status(), "profile": running.current()},
-        "kill_riot_processes": lambda p: (riot.kill_all(), None)[1],
         "stop_riot_client": lambda p: (riot.stop_and_wait(), None)[1],
-        "close_all": lambda p: _close_all(),
         "launch_riot_client": lambda p: riot.launch_client(),
         "launch_profile": lambda p: _launch_profile(p.get("name") or ""),
         "stop_profile": lambda p: orchestrator.stop(),
@@ -284,12 +373,6 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         "league_cleanup_readonly": lambda p: (_cleanup_league_readonly(), None)[1],
         "league_resolve_source": lambda p: league.resolve_source_profile(),
         "league_get_metadata": lambda p: league.get_snapshot_metadata(),
-        "export_profiles": lambda p: {
-            "data": __import__("base64").b64encode(
-                profiles.export_profiles(p.get("passkey", ""), p.get("names"))
-            ).decode("ascii")
-        },
-        "import_profiles": lambda p: _import_profiles(p),
         "get_playercards": lambda p: playercards.get_cards(),
         "get_valorant_maps": lambda p: _fetch_valorant_maps(),
         "set_playercard": lambda p: _set_playercard(
@@ -328,6 +411,11 @@ def main():
     ensure_utf8_streams()
     data_dir = _determine_data_dir()
     os.makedirs(data_dir, exist_ok=True)
+    _restrict_data_dir(data_dir)
+    try:
+        _migrate_legacy_data(data_dir)
+    except Exception:  # noqa: BLE001 - migration must never block start-up
+        pass
 
     protocol = Protocol()
     profiles = ProfileManager(os.path.join(data_dir, "profiles_data.json"))
@@ -340,6 +428,13 @@ def main():
         "riot_client_status", {"status": status}
     ))
     sessions = SessionManager(os.path.join(data_dir, "profiles"))
+    try:
+        # Upgrade path: seal session backups written before encryption existed.
+        # A failure here must not block start-up — the plaintext backup still
+        # restores, and the next save of that profile seals it.
+        sessions.seal_existing_backups()
+    except Exception:  # noqa: BLE001
+        pass
     league = LeagueSettingsSync(
         config,
         profiles,
@@ -479,19 +574,12 @@ def main():
         tracker.refresh_profile(name)
         return {"added": True, "reason": "created", "display": display, "profile": profile}
 
-    def _close_all():
-        def _do_close():
-            ok = close_valorant_then_client()
-            protocol.send_event("close_complete", {"ok": ok})
-        threading.Thread(target=_do_close, daemon=True).start()
-        return {"ok": True}
-
     handlers = _build_handlers(
         profiles, config, riot, tracker, detector, orchestrator,
         sessions, league, protocol, data_dir,
         playercards, running,
         _league_config_dir, _swap_profile, _set_playercard,
-        _check_current_account, _capture_current_account, _close_all,
+        _check_current_account, _capture_current_account,
         _profile_dir_name, _cleanup_league_readonly, _capture_profile_session,
     )
 

@@ -56,13 +56,23 @@ class LaunchOrchestrator:
     # ------------------------------------------------------------------
 
     def _kill_riot_processes(self):
-        """Kill all Riot processes and wait for exit. Returns (ok, error)."""
-        self._emit("kill", "started", "Stopping Riot processes")
-        rp.kill_all()
-        if not rp.wait_until_all_dead():
+        """Stop the Riot Client before a switch. Never touches VALORANT.
+
+        The game is not ours to close: if VALORANT is running the switch is
+        refused with a clear message instead of killing anything. Otherwise
+        only the Riot Client tree is stopped, which is what holds the session
+        files the switch has to replace.
+        """
+        running = [name for name in rp.VALORANT_PROCESSES if rp.is_running(name)]
+        if running:
+            self._emit("kill", "failed", "Close VALORANT before switching accounts")
+            return False, "Close VALORANT before switching accounts"
+
+        self._emit("kill", "started", "Stopping Riot Client")
+        if not rp.shutdown_stop():
             self._emit("kill", "failed", "Timed out waiting for processes to exit")
             return False, "Timeout waiting for Riot processes to exit"
-        self._emit("kill", "done", "Riot processes stopped")
+        self._emit("kill", "done", "Riot Client stopped")
         return True, ""
 
     def _save_current_session(self, current_active, profile_name, install_dir):
@@ -142,10 +152,14 @@ class LaunchOrchestrator:
             return {"ok": False, "step": "unknown", "error": str(exc)}
 
     def stop(self):
-        """Stop everything the orchestrator may have started."""
+        """Stop the Riot Client this app started. VALORANT is left running.
+
+        Reached from the "stop profile" / app-shutdown path. `kill_all` would
+        also terminate VALORANT and ValorantWin64Shipping, which is never what
+        closing the switcher should do.
+        """
         self._emit("stop", "started", "Stopping Riot Client")
-        rp.kill_all()
-        rp.wait_until_all_dead()
+        rp.shutdown_stop()
         self._emit("stop", "done", "Riot Client stopped")
         return {"ok": True}
 

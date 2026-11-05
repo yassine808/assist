@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
-import ImportExportModal from "../components/ImportExportModal";
 import DeleteProfileModal from "../components/DeleteProfileModal";
 import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
@@ -21,7 +20,6 @@ export default function HomeView() {
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
-  const [showImportExport, setShowImportExport] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
 
   const load = useCallback(async () => {
@@ -136,13 +134,6 @@ export default function HomeView() {
           {!loading && <span className="count-pill">{profiles.length}</span>}
         </h1>
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setShowImportExport(true)}
-            className="btn-ghost h-8 px-3.5 text-[10px]"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-            Import / Export
-          </button>
           {(loading || profiles.length > 0) && (
             <button
               onClick={() => setShowAddAccount(true)}
@@ -196,13 +187,6 @@ export default function HomeView() {
           onApplied={() => void load()}
         />
       )}
-
-      <ImportExportModal
-        open={showImportExport}
-        onClose={() => setShowImportExport(false)}
-        onImported={() => void load()}
-        profiles={profiles}
-      />
 
       <AddAccountModal
         open={showAddAccount}

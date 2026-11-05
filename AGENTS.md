@@ -66,13 +66,25 @@ Full pre-commit gate: `typecheck`, `lint`, `test`, `test:py`, `ruff`,
   never touch Vanguard, memory, or game traffic.
 - `tests/test_file_safety.py` enforces this. A change that adds a game path
   write must be rejected, not accommodated.
+- The app never terminates `VALORANT.exe` / `ValorantWin64Shipping.exe`, and
+  never touches Vanguard. Exit stops nothing; a profile switch restarts only the
+  Riot Client and is refused with "Close VALORANT before switching accounts"
+  while the game is running. `tests/test_shutdown_safety.py` enforces this, and
+  `tests/conftest.py` disarms `riot_processes.kill_all` for the whole suite so a
+  test can never `taskkill` a real running game.
 - League settings sync (`league_settings_sync.py`) is the only module allowed
   to touch League config, and only when `SyncGameSettings` is on (default off).
 
 ## Data & environment
 
-- Dev app data: `data/` (gitignored). Electron userData:
-  `%APPDATA%\riotswitcher`.
+- Packaged app data: `C:\ProgramData\RiotSwitcher` (fixed path, independent of
+  where the exe is launched from). Dev app data: `data/` (gitignored).
+  Electron's own userData stays at `%APPDATA%\riotswitcher` (cache/updater
+  only). Old backend data under `%APPDATA%\riotswitcher` is moved into
+  ProgramData once, not copied.
+- Session tokens are sealed with DPAPI in `secure_store.py`
+  (`%APPDATA%`-independent, tied to the Windows user). The data folder is
+  restricted with `icacls` to that user, SYSTEM and Administrators.
 - Deleting app data requires the app to be fully stopped first, and only one
   backend process may run: two backends writing `profiles_data.json.tmp`
   cause `WinError 32` on `os.replace`.
