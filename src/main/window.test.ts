@@ -27,6 +27,9 @@ const { FakeWindow } = vi.hoisted(() => {
     isVisible() {
       return this.visible;
     }
+    isDestroyed() {
+      return false;
+    }
     show() {
       this.visible = true;
     }

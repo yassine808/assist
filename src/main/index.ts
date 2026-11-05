@@ -17,6 +17,12 @@ let appWindow: AppWindow | null = null;
 // the backend reports it is ready, then sent once.
 let pendingProfileLaunch = launchProfileFromArgv(process.argv);
 
+// Without a handler a rejection (e.g. a failed window load) is swallowed and
+// the app sits invisible with no trace of why. Log it instead.
+process.on("unhandledRejection", (reason) => {
+  log.error("Unhandled rejection:", reason);
+});
+
 registerCardScheme();
 
 const gotLock = app.requestSingleInstanceLock();
@@ -39,6 +45,12 @@ function setup(): void {
     if (appWindow) {
       appWindow.win.show();
       appWindow.win.focus();
+    } else {
+      // Start-up did not finish (no appWindow yet). Still surface whatever
+      // window exists so a second click is never a silent no-op.
+      const existing = BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+      existing?.show();
+      existing?.focus();
     }
     // A shortcut clicked while the app is already open reuses this instance.
     const profile = launchProfileFromArgv(argv);

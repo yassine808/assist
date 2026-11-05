@@ -1,5 +1,6 @@
 import { BrowserWindow } from "electron";
 import { join } from "node:path";
+import log from "electron-log";
 import { PythonBridge } from "./python-bridge";
 
 interface WindowCallbacks {
@@ -26,6 +27,12 @@ const MIN_WINDOW_HEIGHT = 788;
 // Capping the window here keeps the grid at four columns; a fifth card would
 // need ~1290px at the default scale, so widening can never reflow the lobby.
 const MAX_WINDOW_WIDTH = 1210;
+
+// A stalled page load (slow GPU init, blocked renderer) can keep the window
+// hidden forever, because neither `ready-to-show` nor the post-load show runs.
+// The app would then look like it never launched while still holding the
+// single-instance lock. Force it visible after this long.
+const SHOW_FALLBACK_MS = 5000;
 
 async function readTrayConfig(
   python: PythonBridge
@@ -63,15 +70,30 @@ export async function createAppWindow(
 
   // Attach before loading: with a warm renderer the event can fire before an
   // `await loadURL` resolves, and a late listener would keep the window hidden.
-  win.once("ready-to-show", () => win.show());
+  const reveal = (): void => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  };
+  const showFallback = setTimeout(reveal, SHOW_FALLBACK_MS);
+  showFallback.unref?.();
+  win.once("ready-to-show", () => {
+    clearTimeout(showFallback);
+    reveal();
+  });
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    await win.loadURL(process.env.ELECTRON_RENDERER_URL);
-  } else {
-    await win.loadFile(join(__dirname, "../renderer/index.html"));
+  // A rejected load must not abort the rest of start-up: the window is already
+  // created, so show it and let the renderer report the failure in its own UI.
+  try {
+    if (process.env.ELECTRON_RENDERER_URL) {
+      await win.loadURL(process.env.ELECTRON_RENDERER_URL);
+    } else {
+      await win.loadFile(join(__dirname, "../renderer/index.html"));
+    }
+  } catch (err) {
+    log.error("Renderer failed to load:", err);
   }
 
-  if (!win.isVisible()) win.show();
+  clearTimeout(showFallback);
+  reveal();
 
   const { closeToTray, minimizeToTray } = await readTrayConfig(python);
 
