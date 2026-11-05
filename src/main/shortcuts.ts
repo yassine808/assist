@@ -13,11 +13,14 @@ import { join } from "node:path";
 const PROFILE_FLAG = "--profile";
 
 /** Characters Windows rejects in a file name, plus control characters. */
-const INVALID_FILE_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
+const INVALID_FILE_CHARS = '<>:"/\\|?*';
 
 export function sanitizeShortcutName(name: string): string {
-  const cleaned = name
-    .replace(INVALID_FILE_CHARS, "_")
+  const cleaned = Array.from(name)
+    .map((char) =>
+      char.charCodeAt(0) < 32 || INVALID_FILE_CHARS.includes(char) ? "_" : char
+    )
+    .join("")
     // Windows drops trailing dots and spaces, which would silently rename the
     // file and leave the "already exists" check looking at the wrong path.
     .replace(/[. ]+$/g, "")

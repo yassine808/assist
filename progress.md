@@ -844,3 +844,37 @@
   the changed engine/test files.
 - Next: none. Note: the concurrent `d4c7aef` commit captured the temporary
   CDP hook in `src/main/index.ts`; its removal is in the working tree.
+
+
+### 2026-11-05 - TO-DO sweep: map stats, shortcuts, support, exit fix
+
+- Goal: finish the unchecked TO-DO items (the commented launch-animation line
+  stays skipped) and remove the leftover tool/asset files.
+- Done:
+  - Agent Map: summary strip (maps, games, overall winrate, best map), map/
+    agent search, and sorting by most played / best winrate / name; agent rows
+    sort by games then winrate.
+  - Desktop shortcuts: `src/main/shortcuts.ts` builds a Windows `.lnk` named
+    `RiotSwitcher - <profile>.lnk` that starts the app with `--profile <name>`.
+    The picker has a "Desktop shortcut" button; startup and second-instance
+    argv both launch the requested profile once the backend is ready.
+  - Support: Settings has a "Support the Project" card that opens
+    https://github.com/sponsors/yassine808 through a validated https IPC call.
+  - Exit: tray Exit and every `before-quit` path call `permitClose()` before
+    `app.quit()`, so close-to-tray can no longer swallow the quit.
+  - Tests: replaced the stale `window.singleton.test.ts` (it targeted removed
+    multi-window functions) with `window.test.ts` covering close-to-tray,
+    permitClose/requestClose, minimize-to-tray and the 1210 px width cap; added
+    `shortcuts.test.ts` and `tests/test_running_profile.py`; the export
+    round-trip test now asserts the saved playercard survives.
+  - New `AgentMapView.test.tsx` covers the summary, search and sort.
+  - TO-DO boxes ticked; `Stay-signed-in.png`, `tools/` and the tuner assets were
+    already gone from disk and are now removed from the index (commit 9e8100d).
+- Verified: `vitest` 68 passed; `pytest` 148 passed; `npm run typecheck` clean;
+  `npm run build` exit 0; Ruff and compileall clean; ESLint clean on every file
+  touched here (the pre-existing ProfileGrid `react-hooks/refs` and
+  SettingsView `react-hooks/purity` errors remain).
+- Next: click the new shortcut and the Agent Map controls once in a running app.
+  Note: an external auto-commit (`9e8100d "2"`) captured the in-progress edits
+  mid-task; the remaining working-tree diff is the TO-DO ticks, the shortcut
+  sanitizer fix, and the new/replaced window/shortcut tests.
