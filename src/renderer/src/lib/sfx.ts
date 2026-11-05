@@ -50,6 +50,10 @@ export const sfx = {
     tone(988, 0.45, { gain: 0.045, delay: 0.09 });
     tone(1480, 0.6, { gain: 0.02, delay: 0.18 });
   },
+  // drag & drop
+  lift() { tone(520, 0.09, { type: "triangle", gain: 0.03, to: 760 }); },
+  tick() { tone(1500, 0.03, { type: "square", gain: 0.008, to: 1200 }); },
+  drop() { tone(180, 0.14, { gain: 0.07, to: 90 }); tone(900, 0.06, { type: "triangle", gain: 0.015, delay: 0.02 }); },
   setEnabled(v: boolean) {
     enabled = v;
     try { localStorage.setItem("rs_sfx", v ? "on" : "off"); } catch { /* ignore */ }

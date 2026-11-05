@@ -5,10 +5,20 @@
 @tailwind utilities;
 
 /* One font for the whole app (cards included). Change it here and everything follows. */
+/* Theme colours are registered as <color>s so switching theme cross-fades instead of snapping. */
+@property --bg-base { syntax: "<color>"; inherits: true; initial-value: #0a1017; }
+@property --bg-deep { syntax: "<color>"; inherits: true; initial-value: #070b11; }
+@property --bg-panel { syntax: "<color>"; inherits: true; initial-value: #0e1620; }
+@property --glow { syntax: "<color>"; inherits: true; initial-value: rgb(72, 130, 175); }
+
 :root {
   --app-font: "Chakra Petch", "Segoe UI", system-ui, -apple-system, sans-serif;
   --bg-base: #0a1017;
+  --bg-deep: #070b11;
+  --bg-panel: #0e1620;
+  --glow: rgb(72, 130, 175);
   --line: rgba(190, 225, 240, 0.12);
+  transition: --bg-base 0.6s ease, --bg-deep 0.6s ease, --bg-panel 0.6s ease, --glow 0.6s ease;
 }
 
 * {
@@ -29,10 +39,10 @@ html {
   background: var(--bg-base);
 }
 
-/* Clean background: one flat base colour with a single soft light from the top. */
+/* Clean background: one flat base colour with a single soft light from the top (the light stays in every theme). */
 body {
   background:
-    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(72, 130, 175, 0.17), transparent 72%),
+    radial-gradient(ellipse 70% 45% at 50% -8%, color-mix(in srgb, var(--glow) 17%, transparent), transparent 72%),
     var(--bg-base);
   color: #ece8e1;
   -webkit-font-smoothing: antialiased;
@@ -217,7 +227,7 @@ body {
 
 /* ── Panels & modals ── */
 .modal-panel {
-  position: relative; border-radius: 4px; background: #0e1620; border: 1px solid var(--line);
+  position: relative; border-radius: 4px; background: var(--bg-panel); border: 1px solid var(--line);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 .modal-panel::before { content: ""; position: absolute; left: -1px; top: -1px; width: 44px; height: 2px; background: #ff4655; }
@@ -226,3 +236,36 @@ body {
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
   padding: 56px 24px; margin-top: 8px; border: 1px dashed rgba(190, 225, 240, 0.18); background: rgba(190, 225, 240, 0.025);
 }
+
+/* ── Themed surfaces (the Tailwind surface colours follow the chosen background theme) ── */
+.bg-bg-card { background-color: var(--bg-panel); }
+.bg-bg-dark { background-color: var(--bg-deep); }
+.titlebar-surface { background: color-mix(in srgb, var(--bg-deep) 80%, transparent); }
+
+/* ── Settings: theme swatches + slider ── */
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; padding: 12px 0 6px; }
+.theme-swatch {
+  position: relative; display: flex; flex-direction: column; gap: 7px; padding: 6px 6px 8px; text-align: left; cursor: pointer; color: inherit; font: inherit;
+  background: rgba(190, 225, 240, 0.03); border: 1px solid var(--line);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.25, 1.2), background 0.2s, border-color 0.2s;
+}
+.theme-swatch:hover { transform: translateY(-2px); background: rgba(190, 225, 240, 0.07); }
+.theme-swatch:active { transform: scale(0.97); }
+.theme-swatch .chip {
+  height: 46px; border: 1px solid rgba(190, 225, 240, 0.12);
+  background: radial-gradient(ellipse 80% 70% at 50% -10%, var(--sw-glow), transparent 75%), var(--sw-base);
+}
+.theme-swatch .nm { font: 700 10.5px/1 var(--app-font); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(236, 232, 225, 0.65); padding-left: 2px; }
+.theme-swatch.is-on { border-color: #ff4655; background: rgba(255, 70, 85, 0.07); }
+.theme-swatch.is-on .nm { color: #fff; }
+.theme-swatch.is-on::after { content: ""; position: absolute; top: 0; left: 0; width: 22px; height: 2px; background: #ff4655; }
+
+.scale-range { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+.scale-range::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(90deg, #ff4655 var(--fill, 50%), rgba(190, 225, 240, 0.14) var(--fill, 50%)); }
+.scale-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; background: #ece8e1; border: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 10px rgba(255, 70, 85, 0.6); transition: transform 0.15s;
+}
+.scale-range:hover::-webkit-slider-thumb, .scale-range:active::-webkit-slider-thumb { transform: scale(1.35); }
+.scale-range:focus-visible { outline: 1px solid rgba(255, 70, 85, 0.6); outline-offset: 4px; }

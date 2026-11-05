@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
+import { useToast } from "../components/Toast";
+import { useAppearance } from "../hooks/useAppearance";
+import { SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES } from "../lib/appearance";
 import { useIPC } from "../hooks/useIPC";
 import { base64ToBlob } from "../utils/base64";
 import type { Profile } from "../types/profile";
@@ -11,6 +14,9 @@ interface ConfigState {
 
 export default function SettingsView() {
   const { call } = useIPC();
+  const toast = useToast();
+  const { theme, scale, setTheme, setScale } = useAppearance();
+  const mirrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [exportPasskey, setExportPasskey] = useState("");
@@ -48,6 +54,26 @@ export default function SettingsView() {
     [call]
   );
 
+  // Appearance is applied instantly (and live in the other windows); the backend copy is debounced.
+  const mirror = useCallback(
+    (key: string, value: unknown) => {
+      if (mirrorTimer.current) clearTimeout(mirrorTimer.current);
+      mirrorTimer.current = setTimeout(() => void call("set_config", { key, value }), 250);
+    },
+    [call]
+  );
+  const pickTheme = (id: string) => {
+    setTheme(id);
+    void call("set_config", { key: "BackgroundTheme", value: id });
+    toast.show({ id: "theme", kind: "info", title: "Theme changed", message: THEMES.find((t) => t.id === id)?.name, duration: 2200 });
+  };
+  const changeScale = (k: number) => {
+    setScale(k);
+    mirror("PlayerCardScale", k);
+  };
+  const scalePct = Math.round((scale / SCALE_DEFAULT) * 100);
+  const scaleFill = `${((scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`;
+
   const handleExport = useCallback(async () => {
     if (!exportPasskey) return;
     setExporting(true);
@@ -66,13 +92,15 @@ export default function SettingsView() {
         setExportPasskey("");
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
+        toast.show({ kind: "success", title: "Profiles exported", message: "Backup file downloaded" });
       }
     } catch (e) {
       console.error("export failed", e);
+      toast.show({ kind: "error", title: "Export failed", message: String(e) });
     } finally {
       setExporting(false);
     }
-  }, [call, exportPasskey]);
+  }, [call, exportPasskey, toast]);
 
   const handleImport = useCallback(async () => {
     if (!importPasskey || !importFile) return;
@@ -93,15 +121,17 @@ export default function SettingsView() {
         setImportPasskey("");
         setImportFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        toast.show({ kind: "success", title: "Import complete", message: `${result.imported} of ${result.total} profiles imported` });
         // Refresh profiles list
         void call<Profile[]>("get_profiles").then((p) => setProfiles(p ?? []));
       }
     } catch (e) {
       setImportResult("Import failed: " + String(e));
+      toast.show({ kind: "error", title: "Import failed", message: String(e) });
     } finally {
       setImporting(false);
     }
-  }, [call, importPasskey, importFile]);
+  }, [call, importPasskey, importFile, toast]);
 
   const sourceDir = String(config.SharedSettingsSourceDirectory ?? "");
   const sourceProfile = String(config.SharedSettingsSourceProfile ?? "");
@@ -110,6 +140,63 @@ export default function SettingsView() {
   const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
 
   const cards = [
+    {
+      title: "Appearance",
+      rows: (
+        <div className="py-2">
+          <div className="pt-1">
+            <div className="text-sm font-medium text-white">Background</div>
+            <div className="text-xs text-white/40 mt-0.5">The light on top stays; the colour underneath changes</div>
+          </div>
+          <div className="theme-grid" role="radiogroup" aria-label="Background theme">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={theme === t.id}
+                className={`theme-swatch ${theme === t.id ? "is-on" : ""}`}
+                style={{ ["--sw-base" as string]: t.base, ["--sw-glow" as string]: `rgba(${t.glow}, 0.55)` }}
+                onClick={() => pickTheme(t.id)}
+              >
+                <span className="chip" />
+                <span className="nm">{t.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="pt-4 border-t border-white/5 mt-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-white">Player card size</div>
+                <div className="text-xs text-white/40 mt-0.5">Scales the cards on the main window</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold tabular-nums text-white/80 w-12 text-right">{scalePct}%</span>
+                <button
+                  type="button"
+                  onClick={() => changeScale(SCALE_DEFAULT)}
+                  disabled={scalePct === 100}
+                  className="btn-ghost h-7 px-3 text-[10px]"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              className="scale-range mt-2"
+              min={SCALE_MIN}
+              max={SCALE_MAX}
+              step={0.01}
+              value={scale}
+              style={{ ["--fill" as string]: scaleFill }}
+              onChange={(e) => changeScale(parseFloat(e.target.value))}
+              aria-label="Player card size"
+            />
+          </div>
+        </div>
+      ),
+    },
     {
       title: "Riot Client",
       rows: (

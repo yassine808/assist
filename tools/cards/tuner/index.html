@@ -134,9 +134,10 @@
 <body>
 <header>
   <h1>Agent Mastery — placement tuner</h1>
-  <span class="hint">drag to move · scroll a number to nudge · W/H stretch · Crop trims the cell · Save writes the APNG into <code>Animated/</code></span>
+  <span class="hint">drag to move · drag a grip to stretch (Shift keeps ratio) · Alt or <b>crop drag</b> trims the cell · scroll a number to nudge</span>
   <span class="spacer"></span>
   <label class="toggle"><input id="showBounds" type="checkbox" checked> quad outline</label>
+  <label class="toggle" title="grips trim the source instead of stretching (or hold Alt)"><input id="cropMode" type="checkbox"> crop drag</label>
   <span class="hint" id="loadState">loading…</span>
 </header>
 
@@ -199,6 +200,7 @@
   const tpl = document.getElementById("cardTpl");
   const loadState = document.getElementById("loadState");
   const showBounds = document.getElementById("showBounds");
+  const cropMode = document.getElementById("cropMode");
   const errDialog = document.getElementById("errDialog");
   const errText = document.getElementById("errText");
   const items = [];
@@ -257,6 +259,7 @@
       dirty: false,
       lastFrame: -1,
       drawAgain: true,
+      handles: [],
       saveTimer: 0,
       state: {
         cx: fit.cx, cy: fit.cy, w: fit.w, h: fit.h,
@@ -305,6 +308,28 @@
     item.set = (patch) => {
       Object.assign(item.state, patch);
       markDirty();
+    };
+
+    // Eight grips on the quad edges. Positions are clamped into the card, so a
+    // quad larger than the card still shows its grips on the card border.
+    const HANDLE_DEFS = [
+      ["nw", -1, -1], ["n", 0, -1], ["ne", 1, -1], ["e", 1, 0],
+      ["se", 1, 1], ["s", 0, 1], ["sw", -1, 1], ["w", -1, 0],
+    ];
+    const handleSpots = () => {
+      const s = item.state;
+      const a = (s.rot || 0) * Math.PI / 180;
+      const cos = Math.cos(a), sin = Math.sin(a);
+      const pad = 5;
+      return HANDLE_DEFS.map(([id, sx, sy]) => {
+        const lx = sx * s.w / 2;
+        const ly = sy * s.h / 2;
+        return {
+          id, sx, sy,
+          x: clamp(s.cx + lx * cos - ly * sin, pad, CARD_W - pad),
+          y: clamp(s.cy + lx * sin + ly * cos, pad, CARD_H - pad),
+        };
+      });
     };
 
     item.draw = (frame) => {
@@ -358,6 +383,18 @@
         ctx.moveTo(0, -6); ctx.lineTo(0, 6);
         ctx.stroke();
         ctx.restore();
+      }
+
+      const spots = handleSpots();
+      item.handles = spots;
+      ctx.fillStyle = "rgba(9, 13, 20, .88)";
+      ctx.strokeStyle = "rgba(120, 215, 255, .95)";
+      ctx.lineWidth = 1;
+      for (const h of spots) {
+        ctx.beginPath();
+        ctx.rect(h.x - 3.5, h.y - 3.5, 7, 7);
+        ctx.fill();
+        ctx.stroke();
       }
       item.lastFrame = frame;
     };
@@ -476,7 +513,8 @@
       }
     });
 
-    // Drag to place.
+    // Mouse: body drag moves, grips stretch (Shift keeps the ratio), Alt or the
+    // crop toggle trims the source instead of stretching.
     let drag = null;
     const canvas = item.canvas;
     const toCard = (ev) => {
@@ -486,24 +524,111 @@
         y: (ev.clientY - r.top) * CARD_H / r.height,
       };
     };
+    const toLocal = (p, cx, cy, rot) => {
+      const a = -(rot || 0) * Math.PI / 180;
+      const cos = Math.cos(a), sin = Math.sin(a);
+      const dx = p.x - cx, dy = p.y - cy;
+      return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+    };
+    const CURSOR = {
+      nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize",
+      n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
+    };
+    const hitHandle = (p) => {
+      let best = null;
+      let bestD = 10;
+      for (const h of item.handles) {
+        const d = Math.hypot(p.x - h.x, p.y - h.y);
+        if (d <= bestD) { best = h; bestD = d; }
+      }
+      return best;
+    };
+
     canvas.addEventListener("pointerdown", (ev) => {
       if (ev.button !== 0) return;
       const p = toCard(ev);
-      drag = { x: p.x, y: p.y, cx: item.state.cx, cy: item.state.cy };
+      const handle = hitHandle(p);
+      const s = item.state;
+      if (handle) {
+        drag = {
+          kind: (ev.altKey || cropMode.checked) ? "crop" : "scale",
+          sx: handle.sx, sy: handle.sy, rot: s.rot || 0,
+          cx: s.cx, cy: s.cy, w: s.w, h: s.h,
+          cropL: s.cropL, cropR: s.cropR, cropT: s.cropT, cropB: s.cropB,
+          local: toLocal(p, s.cx, s.cy, s.rot || 0),
+        };
+      } else {
+        drag = { kind: "move", x: p.x, y: p.y, cx: s.cx, cy: s.cy };
+      }
       canvas.setPointerCapture(ev.pointerId);
       ev.preventDefault();
     });
+
     canvas.addEventListener("pointermove", (ev) => {
-      if (!drag) return;
       const p = toCard(ev);
-      item.set({ cx: drag.cx + (p.x - drag.x), cy: drag.cy + (p.y - drag.y) });
-      item.inputs.cx.value = fmt(item.state.cx);
-      item.inputs.cy.value = fmt(item.state.cy);
+      if (!drag) {
+        const hovered = hitHandle(p);
+        canvas.style.cursor = hovered ? CURSOR[hovered.id] : "grab";
+        return;
+      }
+      if (drag.kind === "move") {
+        item.set({ cx: drag.cx + (p.x - drag.x), cy: drag.cy + (p.y - drag.y) });
+        writeInputs();
+        ev.preventDefault();
+        return;
+      }
+
+      // Free stretch / crop: work in the quad's own space so rotation is safe.
+      const local = toLocal(p, drag.cx, drag.cy, drag.rot);
+      const dx = local.x - drag.local.x;
+      const dy = local.y - drag.local.y;
+      const sx = drag.sx;
+      const sy = drag.sy;
+      let w = drag.w + sx * dx;
+      let h = drag.h + sy * dy;
+      let cL = drag.cropL / 100, cR = drag.cropR / 100;
+      let cT = drag.cropT / 100, cB = drag.cropB / 100;
+
+      if (drag.kind === "crop") {
+        const spanX = Math.max(0.1, 1 - cL - cR);
+        const spanY = Math.max(0.1, 1 - cT - cB);
+        if (sx === -1) cL = clamp(cL + (dx / drag.w) * spanX, 0, 0.45);
+        if (sx === 1) cR = clamp(cR + (-dx / drag.w) * spanX, 0, 0.45);
+        if (sy === -1) cT = clamp(cT + (dy / drag.h) * spanY, 0, 0.45);
+        if (sy === 1) cB = clamp(cB + (-dy / drag.h) * spanY, 0, 0.45);
+        // The visible edge moves by exactly what was trimmed, so the art keeps
+        // its size and position while the crop eats into the source.
+        if (sx === -1) w = drag.w * (1 - (cL - drag.cropL / 100) / spanX);
+        if (sx === 1) w = drag.w * (1 - (cR - drag.cropR / 100) / spanX);
+        if (sy === -1) h = drag.h * (1 - (cT - drag.cropT / 100) / spanY);
+        if (sy === 1) h = drag.h * (1 - (cB - drag.cropB / 100) / spanY);
+      } else if (ev.shiftKey && sx !== 0 && sy !== 0) {
+        const ratio = drag.w / drag.h;
+        if (Math.abs(dx) / drag.w >= Math.abs(dy) / drag.h) h = w / ratio;
+        else w = h * ratio;
+      }
+
+      w = Math.max(1, w);
+      h = Math.max(1, h);
+      // Anchor the opposite edge or corner.
+      const left = drag.cx - drag.w / 2;
+      const top = drag.cy - drag.h / 2;
+      const right = drag.cx + drag.w / 2;
+      const bottom = drag.cy + drag.h / 2;
+      item.set({
+        cx: sx === -1 ? right - w / 2 : (sx === 1 ? left + w / 2 : drag.cx),
+        cy: sy === -1 ? bottom - h / 2 : (sy === 1 ? top + h / 2 : drag.cy),
+        w, h,
+        cropL: cL * 100, cropR: cR * 100, cropT: cT * 100, cropB: cB * 100,
+      });
+      writeInputs();
       ev.preventDefault();
     });
+
     const endDrag = (ev) => {
       if (!drag) return;
       drag = null;
+      canvas.style.cursor = "grab";
       try { canvas.releasePointerCapture(ev.pointerId); } catch (_) {}
     };
     canvas.addEventListener("pointerup", endDrag);

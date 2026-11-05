@@ -1,0 +1,61 @@
+/* Toasts: same language as the rest of the app (angular chamfers, Chakra Petch, red/cream accents). */
+.toast-stack {
+  position: fixed; right: 18px; bottom: 18px; z-index: 200; width: 340px; max-width: calc(100vw - 36px);
+  display: flex; flex-direction: column; pointer-events: none;
+}
+
+/* rows collapse/expand so the stack reflows smoothly when a toast enters or leaves */
+.toast-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.38s cubic-bezier(0.2, 0.85, 0.25, 1); }
+.toast-wrap.is-in { grid-template-rows: 1fr; }
+.toast-wrap.is-leaving { grid-template-rows: 0fr; }
+.toast-clip { min-height: 0; overflow: hidden; padding: 4px 0; }
+
+.toast {
+  --accent: #8ab8f0;
+  position: relative; display: flex; align-items: flex-start; gap: 11px; padding: 12px 38px 14px 16px;
+  pointer-events: auto; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-panel, #0e1620) 92%, white), var(--bg-panel, #0e1620));
+  border: 1px solid var(--line);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: toast-in 0.5s cubic-bezier(0.18, 0.9, 0.25, 1.08) both;
+}
+.is-leaving .toast { animation: toast-out 0.32s cubic-bezier(0.5, 0, 0.8, 0.4) both; }
+@keyframes toast-in {
+  0% { transform: translateX(110%) skewX(-8deg); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes toast-out { to { transform: translateX(110%) skewX(-8deg); opacity: 0; } }
+
+.toast-success { --accent: #3ddc97; }
+.toast-error { --accent: #ff4655; }
+.toast-info { --accent: #8ab8f0; }
+.toast-loading { --accent: #8ab8f0; }
+
+/* left rail + a faint wash of the accent colour */
+.toast::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%); }
+.toast-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+
+.toast-icon { position: relative; flex: none; width: 24px; height: 24px; margin-top: 1px; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.toast-check { stroke-dasharray: 26; stroke-dashoffset: 26; animation: toast-draw 0.4s ease-out 0.2s forwards; }
+@keyframes toast-draw { to { stroke-dashoffset: 0; } }
+.toast-spinner { width: 13px; height: 13px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+.toast-body { position: relative; min-width: 0; flex: 1; }
+.toast-title { font: 700 12px/1.25 var(--app-font); letter-spacing: 0.14em; text-transform: uppercase; color: #f3efe8; }
+.toast-msg { margin-top: 4px; font: 500 12.5px/1.4 var(--app-font); color: rgba(236, 232, 225, 0.62); word-break: break-word; }
+
+.toast-close { background: transparent; border: 0; padding: 0; cursor: pointer; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; display: grid; place-items: center; color: rgba(236, 232, 225, 0.35); transition: color 0.15s, background 0.15s; }
+.toast-close:hover { color: #fff; background: rgba(236, 232, 225, 0.12); }
+
+/* countdown bar; pauses while hovered */
+.toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; opacity: 0.85; animation: toast-drain linear forwards; }
+.toast:hover .toast-bar { animation-play-state: paused; }
+@keyframes toast-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-bar-indeterminate { width: 38%; right: auto; transform-origin: center; animation: bar-run 1.3s ease-in-out infinite; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .is-leaving .toast { animation: none; }
+  .toast-wrap { transition: none; }
+}

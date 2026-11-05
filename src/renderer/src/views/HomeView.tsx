@@ -6,11 +6,13 @@ import ImportExportModal from "../components/ImportExportModal";
 import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
+import { useToast } from "../components/Toast";
 import type { Profile } from "../types/profile";
 
 export default function HomeView() {
   const { call, onEvent } = useIPC();
-  const { launchState, launchingProfile, launch } = useProfileLaunch();
+  const { launchState, launchingProfile, progress, launch } = useProfileLaunch();
+  const toast = useToast();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,13 +63,61 @@ export default function HomeView() {
     setDeleteError("");
     try {
       await call("delete_profile", { name: confirmDelete.profile_name });
+      toast.show({ kind: "success", title: "Profile deleted", message: confirmDelete.profile_name });
       setConfirmDelete(null);
       void load();
     } catch (e) {
       console.error("delete failed", e);
       setDeleteError(String(e));
+      toast.show({ kind: "error", title: "Delete failed", message: String(e) });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmDelete, call, load]);
+
+  // One toast follows a launch from "Launching…" to success / failure.
+  useEffect(() => {
+    if (launchState === "launching" && launchingProfile) {
+      toast.show({
+        id: "launch",
+        kind: "loading",
+        title: `Launching ${launchingProfile}`,
+        message: progress?.message ?? "Starting…",
+      });
+    } else if (launchState === "launched" && launchingProfile) {
+      toast.show({ id: "launch", kind: "success", title: "Launched", message: `${launchingProfile} is ready` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launchState, launchingProfile]);
+
+  useEffect(() => {
+    if (!progress) return;
+    if (progress.status === "failed") {
+      toast.show({ id: "launch", kind: "error", title: "Launch failed", message: progress.message || "Something went wrong" });
+    } else if (launchState === "launching") {
+      toast.update("launch", { message: progress.message });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress]);
+
+  const handleReorder = useCallback(
+    async (names: string[]) => {
+      // optimistic: show the new order immediately, then persist it
+      setProfiles((prev) => {
+        const byName = new Map(prev.map((p) => [p.profile_name, p]));
+        const ordered = names.map((n) => byName.get(n)).filter((p): p is Profile => !!p);
+        return [...ordered, ...prev.filter((p) => !names.includes(p.profile_name))];
+      });
+      try {
+        await call("reorder_profiles", { names });
+      } catch (e) {
+        console.error("reorder failed", e);
+        toast.show({ kind: "error", title: "Couldn't save order", message: String(e) });
+        void load();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [call, load]
+  );
 
   const handleModifyCard = useCallback((p: Profile) => {
     setEditingCard(p);
@@ -82,7 +132,7 @@ export default function HomeView() {
             Profiles
             {!loading && <span className="count-pill">{profiles.length}</span>}
           </h1>
-          <p className="page-sub mt-2">Switch between Riot accounts instantly</p>
+          <p className="page-sub mt-2">Switch between Riot accounts instantly{profiles.length > 1 ? " · drag cards to reorder" : ""}</p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
@@ -109,6 +159,7 @@ export default function HomeView() {
         onLaunch={launch}
         onDelete={handleDelete}
         onModifyCard={handleModifyCard}
+        onReorder={(names) => void handleReorder(names)}
       />
 
       {!loading && profiles.length === 0 && (
@@ -182,7 +233,10 @@ export default function HomeView() {
       <AddAccountModal
         open={showAddAccount}
         onClose={() => setShowAddAccount(false)}
-        onAccountAdded={() => void load()}
+        onAccountAdded={() => {
+          toast.show({ id: "account-added", kind: "success", title: "Account added", message: "Profile saved" });
+          void load();
+        }}
       />
     </div>
   );

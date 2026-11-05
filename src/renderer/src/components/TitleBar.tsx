@@ -15,7 +15,7 @@ export function TitleBar() {
   }, []);
 
   return (
-    <div className="drag-region flex items-center justify-between h-10 bg-[#070b11]/80 backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
+    <div className="drag-region flex items-center justify-between h-10 titlebar-surface backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
       {/* Animated gradient line at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-[1px] z-10">
         <div
