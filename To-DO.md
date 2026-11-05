@@ -19,3 +19,4 @@
 - [] auto-updater
 - [] profile desktop  shortcut that directly launches the game
 - [] add a setting to launch VALORANT after clicking a profile
+- [] add setting, to minimize/exit when clicking "x"
