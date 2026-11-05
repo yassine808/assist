@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Check, LogIn, UserPlus } from "lucide-react";
+import { AlertTriangle, Check, UserPlus } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 import { useAccountDetection } from "../hooks/useAccountDetection";
 import Modal from "./Modal";
+import signInArt from "../assets/stay-signed-in.png";
 
 interface AddAccountModalProps {
   open: boolean;
@@ -24,17 +25,6 @@ interface CaptureResult {
   display: string;
   profile?: { profile_name?: string };
   message?: string;
-}
-
-type StepState = "done" | "active" | "todo";
-
-function Step({ n, state, children }: Readonly<{ n: number; state: StepState; children: React.ReactNode }>) {
-  return (
-    <li className={`aa-step is-${state}`}>
-      <span className="aa-step-n">{state === "done" ? <Check size={12} strokeWidth={3} /> : n}</span>
-      <span className="aa-step-t">{children}</span>
-    </li>
-  );
 }
 
 export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
@@ -85,6 +75,8 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
 
   // Derive phase from progress
   const phaseFromStatus: Partial<Record<string, ModalPhase>> = {
+    closing: "opening",
+    opening: "opening",
     waiting: "waiting",
     already_added: "already_added",
     created: "created",
@@ -111,6 +103,12 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   const waitingForLogin = effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added";
   const finished = effectivePhase === "created";
   const failed = effectivePhase === "error";
+  const clientReady = effectivePhase === "waiting";
+  const step1Text = clientReady
+    ? "Riot Client ready"
+    : progress?.status === "closing"
+      ? "Closing Riot Client\u2026"
+      : "Opening Riot Client\u2026";
 
   let footer = (
     <button type="button" onClick={() => void handleClose()} className="btn-ghost h-10 px-5 text-[11px]">Cancel</button>
@@ -146,19 +144,71 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
       )}
 
       {waitingForLogin && (
-        <div>
-          <div className="aa-radar" aria-hidden>
-            <span className="aa-radar-ring" /><span className="aa-radar-ring" style={{ animationDelay: "0.9s" }} />
-            <span className="aa-radar-core"><LogIn size={22} /></span>
+        <div className="aa-center">
+          <div className="aa-signin-figure">
+            <img
+              className="aa-signin-art"
+              src={signInArt}
+              alt="Riot sign-in window with the Stay signed in box ticked"
+            />
+            <svg className="aa-signin-arrow" viewBox="0 0 348 442" fill="none" aria-hidden="true" focusable="false">
+              <path
+                className="aa-arrow-line"
+                d="M318 434C280 440 215 434 175 404"
+                stroke="currentColor"
+                strokeWidth="5.5"
+                strokeLinecap="round"
+              />
+              <path
+                className="aa-arrow-head"
+                d="M186.3 404.6 172 402 178.5 415Z"
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
-          <p className="aa-headline text-center">
-            {effectivePhase === "already_added" ? "Already saved — opening the login again…" : "Waiting for you to sign in"}
-          </p>
-          <ol className="aa-steps">
-            <Step n={1} state="done">Riot Client is open</Step>
-            <Step n={2} state="active">Sign in with the account you want to add</Step>
-            <Step n={3} state="todo">It is saved automatically</Step>
-          </ol>
+          <div className="aa-signin-caption">
+            <span className="aa-signin-caption-label">
+              <span className="aa-signin-caption-tick" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12.5l4.2 4.2L19 7.5" />
+                </svg>
+              </span>
+              Stay signed in:
+            </span>
+            <span className="aa-signin-caption-text">
+              Tick it before you finish the login. The account is saved automatically.
+            </span>
+          </div>
+          <div className="aa-signin-status">
+            <span className={`aa-signin-step ${clientReady ? "is-done" : "is-active"}`}>
+              <span className="aa-step-ico">
+                {clientReady ? (
+                  <svg className="aa-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path className="aa-draw" d="M4 12.5l5 5L20 6.5" />
+                  </svg>
+                ) : (
+                  <span className="aa-orb" aria-hidden="true" />
+                )}
+              </span>
+              {step1Text}
+            </span>
+            <span className={`aa-signin-step aa-listening ${clientReady ? "is-active" : ""}`}>
+              <span className="aa-step-ico">
+                <svg className="aa-ico aa-ico-radar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" />
+                  <path d="M7.9 16.1a5.8 5.8 0 0 1 0-8.2" />
+                  <path d="M16.1 7.9a5.8 5.8 0 0 1 0 8.2" />
+                  <path d="M5.1 18.9a9.8 9.8 0 0 1 0-13.8" opacity=".5" />
+                  <path d="M18.9 5.1a9.8 9.8 0 0 1 0 13.8" opacity=".5" />
+                </svg>
+                <span className="aa-ico-ping" aria-hidden="true" />
+              </span>
+              Waiting for login
+            </span>
+          </div>
         </div>
       )}
 

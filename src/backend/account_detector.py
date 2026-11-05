@@ -156,8 +156,16 @@ class AccountDetector:
             "message": f"{display} is already added. Opening login\u2026",
             "display": display,
         })
+        self._emit("account_detection_progress", {
+            "status": "closing",
+            "message": "Closing Riot Client\u2026",
+        })
         self._try_kill()
         self._clear_riot_saved_credentials()
+        self._emit("account_detection_progress", {
+            "status": "opening",
+            "message": "Opening Riot Client\u2026",
+        })
         self._try_launch()
 
     def _handle_new_account(self, account, display):
@@ -196,12 +204,13 @@ class AccountDetector:
         return True  # continue polling
 
     def _run(self):
-        self._emit("account_detection_progress", {"status": "waiting", "message": "Opening Riot Client\u2026"})
+        self._emit("account_detection_progress", {"status": "closing", "message": "Closing Riot Client\u2026"})
         self._try_kill()
         if self._auto_save:
             # The current session is not worth keeping, so force the login
             # screen instead of relaunching straight into the old account.
             self._clear_riot_saved_credentials()
+        self._emit("account_detection_progress", {"status": "opening", "message": "Opening Riot Client\u2026"})
         if not self._try_launch():
             return
 

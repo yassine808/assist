@@ -20,6 +20,28 @@
 
 ## Log
 
+### 2026-11-05 — Add Account reminder image, 3-step list removed
+
+- Goal: when "Add Account" opens the Riot Client, show the sign-in screenshot
+  (Stay signed in ticked) instead of the 3-step instruction list, and keep the
+  modal minimal.
+- Done: `AddAccountModal` waiting screen is now the sign-in image plus two
+  live steps: step 1 has a spinner on the left and switches between
+  `Closing Riot Client…`, `Opening Riot Client…`, then a green check with
+  `Riot Client ready`; step 2 shows an ear (listener) icon and `Waiting for login`,
+  highlighted once the client is ready. `account_detector._run` and
+  `_handle_already_added` now emit explicit `closing` / `opening` progress
+  events; the hook's initial status is `opening`. The old status line and the
+  `aa-step` / `aa-radar` / `aa-status-dot` markup and CSS are gone. Image
+  bundled from `src/renderer/src/assets/stay-signed-in.png`; `env.d.ts`
+  declares PNG imports.
+- Verified: web typecheck clean, ESLint clean on the touched files, 27 Vitest
+  pass, 128 pytest pass, Ruff + compileall clean, `npm run build` bundles
+  `stay-signed-in-*.png`. (`npm run typecheck` still fails on the pre-existing
+  `window.singleton.test.ts` missing exports; `npm run lint` still flags the
+  pre-existing `ProfileGrid` / `SettingsView` hooks rules.)
+- Next: manual check of the Add Account modal in the running app.
+
 ### 2026-11-04 — session capture, window visibility, reset
 
 - Goal: make saving and switching accounts actually work, verify it, then reset.
@@ -587,3 +609,31 @@
   constant frame duration per file (69 ms, Miks 125); 29 files byte-identical to
   before, only Miks changed.
 - Next: none.
+
+### 2026-11-05 — Add Account: "Stay signed in:" under the image, premium step icons
+
+- Goal: put the instructions directly under the sign-in picture as a
+  "Stay signed in:" caption, and replace the two step badges with better icons.
+- Done:
+  - `AddAccountModal`: the old hint below the steps is gone. Under the image sits
+    a caption row (red rounded tick + `Stay signed in:` in caps) and one line:
+    "Tick it before you finish the login. The account is saved automatically."
+  - `.aa-step-ico` is now a 22px gradient squircle with an inset highlight and
+    an outer halo. Active = red gradient + breathing halo; done = emerald
+    gradient + glow; idle = neutral glass.
+  - Step 1 uses a conic-gradient spinner ring (`aa-orb`) that turns into a
+    self-drawing check. Step 2 replaces the lucide `Ear` with a custom radar
+    icon plus an expanding ping ring while listening.
+- Verified: `tsc -p tsconfig.web.json` clean, ESLint clean on the component,
+  `npm run build` OK; headless Chromium render of the real built CSS + markup
+  checked in both the "opening" and "client ready" states.
+- Follow-up: added a red arrow drawn over the screenshot (`aa-signin-figure` +
+  inline SVG, viewBox 348x442) that curves from the bottom-right up to the
+  "Stay signed in" row. `clip-path` keeps the glow inside the card's rounded
+  corners.
+- Follow-up 2: the arrow now plays on a 3 s loop — line draws 0→0.66 s, head
+  pops at 0.84 s, both hold, fade out at 2.7 s, restart.
+- Verified (follow-up): rebuild + tsc + ESLint clean; headless render shows the
+  arrow tip landing on the "Stay signed in" label.
+- Pushed to `origin/main`.
+- Next: look at it once in the running app.
