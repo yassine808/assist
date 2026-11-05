@@ -1,13 +1,13 @@
 ## FRONTEND
 
 - [x] make cards draggable with really good animation.
-- [] message toast
+- [x] message toast
 - [] add SFX on/off setting
-- [] in-app player cards scaling setting
+- [x] in-app player cards scaling setting
 - [] normal cards should be downloading the first time ,only those the user is seeing first! meaning from top to bottom, and add skeleton animation for charging
 - [] add skeleton for cards in the lobby
 - [] Launch animation, shows logo, then the saved cards (just like iphone animation after login -smooth)
-- [] better settings
+- [x] better settings
 - [] better per map stats frontend
 - [] fix bug where app's content can be dragged to desktop ( playercard static images)
 - [] if add account will open riot client , then it should say it with the word "riot client" highlighted
