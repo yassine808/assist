@@ -54,14 +54,27 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   // Card art comes from valorant-api.com over the network. `loading="lazy"`
   // defers the ones below the fold; this flag swaps the charging shimmer for
   // the picture once that particular file has decoded.
-  const [artReady, setArtReady] = useState(false);
+  //
+  // Readiness is stored as "which URL finished loading", not a boolean. A
+  // boolean reset in an effect races the image cache: picking a card that the
+  // picker already rendered makes `load` fire during commit, then the effect
+  // flips the flag back to false and no second `load` ever arrives — the art
+  // stays at opacity 0 behind the shimmer. Deriving it from the URL can never
+  // go stale.
+  const cardSrc = vd?.player_card_bg ?? "";
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const artReady = cardSrc !== "" && loadedSrc === cardSrc;
   const measureArt = (el: HTMLImageElement | null) => {
     if (el && el.naturalWidth > 0) setPortrait(el.naturalHeight / el.naturalWidth >= 1.3);
   };
   useEffect(() => {
-    setArtReady(false);
-    measureArt(artRef.current);
-  }, [vd?.player_card_bg]);
+    const el = artRef.current;
+    if (!el) return;
+    // An earlier card that failed to load is hidden inline; the next selection
+    // has to start visible again.
+    el.style.display = "";
+    measureArt(el);
+  }, [cardSrc]);
 
   useEffect(() => {
     if (launchState === "launched") sfx.launched();
@@ -92,7 +105,6 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   if (launchState === "launching") status = "LAUNCHING";
   else if (running || launchState === "launched") status = "ACTIVE";
 
-  const hasSweep = tier >= 18;
   const isMe = running || launchState === "launched";
 
   return (
@@ -137,19 +149,25 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
             <div className="lobby-topbar" />
 
             <div className="lobby-art-wrap">
-              {vd?.player_card_bg
+              {cardSrc
                 ? <>
                     {!artReady && <span className="lobby-art-charge" aria-hidden />}
                     <img
                       ref={artRef}
-                      src={vd.player_card_bg}
+                      src={cardSrc}
                       alt=""
                       loading="lazy"
                       decoding="async"
                       draggable={false}
                       className={`lobby-art${portrait ? " is-portrait" : ""}${artReady ? "" : " is-charging"}`}
-                      onLoad={(e) => { measureArt(e.currentTarget); setArtReady(true); }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; setArtReady(true); }}
+                      onLoad={(e) => {
+                        measureArt(e.currentTarget);
+                        setLoadedSrc(e.currentTarget.getAttribute("src") ?? "");
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        setLoadedSrc(e.currentTarget.getAttribute("src") ?? "");
+                      }}
                     />
                   </>
                 : <div className="lobby-art lobby-art-empty" />}
@@ -189,10 +207,9 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
               <div className="lobby-wl"><b>{vd?.wins ?? 0}W</b><i>{vd?.losses ?? 0}L</i></div>
             </div>
 
-            <div className={`rank-emblem ${hasSweep ? "has-sweep" : ""} ${tier >= 27 ? "is-radiant" : ""}`}>
+            <div className="rank-emblem">
               <span className="rank-halo" />
               <span className="rank-ping" />
-              <span className="rank-sweep" />
               {vd?.rank_icon
                 ? <img src={vd.rank_icon} alt={rankName} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 : <span className="rank-none" />}

@@ -163,16 +163,11 @@
 .rank-none { position: relative; z-index: 2; width: 10px; height: 10px; transform: rotate(45deg); background: rgba(236, 232, 225, 0.3); }
 .rank-dash { position: absolute; left: 90.5px; top: 434px; width: 4px; height: 1px; background: rgba(225, 238, 248, 0.5); }
 .rank-mute { position: absolute; left: 87px; top: 438.5px; color: rgba(240, 246, 250, 0.9); }
-.rank-sweep { display: none; position: absolute; inset: 17%; border-radius: 50%; opacity: 0.5;
-  background: conic-gradient(from 0deg, transparent 0 70%, color-mix(in srgb, var(--rank) 80%, white) 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 70%, transparent 74%);
-  mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 70%, transparent 74%); }
-.rank-emblem.has-sweep .rank-sweep { display: block; animation: rank-spin 4.5s linear infinite; }
-.rank-emblem.is-radiant .rank-sweep { animation-duration: 2.8s; opacity: 0.8; }
 @keyframes rank-breathe {
   0%, 100% { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rank) 50%, transparent)); }
   50% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--rank) 85%, transparent)); }
 }
+/* Shared spin used by the START button's launching icon. */
 @keyframes rank-spin { to { transform: rotate(360deg); } }
 
 /* ── START → "in queue" style button ── */
@@ -218,7 +213,7 @@
 @keyframes bar-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .lobby-inner, .rank-emblem img, .rank-sweep, .lobby-bar, .start-icon.spin path,
+  .lobby-inner, .rank-emblem img, .lobby-bar, .start-icon.spin path,
   .lobby-card:hover .lobby-scan, .lobby-card:hover .lobby-art-wrap::after, .lobby-card:hover .rank-ping, .lobby-card:hover .lobby-plate::after { animation: none !important; }
   .lobby-corner { transition: none; }
 }

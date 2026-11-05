@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Check, Eye, EyeOff, FileUp, Lock, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, Eye, EyeOff, FileUp, Lock, X } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 import { base64ToBlob } from "../utils/base64";
 import { useToast } from "./Toast";
 import Modal from "./Modal";
+import type { Profile } from "../types/profile";
 
 interface ImportExportModalProps {
   open: boolean;
   onClose: () => void;
   onImported?: () => void;
+  /** Profiles offered in the "choose accounts" export mode. */
+  profiles?: Profile[];
 }
 
 type Tab = "export" | "import";
@@ -29,8 +32,19 @@ function formatSize(n: number): string {
   return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
 }
 
-function PasskeyField({ value, onChange, placeholder, autoFocus }: Readonly<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean }>) {
+function PasskeyField({ value, onChange, placeholder, autoFocus, copyable }: Readonly<{ value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean; copyable?: boolean }>) {
   const [show, setShow] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error("copy passkey failed", e);
+    }
+  };
   return (
     <div className="ie-field">
       <Lock size={14} className="ie-field-lead" />
@@ -43,6 +57,19 @@ function PasskeyField({ value, onChange, placeholder, autoFocus }: Readonly<{ va
         autoComplete="off"
         spellCheck={false}
       />
+      {copyable && (
+        <button
+          type="button"
+          className="ie-field-eye"
+          onClick={() => void copy()}
+          disabled={!value}
+          aria-label="Copy passkey"
+          title={copied ? "Copied" : "Copy passkey"}
+          tabIndex={-1}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      )}
       <button type="button" className="ie-field-eye" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide passkey" : "Show passkey"} tabIndex={-1}>
         {show ? <EyeOff size={14} /> : <Eye size={14} />}
       </button>
@@ -50,11 +77,13 @@ function PasskeyField({ value, onChange, placeholder, autoFocus }: Readonly<{ va
   );
 }
 
-export default function ImportExportModal({ open, onClose, onImported }: Readonly<ImportExportModalProps>) {
+export default function ImportExportModal({ open, onClose, onImported, profiles = [] }: Readonly<ImportExportModalProps>) {
   const { call } = useIPC();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("export");
   const [exportPasskey, setExportPasskey] = useState("");
+  const [scope, setScope] = useState<"all" | "selected">("all");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [importPasskey, setImportPasskey] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -71,6 +100,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
       setTab("export");
       setExportPasskey(""); setImportPasskey(""); setImportFile(null); setImportResult(null);
       setExportSuccess(false); setDragOver(false);
+      setScope("all"); setPicked(new Set());
     }
     wasOpen.current = open;
   }, [open]);
@@ -79,7 +109,11 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
     if (!exportPasskey) return;
     setExporting(true);
     try {
-      const result = await call<{ data: string }>("export_profiles", { passkey: exportPasskey });
+      const names = scope === "selected" ? [...picked] : undefined;
+      const result = await call<{ data: string }>(
+        "export_profiles",
+        names ? { passkey: exportPasskey, names } : { passkey: exportPasskey }
+      );
       if (result?.data) {
         const url = URL.createObjectURL(base64ToBlob(result.data));
         const a = document.createElement("a");
@@ -98,7 +132,7 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
     } finally {
       setExporting(false);
     }
-  }, [call, exportPasskey, toast]);
+  }, [call, exportPasskey, scope, picked, toast]);
 
   const handleImport = useCallback(async () => {
     if (!importPasskey || !importFile) return;
@@ -138,7 +172,18 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
   };
 
   const exStrength = strength(exportPasskey);
-  const canExport = exportPasskey.length >= MIN_KEY && !exporting;
+  const allPicked = profiles.length > 0 && picked.size === profiles.length;
+  const togglePick = (name: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  const canExport =
+    exportPasskey.length >= MIN_KEY &&
+    !exporting &&
+    (scope === "all" ? profiles.length > 0 : picked.size > 0);
   const canImport = importPasskey.length >= MIN_KEY && !!importFile && !importing;
 
   return (
@@ -180,14 +225,64 @@ export default function ImportExportModal({ open, onClose, onImported }: Readonl
       <div className="ie-stage">
         {tab === "export" ? (
           <div key="export" className="ie-pane">
-            <p className="rs-text-sm">Saves <b>all your profiles</b> into one encrypted <code>.rsprofile</code> file you can keep as a backup or move to another PC.</p>
+            <p className="rs-text-sm">
+              {scope === "all"
+                ? <>Saves <b>all your profiles</b> into one encrypted <code>.rsprofile</code> file you can keep as a backup or move to another PC.</>
+                : <>Saves <b>{picked.size === profiles.length ? "all" : picked.size === 1 ? "one profile" : `${picked.size} profiles`}</b> into one encrypted <code>.rsprofile</code> file.</>}
+            </p>
+            <div className="ie-scope" role="radiogroup" aria-label="Profiles to export">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={scope === "all"}
+                className={scope === "all" ? "is-on" : ""}
+                onClick={() => setScope("all")}
+              >
+                All profiles <b>{profiles.length}</b>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={scope === "selected"}
+                className={scope === "selected" ? "is-on" : ""}
+                onClick={() => setScope("selected")}
+                disabled={profiles.length === 0}
+              >
+                Select accounts <b>{picked.size || ""}</b>
+              </button>
+            </div>
+            {scope === "selected" && (
+              <div className="ie-pick">
+                <div className="ie-pick-head">
+                  <span>{picked.size} of {profiles.length} selected</span>
+                  <button
+                    type="button"
+                    onClick={() => setPicked(allPicked ? new Set() : new Set(profiles.map((p) => p.profile_name)))}
+                  >
+                    {allPicked ? "Clear" : "Select all"}
+                  </button>
+                </div>
+                <div className="ie-pick-list">
+                  {profiles.map((p) => (
+                    <label key={p.profile_name} className={`ie-pick-row${picked.has(p.profile_name) ? " is-on" : ""}`}>
+                      <input
+                        type="checkbox"
+                        checked={picked.has(p.profile_name)}
+                        onChange={() => togglePick(p.profile_name)}
+                      />
+                      <span className="ie-pick-name" title={p.profile_name}>{p.profile_name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="ie-label">Choose a passkey</label>
-            <PasskeyField value={exportPasskey} onChange={setExportPasskey} placeholder="Encryption passkey" autoFocus />
+            <PasskeyField value={exportPasskey} onChange={setExportPasskey} placeholder="Encryption passkey" autoFocus copyable />
             <div className="ie-meter" data-level={exStrength.level}>
               <span /><span /><span /><span />
               <em>{exStrength.label}</em>
             </div>
-            <p className="ie-note">You will need this passkey to import the file. It cannot be recovered if you forget it.</p>
+            <p className="ie-note">You will need this passkey to import the file. It cannot be recovered if you forget it — use the copy button to save it somewhere safe.</p>
           </div>
         ) : (
           <div key="import" className="ie-pane">

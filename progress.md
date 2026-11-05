@@ -709,3 +709,69 @@
   rewrite for the overlay UI) before `typecheck`/`test` can go green.
 
 
+
+### 2026-11-05 — Playercard change stayed invisible; export scope + passkey copy
+
+- Goal: fix "I change the playercard and the new one never shows", add a copy
+  button to the export passkey, and allow exporting all or selected accounts.
+- Root cause: `ProfileCard` reset `artReady` in an effect keyed on the card URL.
+  A selected card is already cached by the picker grid, so `load` could fire
+  during commit, the effect then set the flag back to false, and no second
+  `load` came — `.lobby-art.is-charging { opacity: 0 }` hid the art for good.
+- Done:
+  - `ProfileCard`: readiness is now "which URL finished loading" (`loadedSrc`)
+    instead of a boolean, so it cannot be clobbered. The effect for a new URL
+    also clears a previous `display: none` left by a failed image.
+  - `profile_manager.export_profiles(passkey, names=None)`: optional name
+    filter, stored order kept; empty or unknown selection raises.
+  - `main.py` forwards `names`; both export UIs (`ImportExportModal`,
+    Settings > Backup) now offer All profiles / Select accounts with a
+    checkbox list, select-all/clear, and a passkey copy button.
+- Verified: new `ProfileCard.test.tsx` 3/3, `ImportExportModal.test.tsx` 4/4;
+  `vitest` 41 passed (remaining 10 failures are the known stale
+  `window.singleton.test.ts`); `pytest` 136 passed; `ruff` clean;
+  `tsc -p tsconfig.web.json` clean; `npm run build` OK; ESLint only the
+  pre-existing `react-hooks/purity` error in `SettingsView.tsx`.
+- Next: tick the export item in `To-DO.md` once its uncommitted edits are
+  resolved; confirm in the running app that a newly picked card appears.
+
+### 2026-11-05 — Dummy accounts for Immortal 1 / 3 and Radiant
+
+- Goal: more layout-test profiles, covering every high tier.
+- Done:
+  - Stopped the running dev app (electron-vite node + electron + Python
+    backend) because the backend holds the profile list in memory and would
+    overwrite the file.
+  - Appended three profiles to `data/profiles_data.json`:
+    `Dummy Immortal 1#TEST` (tier 24, Reyna), `Dummy Immortal 3#TEST`
+    (tier 26, Sage), `Dummy Radiant#TEST` (tier 27, Neon). Each has RR,
+    W/L, peak rank, tier icon and an animated mastery card.
+  - Immortal 2 already existed as `Dummy Immortal#TEST` (tier 25).
+  - Backup of the previous file: `data/profiles_data.json.bak-20261105-141056`.
+  - Relaunched `npm run dev`; backend reports `ready, data_dir=...\data`.
+- Verified: `ProfileManager` loads 9 profiles and lists all six dummies;
+  JSON ends cleanly with no BOM; app booted without backend errors.
+- Next: check the six cards in the lobby; Immortal 3 gets the tier-18+ sweep
+  and Radiant the radiant styling.
+
+### 2026-11-05 — Remove the spinning rank sweep
+
+- Goal: no rotating conic ring on rank emblems (it was red on Immortal).
+- Done: removed the `rank-sweep` span, the `has-sweep` / `is-radiant`
+  modifiers and their CSS from `ProfileCard` / `card-glow.css`. The
+  `rank-spin` keyframes stay because the START button's launching icon uses
+  them; they are now commented as such.
+- Verified: `tsc -p tsconfig.web.json` exit 0, ESLint clean on the component,
+  `vitest` 41 passed (10 known `window.singleton` failures), HMR applied with
+  no errors in the dev log.
+- Next: none.
+
+### 2026-11-05 — Radiant rank tint: white-gold
+
+- Goal: keep Immortal's red glow, give Radiant a white/gold glow.
+- Done: `rankColor(27)` in `lib/ranks.ts` changed from `#ff4655` to
+  `#ffe9b0`; tiers 24-26 stay `#ff5f7a`. The tint feeds the halo, the
+  breathing glow and the hover ping.
+- Verified: new `lib/ranks.test.ts` 3/3, `tsc -p tsconfig.web.json` exit 0,
+  dev app hot-reloaded.
+- Next: none.

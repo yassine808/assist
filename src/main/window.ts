@@ -13,9 +13,11 @@ export interface AppWindow {
 
 // The lobby card stack is fixed-size in CSS: title bar 40 + page top 16 +
 // toolbar 32 + divider 13 (12 padding + 1 border) + gap 16 + slot top 4 +
-// card 552.24 (472 × --lobby-k 1.17) + button margin 16 + button 56 ≈ 746.
-// Keep minHeight at that value so a short window can never crop the START button.
-const MIN_WINDOW_HEIGHT = 746;
+// card 552.24 (472 × --lobby-k 1.17) + button margin 16 + button 56 +
+// bottom padding 40 ≈ 785. That is the full height of one row of cards, so a
+// window at the minimum shows one row without scrolling and never crops START;
+// a second row is what brings the scrollbar back.
+const MIN_WINDOW_HEIGHT = 788;
 
 async function readTrayConfig(
   python: PythonBridge
@@ -37,7 +39,7 @@ export async function createAppWindow(
 ): Promise<AppWindow> {
   const win = new BrowserWindow({
     width: 1100,
-    height: 750,
+    height: 790,
     minWidth: 900,
     minHeight: MIN_WINDOW_HEIGHT,
     frame: false,

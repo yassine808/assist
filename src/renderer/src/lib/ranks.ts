@@ -12,7 +12,7 @@ export function rankColor(tier: number): string {
   if (tier <= 20) return "#5b9bd5"; // Diamond
   if (tier <= 23) return "#e05cf5"; // Ascendant
   if (tier <= 26) return "#ff5f7a"; // Immortal
-  return "#ff4655"; // Radiant
+  return "#ffe9b0"; // Radiant (white-gold)
 }
 
 export function rankShort(tier: number): string {

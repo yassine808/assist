@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Archive, Download, EyeOff, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
+import { Archive, Check, Copy, Download, EyeOff, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useToast } from "../components/Toast";
@@ -22,6 +22,9 @@ export default function SettingsView() {
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [exportPasskey, setExportPasskey] = useState("");
+  const [exportScope, setExportScope] = useState<"all" | "selected">("all");
+  const [exportPicked, setExportPicked] = useState<Set<string>>(new Set());
+  const [passCopied, setPassCopied] = useState(false);
   const [importPasskey, setImportPasskey] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<string>("");
@@ -93,7 +96,11 @@ export default function SettingsView() {
     if (!exportPasskey) return;
     setExporting(true);
     try {
-      const result = await call<{ data: string }>("export_profiles", { passkey: exportPasskey });
+      const names = exportScope === "selected" ? [...exportPicked] : undefined;
+      const result = await call<{ data: string }>(
+        "export_profiles",
+        names ? { passkey: exportPasskey, names } : { passkey: exportPasskey }
+      );
       if (result?.data) {
         // The backend returns base64 text, not raw bytes. Passing the string
         // straight to Uint8Array silently produced a 0-byte backup file.
@@ -115,7 +122,26 @@ export default function SettingsView() {
     } finally {
       setExporting(false);
     }
-  }, [call, exportPasskey, toast]);
+  }, [call, exportPasskey, exportScope, exportPicked, toast]);
+
+  const copyExportPasskey = useCallback(async () => {
+    if (!exportPasskey) return;
+    try {
+      await navigator.clipboard.writeText(exportPasskey);
+      setPassCopied(true);
+      setTimeout(() => setPassCopied(false), 1500);
+    } catch (e) {
+      console.error("copy passkey failed", e);
+    }
+  }, [exportPasskey]);
+
+  const toggleExportPick = (name: string) =>
+    setExportPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   const handleImport = useCallback(async () => {
     if (!importPasskey || !importFile) return;
@@ -438,7 +464,73 @@ export default function SettingsView() {
           {/* Export */}
           <div>
             <p className="text-white/70 text-sm font-medium mb-1.5">Export</p>
-            <p className="text-white/40 text-xs mb-2">Encrypt and download all profiles as a backup file</p>
+            <p className="text-white/40 text-xs mb-2">
+              {exportScope === "all"
+                ? "Encrypt and download all profiles as a backup file"
+                : `Encrypt and download ${exportPicked.size || "no"} selected ${exportPicked.size === 1 ? "profile" : "profiles"}`}
+            </p>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button
+                onClick={() => setExportScope("all")}
+                role="radio"
+                aria-checked={exportScope === "all"}
+                className={`h-8 rounded-md text-[11px] font-bold uppercase tracking-wider border transition-colors ${
+                  exportScope === "all"
+                    ? "text-white bg-riot-red/15 border-riot-red/50"
+                    : "text-white/50 bg-white/5 border-white/10 hover:text-white/80"
+                }`}
+              >
+                All profiles ({profiles.length})
+              </button>
+              <button
+                onClick={() => setExportScope("selected")}
+                role="radio"
+                aria-checked={exportScope === "selected"}
+                disabled={profiles.length === 0}
+                className={`h-8 rounded-md text-[11px] font-bold uppercase tracking-wider border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  exportScope === "selected"
+                    ? "text-white bg-riot-red/15 border-riot-red/50"
+                    : "text-white/50 bg-white/5 border-white/10 hover:text-white/80"
+                }`}
+              >
+                Select accounts ({exportPicked.size})
+              </button>
+            </div>
+            {exportScope === "selected" && (
+              <div className="mb-2 rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10 text-[11px] text-white/50">
+                  <span>{exportPicked.size} of {profiles.length} selected</span>
+                  <button
+                    onClick={() =>
+                      setExportPicked(
+                        exportPicked.size === profiles.length ? new Set() : new Set(profiles.map((p) => p.profile_name))
+                      )
+                    }
+                    className="text-[10px] font-bold uppercase tracking-wider text-white/60 hover:text-white"
+                  >
+                    {exportPicked.size === profiles.length ? "Clear" : "Select all"}
+                  </button>
+                </div>
+                <div className="max-h-32 overflow-y-auto">
+                  {profiles.map((p) => (
+                    <label
+                      key={p.profile_name}
+                      className={`flex items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer border-b border-white/5 last:border-0 ${
+                        exportPicked.has(p.profile_name) ? "text-white bg-riot-red/10" : "text-white/70 hover:bg-white/5"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={exportPicked.has(p.profile_name)}
+                        onChange={() => toggleExportPick(p.profile_name)}
+                        className="w-3.5 h-3.5 accent-riot-red"
+                      />
+                      <span className="truncate">{p.profile_name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="password"
@@ -449,8 +541,18 @@ export default function SettingsView() {
                            placeholder:text-white/30 focus:outline-none focus:border-riot-red/50"
               />
               <button
+                onClick={() => void copyExportPasskey()}
+                disabled={!exportPasskey}
+                title={passCopied ? "Copied" : "Copy passkey"}
+                aria-label="Copy passkey"
+                className="h-8 w-8 flex items-center justify-center rounded-md bg-white/5 border border-white/10
+                           text-white/50 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {passCopied ? <Check size={14} /> : <Copy size={14} />}
+              </button>
+              <button
                 onClick={() => void handleExport()}
-                disabled={!exportPasskey || exporting}
+                disabled={!exportPasskey || exporting || (exportScope === "selected" && exportPicked.size === 0)}
                 className="h-8 px-4 rounded-md text-xs font-semibold btn-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors
                            inline-flex items-center gap-1.5"
               >

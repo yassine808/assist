@@ -198,8 +198,13 @@ class ProfileManager:
     # Import / Export with encryption
     # ------------------------------------------------------------------
 
-    def export_profiles(self, passkey):
-        """Export all profiles encrypted with the given passkey.
+    def export_profiles(self, passkey, names=None):
+        """Export profiles encrypted with the given passkey.
+
+        ``names`` limits the backup to those profile names (the UI's "select
+        accounts" mode); ``None`` exports every profile. The order of the
+        stored list is kept, so a selection exports in the same order the
+        lobby shows.
 
         Uses PBKDF2-HMAC-SHA256 to derive a Fernet key from the passkey,
         then encrypts the JSON-serialized profile list.
@@ -208,13 +213,26 @@ class ProfileManager:
         """
         if not passkey:
             raise ValueError("passkey is required")
+        selected = None
+        if names is not None:
+            if not isinstance(names, (list, tuple)):
+                raise ValueError("names must be a list")
+            wanted = {str(n) for n in names}
+            if not wanted:
+                raise ValueError("select at least one profile")
+            selected = wanted
         import base64
         import hashlib
 
         from cryptography.fernet import Fernet
 
         with self._lock:
-            payload = json.dumps(self._profiles, indent=2, ensure_ascii=False).encode("utf-8")
+            rows = self._profiles
+            if selected is not None:
+                rows = [p for p in rows if str(p.get("profile_name", "")) in selected]
+                if not rows:
+                    raise ValueError("no matching profiles to export")
+            payload = json.dumps(rows, indent=2, ensure_ascii=False).encode("utf-8")
 
         # Derive key from passkey using PBKDF2.
         # NOTE: The salt is intentionally fixed (not random) so that encrypted

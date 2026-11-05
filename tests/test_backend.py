@@ -212,6 +212,42 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
         self.assertIsNotNone(pm2.get("E1"))
         self.assertIsNotNone(pm2.get("E2"))
 
+    def test_export_selected_profiles_only(self):
+        pm = self._pm()
+        pm.create(self._sample("Keep1"))
+        pm.create(self._sample("Drop"))
+        pm.create(self._sample("Keep2"))
+        encrypted = pm.export_profiles("s3cret", ["Keep2", "Keep1"])
+
+        pm2 = self._pm("subset.json")
+        result = pm2.import_profiles("s3cret", encrypted)
+        self.assertEqual(result["imported"], 2)
+        self.assertIsNotNone(pm2.get("Keep1"))
+        self.assertIsNotNone(pm2.get("Keep2"))
+        self.assertIsNone(pm2.get("Drop"))
+
+    def test_export_selected_keeps_stored_order(self):
+        pm = self._pm()
+        pm.create(self._sample("B"))
+        pm.create(self._sample("A"))
+        encrypted = pm.export_profiles("s3cret", ["A", "B"])
+
+        pm2 = self._pm("order.json")
+        pm2.import_profiles("s3cret", encrypted)
+        self.assertEqual([p["profile_name"] for p in pm2.load()], ["B", "A"])
+
+    def test_export_empty_selection_rejected(self):
+        pm = self._pm()
+        pm.create(self._sample("Solo"))
+        with self.assertRaises(ValueError):
+            pm.export_profiles("s3cret", [])
+
+    def test_export_unknown_selection_rejected(self):
+        pm = self._pm()
+        pm.create(self._sample("Solo"))
+        with self.assertRaises(ValueError):
+            pm.export_profiles("s3cret", ["Ghost"])
+
     def test_import_wrong_passkey(self):
         pm = self._pm()
         pm.create(self._sample("X"))

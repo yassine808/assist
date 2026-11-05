@@ -282,7 +282,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         ),
         "export_profiles": lambda p: {
             "data": __import__("base64").b64encode(
-                profiles.export_profiles(p.get("passkey", ""))
+                profiles.export_profiles(p.get("passkey", ""), p.get("names"))
             ).decode("ascii")
         },
         "import_profiles": lambda p: _import_profiles(p),

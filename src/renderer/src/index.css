@@ -507,6 +507,24 @@ img { -webkit-user-drag: none; }
 .ie-result { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font: 600 12.5px/1.3 var(--app-font); animation: ie-in 0.3s ease-out both; }
 .ie-result.is-ok { color: #3ddc97; background: rgba(61, 220, 151, 0.08); border-left: 2px solid #3ddc97; }
 .ie-result.is-bad { color: #ff8791; background: rgba(255, 70, 85, 0.08); border-left: 2px solid #ff4655; }
+.ie-scope { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ie-scope button { display: flex; align-items: center; justify-content: center; gap: 8px; height: 36px; cursor: pointer; font: 700 11px/1 var(--app-font); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(236, 232, 225, 0.5); border: 1px solid var(--line); background: rgba(190, 225, 240, 0.03); transition: color 0.2s, border-color 0.2s, background 0.2s; }
+.ie-scope button:hover { color: #fff; border-color: rgba(190, 225, 240, 0.3); }
+.ie-scope button.is-on { color: #fff; border-color: rgba(255, 70, 85, 0.6); background: linear-gradient(180deg, rgba(255, 70, 85, 0.18), rgba(255, 70, 85, 0.05)); }
+.ie-scope button:disabled { opacity: 0.4; cursor: not-allowed; }
+.ie-scope b { font: 700 10px/1 var(--app-font); color: rgba(236, 232, 225, 0.45); }
+.ie-scope button.is-on b { color: rgba(255, 138, 146, 0.9); }
+.ie-pick { border: 1px solid var(--line); background: rgba(190, 225, 240, 0.025); animation: ie-in 0.25s ease-out both; }
+.ie-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 11px; border-bottom: 1px solid var(--line); font: 600 11px/1 var(--app-font); color: rgba(236, 232, 225, 0.5); }
+.ie-pick-head button { cursor: pointer; font: 700 10px/1 var(--app-font); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(236, 232, 225, 0.6); }
+.ie-pick-head button:hover { color: #fff; }
+.ie-pick-list { max-height: 132px; overflow-y: auto; }
+.ie-pick-row { display: flex; align-items: center; gap: 9px; padding: 7px 11px; cursor: pointer; border-bottom: 1px solid rgba(190, 225, 240, 0.05); font: 500 12.5px/1.2 var(--app-font); color: rgba(236, 232, 225, 0.7); }
+.ie-pick-row:last-child { border-bottom: 0; }
+.ie-pick-row:hover { background: rgba(190, 225, 240, 0.05); color: #fff; }
+.ie-pick-row.is-on { color: #fff; background: rgba(255, 70, 85, 0.06); }
+.ie-pick-row input { flex: none; width: 13px; height: 13px; accent-color: #ff4655; cursor: pointer; }
+.ie-pick-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ═════════ Empty state: one big, obvious action ═════════ */
 .empty-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; min-height: calc(100vh - 280px); padding-bottom: 20px; animation: sec-in 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) both; }

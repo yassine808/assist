@@ -129,7 +129,7 @@ export default function HomeView() {
   }, []);
 
   return (
-    <div className="px-9 pt-4 pb-8">
+    <div className="px-9 pt-4 pb-10">
       <header className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
         <h1 className="page-title is-compact">
           Profiles
@@ -201,6 +201,7 @@ export default function HomeView() {
         open={showImportExport}
         onClose={() => setShowImportExport(false)}
         onImported={() => void load()}
+        profiles={profiles}
       />
 
       <AddAccountModal
