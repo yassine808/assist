@@ -155,9 +155,14 @@ def clean_placement(card, raw):
         blend = float(raw.get("blend", card["blend"]))
         opacity = float(raw.get("opacity", DEFAULT_OPACITY))
         ms = float(raw.get("ms", card["ms"] / DEFAULT_SPEED))
+        crop_l = float(raw.get("cropL", 0.0))
+        crop_r = float(raw.get("cropR", 0.0))
+        crop_t = float(raw.get("cropT", 0.0))
+        crop_b = float(raw.get("cropB", 0.0))
     except (TypeError, ValueError):
         raise ValueError("placement values must be numbers")
-    if not math.isfinite(cx + cy + w + h + rot + blend + opacity + ms):
+    if not math.isfinite(cx + cy + w + h + rot + blend + opacity + ms
+                         + crop_l + crop_r + crop_t + crop_b):
         raise ValueError("placement values must be finite")
     return dict(
         cx=round(clamp(cx, -2000.0, 2000.0), 3),
@@ -168,7 +173,34 @@ def clean_placement(card, raw):
         blend=round(clamp(blend, 0.0, 1.0), 6),
         opacity=round(clamp(opacity, 0.0, 1.0), 3),
         ms=int(round(clamp(ms, 20.0, 2000.0))),
+        cropL=round(clamp(crop_l, 0.0, 45.0), 2),
+        cropR=round(clamp(crop_r, 0.0, 45.0), 2),
+        cropT=round(clamp(crop_t, 0.0, 45.0), 2),
+        cropB=round(clamp(crop_b, 0.0, 45.0), 2),
     )
+
+
+def crop_cell(cell, placement):
+    """Trim the source cell by the per-side crop percentages (0-45 each)."""
+    out = cell
+    left = clamp(float(placement.get("cropL", 0.0)), 0.0, 45.0) / 100.0
+    right = clamp(float(placement.get("cropR", 0.0)), 0.0, 45.0) / 100.0
+    top = clamp(float(placement.get("cropT", 0.0)), 0.0, 45.0) / 100.0
+    bottom = clamp(float(placement.get("cropB", 0.0)), 0.0, 45.0) / 100.0
+    if left + right + top + bottom <= 0.0:
+        return out
+    w = cell.width
+    h = cell.height
+    x0 = int(round(w * left))
+    y0 = int(round(h * top))
+    x1 = int(round(w * (1.0 - right)))
+    y1 = int(round(h * (1.0 - bottom)))
+    # Keep at least one source pixel on each axis.
+    x0 = max(0, min(x0, w - 1))
+    y0 = max(0, min(y0, h - 1))
+    x1 = max(x0 + 1, min(x1, w))
+    y1 = max(y0 + 1, min(y1, h))
+    return cell.crop((x0, y0, x1, y1))
 
 
 def compose_frame(base, sheet, card, placement, index):
@@ -183,6 +215,7 @@ def compose_frame(base, sheet, card, placement, index):
     y1 = (row + 1) * card["sheetH"] / float(rows)
     cell = sheet.crop((int(round(x0)), int(round(y0)),
                        int(round(x1)), int(round(y1))))
+    cell = crop_cell(cell, placement)
 
     w = max(1, int(round(placement["w"])))
     h = max(1, int(round(placement["h"])))

@@ -538,3 +538,20 @@
   - Quads keep the cell aspect: Hush 268x294.8 (0.909), Gekko 640x640 (1.0),
     Sova 268x670 (0.4). Hush APNG 11.68 MB -> 6.44 MB.
 - Next: reload the tuner; push.
+
+### 2026-11-05 — tuner: stretch, crop, wheel on number fields
+- Goal: split W/H (stretch), add a source crop, drop the canvas wheel zoom,
+  make the numeric fields wheel-adjustable.
+- Done:
+  - server.py: crop_cell() trims each sheet cell by cropL/R/T/B
+    (percent per side, clamped 0-45, >=1px kept) before the resize;
+    clean_placement() validates and defaults the four keys to 0.
+  - index.html: W no longer rewrites H; Crop row (L/R/T/B) added; draw()
+    crops the same source rect; Save sends the crop values; Reset zeroes them.
+    Canvas wheel zoom removed; every numeric field adjusts on wheel
+    (Shift = fine, Alt = coarse).
+- Verified:
+  - py_compile passes, embedded JS passes node --check.
+  - POST /api/save with cropT/B=3 changed the Hush APNG (6,458,666 B), then
+    re-saved with crop 0 back to 6,444,445 B (55 frames, 268x640, 69 ms).
+- Next: tune cards in the browser at http://127.0.0.1:8787/.
