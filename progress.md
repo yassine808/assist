@@ -362,3 +362,153 @@
   composite (NCC 0.996-0.999, lossy WebP), 268x640, frame counts 8/10/16/55 as
   extracted; 30-card contact sheet built from the shipped WebP files inspected.
 - Next: per-card overrides if a specific agent still looks off.
+
+### 2026-11-05 - Deadlock Bloomline animated card
+
+- Goal: place the Deadlock BLOOMLINE flipbook correctly, add it to the app.
+- Done:
+  - Corrected quad is anisotropic: `pos(6.3, 21.2, 255.4, 549.8)` in 268x640.
+  - Kept `PlayerCards/` with only REPORT.md, material params and the APNG.
+  - Added `official playercards/AgentMastery/Animated/Deadlock_Mastery_Card_animated.apng`
+    (16 frames, 206 ms each, 3.296 s loop).
+- Verified: `listAnimatedCards` naming resolves the file to `Deadlock`;
+  APNG is 268x640, 16 frames, constant 206 ms.
+- Next: none.
+
+### 2026-11-05 - Remaining 29 Agent Mastery animated cards
+
+- Goal: build every other mastery card with the Deadlock material-parameter
+  placement (anisotropic quad, additive blend), not the old guessed placement.
+- Done:
+  - `tools/pakprobe`: `params` now merges every scalar-parameter run in the MI
+    instead of only the longest one (Fade, Raze and others had their flipbook
+    block in a second run); `csv` also emits `Flipbook Speed` and
+    `Procedural Animations Addive Blending`.
+  - Extracted, for all 30 Bloomline cards, the `_L`/`_AM_Large` card texture plus
+    the flipbook sheet from the local VALORANT install.
+  - Composed each cell with `W = 268/(Scale*Ratio)`, `H = 640/Scale`,
+    `cx = PosH*268`, `cy = (1-PosV)*640`, bilinear cell->card transform, additive
+    blend `base + rgb*alpha*blend`, clipped to the card.
+  - Wrote 30 APNGs to `official playercards/AgentMastery/Animated/` at 268x640,
+    206 ms/frame (515 ms for Miks, whose `Flipbook Speed` is 0.5) and
+    `manifest.csv` with every card's grid, quad and size.
+  - Killjoy is the one card whose authored `PosV = 1.35` puts the quad fully
+    above the card (a clamped colour wash, no animation). Its quad is clamped to
+    the top edge (centre y = 0); the result matches the wiki capture's dome glow.
+- Verified:
+  - Pipeline reproduces the shipped Deadlock card: frame 0 vs the previous APNG
+    mean abs error 0.20 (max 24 of 255) with the same quad and blend.
+  - 30/30 files 268x640, valid `acTL`; frames 16/10/55 per card (Chamber's two
+    identical frames merged by the APNG encoder with 2x duration); Killjoy 16.
+  - Frame 0 vs mid-frame differs on every card; 30-card contact sheet plus
+    6 full-size cards inspected against the static art.
+  - `git status`: only `progress.md` modified; assets and `tools/` stay ignored.
+- Next: none. Per-card nudges only if Yassine flags a specific agent.
+
+### 2026-11-05 - Manual placement tuner for the 30 animated cards
+
+- Goal: stop guessing overlay positions; give Yassine an HTML tuner where each
+  card is moved/scaled by hand and saved straight into `Animated/`.
+- Done:
+  - `tools/cards/tuner/index.html`: 30-card grid, each tile has a live preview
+    canvas, X/Y/W/H/rotation/blend controls, drag-to-move, wheel-to-scale,
+    reset, and its own Save button.
+  - `tools/cards/tuner/server.py`: local server on 127.0.0.1:8787 that serves
+    `_tuner/src` (base art + flipbook sheet), composes the adjusted frames with
+    the same additive blend, and atomically writes the APNG into
+    `official playercards/AgentMastery/Animated/`. Saved values persist in
+    `_tuner/placement.json`.
+  - Save keeps `disposal=0` so file sizes stay near the previous APNGs
+    (Hush 4.52 MB vs 4.41 MB before).
+- Verified:
+  - `python -m py_compile tools/cards/tuner/server.py`; HTML script passes
+    `node --check`.
+  - `GET /api/cards` returns 30 cards; `/` and `/tuner-src/Deadlock/base.png`
+    return 200.
+  - `POST /api/save` on Deadlock returned 16 frames / 268x640 / 206 ms; the
+    original file was restored afterwards (SHA-256 unchanged) and the test
+    `placement.json` removed.
+  - Composer reproduces the shipped Deadlock frame 0: mean abs error 0.18.
+  - Hush composes all 55 frames at 268x640 / 206 ms; output 4.52 MB.
+- Next: start `python tools/cards/tuner/server.py` and tune per card; Save
+  overwrites that card's APNG in `Animated/`.
+
+### 2026-11-05 - Tuner: faster playback, stronger overlay
+
+- Goal: fix the two problems Yassine hit in the tuner: animation far too slow
+  and the animated layer barely visible.
+- Cause (speed): `tick()` compared a frame index based on
+  `performance.now() - started`, while `draw()` set `lastFrame` from raw
+  `performance.now()`. The two clocks never agreed, so every visible card
+  redrew at ~60 fps even though the frame index only changed every 206 ms.
+  30 full-size canvases at 60 fps starved the browser.
+- Fix:
+  - One frame clock: `tick()` computes the frame and passes it to `draw()`;
+    `draw()` stores exactly that index. Redraws now happen only on a real frame
+    change or a control edit.
+  - Per-card `Speed` slider (0.25x–4x). Default is 3x, so 16-frame cards play
+    at ~69 ms/frame instead of 206 ms; Miks 172 ms.
+  - Per-card `Opacity` slider (0–400%). Default 200%, applied as a multiplier
+    on the material blend (`effective = min(1, blend × opacity)`), both in the
+    preview and in the saved APNG.
+  - `server.py` persists `ms` and `opacity` in `placement.json`, uses `ms` as
+    the APNG duration, and clamps the effective weight in `compose_frame`.
+- Verified:
+  - `py_compile` and `node --check` pass.
+  - Astra saved placement re-composed at 69 ms/frame; frame 0 mean brightness
+    103.1 → 115.9 (+12.8) versus the previous saved APNG.
+  - Composer defaults: unsaved cards load at 3x speed / 200% opacity.
+  - Rebuilt all 30 files with the new defaults, preserving the nine placements
+    already saved (Astra, Breach, Brimstone, Chamber, Clove, Cypher, Harbor,
+    Hush, Iso). All 30 are 268x640 with a single duration: 69 ms (Miks 172 ms).
+  - `manifest.csv` refreshed with the actual ms, opacity, quad and file size.
+- Next: reload the tuner page so the new Speed/Opacity controls appear.
+
+### 2026-11-05 - Tuner: import sheet colours, full-card Hush/Sova
+
+- Goal: stop recolouring the flipbook; some cards (Hush) were visibly wrong.
+- Cause:
+  - The compositor blended additively (`base + rgb × alpha × weight`), which
+    shifted every animation's colour.
+  - Hush (and Sova) flipbook cells are fully opaque full-card frames, not
+    effect layers. Drawing them additively over the base produced a ghosted
+    doubled card.
+- Fix:
+  - `compose_frame` now imports the cell with normal alpha-over; the sheet's
+    own RGB is preserved. No additive weight, no `blend` in the output.
+  - `is_full_card()` detects fully opaque sheets and gives them a 268×640
+    default quad, so they are drawn as the whole card instead of an overlay.
+    Hush and Sova are the two full-card cards.
+  - Opacity is now 0–100% (default 100%). Saved 200/400% values and the old
+    Hush placement were normalised away.
+  - Preview canvas uses `source-over` and shows a `full card` badge for those
+    two cards.
+- Verified:
+  - `py_compile` and `node --check` pass.
+  - `GET /api/cards`: Hush/Sova `fullCard=true`, 268×640, opacity 1.0.
+  - All 30 APNGs rebuilt at 268×640, 69 ms (Miks 172 ms), no bad durations.
+  - Headless Electron: 30 cards render, Hush shows `11x5 · 55f · 69ms · full card`,
+    Sova `5x2 · 10f · 69ms · full card`.
+  - `manifest.csv` rewritten with `full` column, current quad and file size.
+- Next: reload the tuner page.
+
+### 2026-11-05 - Tuner: 3-column grid, Hush cover fit
+
+- Goal: show three cards per row and remove Hush's vertical stretch.
+- Cause: full-card cells were forced to 268×640. Hush's cell is 372×410, so
+  that change squashed it horizontally and stretched it vertically.
+- Fix:
+  - Grid is now exactly three columns, capped at 1100 px and centred.
+    Each card is about 357 px wide at the cap.
+  - Full-card defaults now **cover** the card at the cell's own aspect ratio:
+    `scale = max(268 / cellW, 640 / cellH)`, then the canvas crops the overflow.
+    Hush becomes `581.8×640`; Sova `268×670`. No anisotropy.
+  - Editing W keeps the cell aspect for full-card cards, so the scale slider
+    stays uniform.
+- Verified:
+  - Headless Electron computed `grid-template-columns` as three 357 px tracks.
+  - `GET /api/cards`: Hush quad `581.819×640`, Sova `268×670`.
+  - Hush APNG rebuilt: 268×640, 55 frames, 69 ms, 11.14 MB.
+  - Sova APNG rebuilt: 268×640, 10 frames, 69 ms, 2.49 MB.
+  - `manifest.csv` refreshed with the cover quads.
+- Next: push the tuner HTML and APNGs.

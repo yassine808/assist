@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Mastery — card placement tuner</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 18px 20px 60px;
+    background: #090b10;
+    color: #e6e9ef;
+    font: 13px/1.35 "Segoe UI", system-ui, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin: -18px -20px 18px; padding: 14px 20px;
+    background: rgba(9, 11, 16, .94);
+    border-bottom: 1px solid #202632;
+    backdrop-filter: blur(8px);
+  }
+  h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: .01em; }
+  header .hint { color: #8b95a7; font-size: 12px; }
+  header .spacer { flex: 1 1 auto; }
+  .toggle { display: flex; align-items: center; gap: 6px; color: #b9c2d3; user-select: none; }
+  .toggle input { accent-color: #4cc2ff; }
+
+  .grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .card {
+    background: #11151d;
+    border: 1px solid #222a38;
+    border-radius: 10px;
+    padding: 10px;
+    min-width: 0;
+  }
+  .card.dirty { border-color: #6b5b2d; }
+  .card-head {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 8px; min-height: 28px;
+  }
+  .card-head h2 {
+    margin: 0; font-size: 14px; font-weight: 650; color: #f0f3f8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-head .meta { color: #6f7a8d; font-size: 11px; white-space: nowrap; }
+  .card-head .spacer { flex: 1 1 auto; }
+  .save {
+    background: #1d63d6; color: #fff; border: 0; border-radius: 6px;
+    padding: 5px 11px; font: inherit; font-weight: 600; cursor: pointer;
+    min-width: 74px;
+  }
+  .save:hover { background: #2a75ef; }
+  .save:disabled { background: #25324a; color: #8291a9; cursor: default; }
+  .save.ok { background: #17823b; }
+  .save.bad { background: #9d2b2b; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 268 / 640;
+    background: #05070a;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+  .stage:active { cursor: grabbing; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+
+  .controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr;
+    gap: 5px 7px;
+    align-items: center;
+    margin-top: 9px;
+  }
+  .controls label { color: #8792a5; font-size: 11px; text-align: right; }
+  .controls input[type=number] {
+    width: 100%; min-width: 0;
+    background: #0a0e15; color: #dfe5ef;
+    border: 1px solid #252e3e; border-radius: 5px;
+    padding: 4px 6px; font: inherit;
+  }
+  .controls input[type=number]:focus { outline: 0; border-color: #3a8dcc; }
+  .controls input[type=range] {
+    width: 100%; min-width: 0; accent-color: #4cc2ff; height: 20px;
+  }
+  .controls .value { color: #9aa7bb; font-size: 11px; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+  .controls .wide { grid-column: 1 / -1; display: flex; gap: 7px; align-items: center; }
+  .controls .wide label { text-align: left; min-width: 34px; }
+  .controls .wide .value { min-width: 42px; }
+
+  .foot {
+    display: flex; gap: 7px; align-items: center;
+    margin-top: 8px; min-height: 24px;
+  }
+  .reset {
+    background: #1a202c; color: #aeb9cc; border: 1px solid #2a3446;
+    border-radius: 5px; padding: 4px 9px; font: inherit; cursor: pointer;
+  }
+  .reset:hover { background: #222b3a; }
+  .status { color: #8290a5; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status.ok { color: #70d18b; }
+  .status.bad { color: #ff8d8d; }
+
+  dialog {
+    position: fixed; inset: 0; margin: auto;
+    width: min(560px, calc(100vw - 40px));
+    background: #11151d; color: #e6e9ef;
+    border: 1px solid #2a3446; border-radius: 10px; padding: 18px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog p { margin: 0 0 12px; color: #b7c1d3; }
+  dialog button { background: #1d63d6; color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agent Mastery — placement tuner</h1>
+  <span class="hint">drag to move · wheel to scale · Save writes the APNG into <code>Animated/</code></span>
+  <span class="spacer"></span>
+  <label class="toggle"><input id="showBounds" type="checkbox" checked> quad outline</label>
+  <span class="hint" id="loadState">loading…</span>
+</header>
+
+<main id="grid" class="grid"></main>
+
+<template id="cardTpl">
+  <article class="card">
+    <div class="card-head">
+      <h2></h2>
+      <span class="meta"></span>
+      <span class="spacer"></span>
+      <button class="save" type="button">Save</button>
+    </div>
+    <div class="stage"><canvas width="268" height="640"></canvas></div>
+    <div class="controls">
+      <label>X</label><input class="cx" type="number" step="0.1">
+      <label>Y</label><input class="cy" type="number" step="0.1">
+      <label>W</label><input class="w" type="number" step="0.1" min="1">
+      <label>H</label><input class="h" type="number" step="0.1" min="1">
+      <label>Rot</label><input class="rot" type="number" step="0.1">
+      <div class="wide">
+        <label>Scale</label><input class="scale" type="range" min="0.2" max="2.5" step="0.01">
+        <span class="value scaleVal"></span>
+      </div>
+      <div class="wide">
+        <label>Speed</label><input class="speed" type="range" min="0.25" max="4" step="0.05">
+        <span class="value speedVal"></span>
+      </div>
+      <div class="wide">
+        <label>Opacity</label><input class="opacity" type="range" min="0" max="1" step="0.01">
+        <span class="value opacityVal"></span>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="reset" type="button">Reset</button>
+      <span class="status"></span>
+    </div>
+  </article>
+</template>
+
+<dialog id="errDialog">
+  <p id="errText"></p>
+  <form method="dialog"><button>Close</button></form>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+
+  const CARD_W = 268;
+  const CARD_H = 640;
+  const grid = document.getElementById("grid");
+  const tpl = document.getElementById("cardTpl");
+  const loadState = document.getElementById("loadState");
+  const showBounds = document.getElementById("showBounds");
+  const errDialog = document.getElementById("errDialog");
+  const errText = document.getElementById("errText");
+  const items = [];
+  let started = 0;
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const round = (v, n) => Math.round(v * n) / n;
+  const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1);
+
+  function fail(message) {
+    errText.textContent = message;
+    if (!errDialog.open) errDialog.showModal();
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("could not load " + src));
+      img.src = src;
+    });
+  }
+
+  function makeItem(card) {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    const fit = card.placement;
+    const item = {
+      card,
+      node,
+      canvas: node.querySelector("canvas"),
+      ctx: node.querySelector("canvas").getContext("2d"),
+      saveBtn: node.querySelector(".save"),
+      resetBtn: node.querySelector(".reset"),
+      status: node.querySelector(".status"),
+      inputs: {
+        cx: node.querySelector(".cx"),
+        cy: node.querySelector(".cy"),
+        w: node.querySelector(".w"),
+        h: node.querySelector(".h"),
+        rot: node.querySelector(".rot"),
+        scale: node.querySelector(".scale"),
+        speed: node.querySelector(".speed"),
+        opacity: node.querySelector(".opacity"),
+      },
+      values: node.querySelector(".scaleVal"),
+      speedValue: node.querySelector(".speedVal"),
+      opacityValue: node.querySelector(".opacityVal"),
+      base: null,
+      sheet: null,
+      visible: false,
+      dirty: false,
+      lastFrame: -1,
+      drawAgain: true,
+      saveTimer: 0,
+      state: {
+        cx: fit.cx, cy: fit.cy, w: fit.w, h: fit.h,
+        rot: fit.rot || 0,
+        blend: fit.blend != null ? fit.blend : card.blend,
+        opacity: fit.opacity != null ? fit.opacity : 1,
+        ms: fit.ms != null ? fit.ms : card.ms / 3,
+      },
+      saved: { ...fit, blend: fit.blend != null ? fit.blend : card.blend },
+    };
+
+    node.querySelector("h2").textContent = card.agent;
+
+    const writeInputs = () => {
+      const s = item.state;
+      item.inputs.cx.value = fmt(s.cx);
+      item.inputs.cy.value = fmt(s.cy);
+      item.inputs.w.value = fmt(s.w);
+      item.inputs.h.value = fmt(s.h);
+      item.inputs.rot.value = fmt(s.rot);
+      item.inputs.scale.value = clamp(s.w / card.default.w, 0.2, 2.5);
+      const speed = clamp(card.ms / s.ms, 0.25, 4);
+      item.inputs.speed.value = speed;
+      item.inputs.opacity.value = clamp(s.opacity, 0, 1);
+      item.values.textContent = `${Math.round((s.w / card.default.w) * 100)}%`;
+      item.speedValue.textContent = `${speed.toFixed(2)}x · ${Math.round(s.ms)}ms`;
+      item.opacityValue.textContent = `${Math.round(clamp(s.opacity, 0, 1) * 100)}%`;
+      node.querySelector(".meta").textContent =
+        `${card.cols}x${card.rows} · ${card.frames}f · ${Math.round(s.ms)}ms` +
+        (card.fullCard ? " · full card" : "");
+      item.node.classList.toggle("dirty", item.dirty);
+    };
+
+    const markDirty = () => {
+      item.dirty = true;
+      item.drawAgain = true;
+      item.node.classList.toggle("dirty", true);
+    };
+
+    item.set = (patch) => {
+      Object.assign(item.state, patch);
+      markDirty();
+    };
+
+    item.draw = (frame) => {
+      const ctx = item.ctx;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, CARD_W, CARD_H);
+      if (item.base) ctx.drawImage(item.base, 0, 0, CARD_W, CARD_H);
+
+      if (item.sheet) {
+        const s = item.state;
+        const col = frame % card.cols;
+        const row = Math.floor(frame / card.cols);
+        const sx = col * item.sheet.naturalWidth / card.cols;
+        const sy = row * item.sheet.naturalHeight / card.rows;
+        const sw = item.sheet.naturalWidth / card.cols;
+        const sh = item.sheet.naturalHeight / card.rows;
+        const weight = Math.min(1, s.opacity);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = weight;
+        ctx.translate(s.cx, s.cy);
+        ctx.rotate((s.rot || 0) * Math.PI / 180);
+        ctx.drawImage(item.sheet, sx, sy, sw, sh, -s.w / 2, -s.h / 2, s.w, s.h);
+        ctx.restore();
+      }
+
+      if (showBounds.checked) {
+        const s = item.state;
+        ctx.save();
+        ctx.translate(s.cx, s.cy);
+        ctx.rotate((s.rot || 0) * Math.PI / 180);
+        ctx.strokeStyle = "rgba(78, 205, 255, .8)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(-s.w / 2, -s.h / 2, s.w, s.h);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(255, 255, 255, .45)";
+        ctx.beginPath();
+        ctx.moveTo(-6, 0); ctx.lineTo(6, 0);
+        ctx.moveTo(0, -6); ctx.lineTo(0, 6);
+        ctx.stroke();
+        ctx.restore();
+      }
+      item.lastFrame = frame;
+    };
+
+    // Numeric fields: commit on change so a half-typed number is not rewritten.
+    const bindNumber = (key) => {
+      item.inputs[key].addEventListener("change", () => {
+        const v = parseFloat(item.inputs[key].value);
+        if (Number.isFinite(v)) {
+          item.set({ [key]: key === "w" || key === "h" ? Math.max(1, v) : v });
+        }
+        writeInputs();
+      });
+    };
+    ["cx", "cy", "h", "rot"].forEach(bindNumber);
+
+    item.inputs.w.addEventListener("change", () => {
+      const v = parseFloat(item.inputs.w.value);
+      if (Number.isFinite(v)) {
+        const ratio = card.default.h / card.default.w;
+        item.set({ w: Math.max(1, v), h: Math.max(1, v * ratio) });
+        writeInputs();
+      }
+    });
+
+    item.inputs.scale.addEventListener("input", () => {
+      const k = parseFloat(item.inputs.scale.value);
+      item.set({ w: card.default.w * k, h: card.default.h * k });
+      writeInputs();
+    });
+
+    item.inputs.speed.addEventListener("input", () => {
+      const k = parseFloat(item.inputs.speed.value);
+      item.set({ ms: card.ms / k });
+      writeInputs();
+    });
+
+    item.inputs.opacity.addEventListener("input", () => {
+      item.set({ opacity: parseFloat(item.inputs.opacity.value) });
+      item.opacityValue.textContent = `${Math.round(item.state.opacity * 100)}%`;
+    });
+
+    item.resetBtn.addEventListener("click", () => {
+      item.state = {
+        cx: card.default.cx, cy: card.default.cy,
+        w: card.default.w, h: card.default.h,
+        rot: card.default.rot || 0, blend: card.blend,
+        opacity: 1, ms: card.ms / 3,
+      };
+      item.dirty = true;
+      item.drawAgain = true;
+      writeInputs();
+    });
+
+    item.saveBtn.addEventListener("click", async () => {
+      const s = item.state;
+      const body = {
+        agent: card.agent,
+        cx: s.cx, cy: s.cy, w: s.w, h: s.h,
+        rot: s.rot, blend: s.blend, opacity: s.opacity, ms: s.ms,
+      };
+      item.saveBtn.disabled = true;
+      item.saveBtn.textContent = "Saving…";
+      item.saveBtn.classList.remove("ok", "bad");
+      item.status.className = "status";
+      item.status.textContent = "composing…";
+      try {
+        const res = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+        item.saved = { ...s };
+        item.dirty = false;
+        item.saveBtn.classList.add("ok");
+        item.saveBtn.textContent = "Saved";
+        item.status.className = "status ok";
+        item.status.textContent =
+          `${json.frames} frames · ${(json.bytes / 1048576).toFixed(2)} MB`;
+        writeInputs();
+        setTimeout(() => {
+          item.saveBtn.classList.remove("ok");
+          item.saveBtn.textContent = "Save";
+        }, 1800);
+      } catch (err) {
+        item.saveBtn.classList.add("bad");
+        item.saveBtn.textContent = "Failed";
+        item.status.className = "status bad";
+        item.status.textContent = String(err.message || err);
+        setTimeout(() => {
+          item.saveBtn.classList.remove("bad");
+          item.saveBtn.textContent = "Save";
+        }, 2400);
+      } finally {
+        item.saveBtn.disabled = false;
+      }
+    });
+
+    // Drag to place.
+    let drag = null;
+    const canvas = item.canvas;
+    const toCard = (ev) => {
+      const r = canvas.getBoundingClientRect();
+      return {
+        x: (ev.clientX - r.left) * CARD_W / r.width,
+        y: (ev.clientY - r.top) * CARD_H / r.height,
+      };
+    };
+    canvas.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      const p = toCard(ev);
+      drag = { x: p.x, y: p.y, cx: item.state.cx, cy: item.state.cy };
+      canvas.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    canvas.addEventListener("pointermove", (ev) => {
+      if (!drag) return;
+      const p = toCard(ev);
+      item.set({ cx: drag.cx + (p.x - drag.x), cy: drag.cy + (p.y - drag.y) });
+      item.inputs.cx.value = fmt(item.state.cx);
+      item.inputs.cy.value = fmt(item.state.cy);
+      ev.preventDefault();
+    });
+    const endDrag = (ev) => {
+      if (!drag) return;
+      drag = null;
+      try { canvas.releasePointerCapture(ev.pointerId); } catch (_) {}
+    };
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+
+    canvas.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      const k = ev.deltaY < 0 ? 1.06 : 1 / 1.06;
+      item.set({
+        w: clamp(item.state.w * k, 4, 3000),
+        h: clamp(item.state.h * k, 4, 3000),
+      });
+      writeInputs();
+    }, { passive: false });
+
+    // Lazy image loading when a card is near the viewport.
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) item.visible = e.isIntersecting;
+    }, { rootMargin: "500px 0px" });
+
+    const loader = new IntersectionObserver(async (entries, obs) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      obs.disconnect();
+      try {
+        const [base, sheet] = await Promise.all([
+          loadImage(card.baseUrl),
+          loadImage(card.sheetUrl),
+        ]);
+        item.base = base;
+        item.sheet = sheet;
+        item.drawAgain = true;
+      } catch (err) {
+        item.status.className = "status bad";
+        item.status.textContent = "source missing";
+        fail(`Could not load ${card.agent}: ${err.message}. Run prepare.py to rebuild _tuner sources.`);
+      }
+    }, { rootMargin: "900px 0px" });
+    loader.observe(node);
+
+    writeInputs();
+    io.observe(node);
+    grid.appendChild(node);
+    return item;
+  }
+
+  function tick() {
+    if (!started) started = performance.now();
+    const now = performance.now();
+    for (const item of items) {
+      if (!item.visible || (!item.base && !item.sheet)) continue;
+      const ms = Math.max(20, item.state.ms || item.card.ms);
+      const frame = Math.floor((now - started) / ms) % item.card.frames;
+      if (item.drawAgain || frame !== item.lastFrame) {
+        item.draw(frame);
+        item.drawAgain = false;
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  async function boot() {
+    try {
+      const res = await fetch("/api/cards", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.cards || data.cards.length !== 30) {
+        throw new Error(`expected 30 cards, got ${data.cards ? data.cards.length : 0}`);
+      }
+      for (const card of data.cards) items.push(makeItem(card));
+      loadState.textContent = `${items.length} cards · saved settings loaded`;
+      requestAnimationFrame(tick);
+    } catch (err) {
+      loadState.textContent = "load failed";
+      fail(`Could not read /api/cards: ${err.message}`);
+    }
+  }
+
+  showBounds.addEventListener("change", () => {
+    for (const item of items) item.drawAgain = true;
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
