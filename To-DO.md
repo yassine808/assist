@@ -4,4 +4,7 @@
 - [] message toast
 - [] max logging (limit the size of logging)
 - [] auto-updater
-
+- [] profile desktop  shortcut that directly launches the game
+- [] add a setting to launch VALORANT after clicking a profile
+- [] add SFX on/off setting
+- [] in-app scaling setting
