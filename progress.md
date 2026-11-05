@@ -333,6 +333,18 @@
   full contact sheet inspected for all 30 composites.
 - Next: per-card nudges if Yassine flags specific agents.
 
+### 2026-11-05 - Reset: tools and all extracted card assets deleted
+
+- Goal: wipe the old extraction toolchain and card asset trees, start over.
+- Done: deleted `tools/` (8194 files, 0.90 GB) and `official playercards/`
+  (2189 files, 0.75 GB) after Yassine chose to drop the uncommitted
+  `tools/carddump/Program.cs` edits.
+- Verified: both paths gone (`Test-Path` false); `git status` shows 36 tracked
+  deletions (30 `Extracted/animated/*.webp` + 6 tool sources) — not staged.
+- Still pointing at the deleted data: `src/main/playercards.ts` (dev path) and
+  `electron-builder.yml` (`extraResources: official playercards/AgentMastery/Animated`).
+- Next: decide the new extraction approach, then re-point those two references.
+
 ### 2026-11-05 - Agent Mastery placement, second pass
 
 - Goal: fix the composited cards flagged as wrong (Iso, Hush, Harbor, Killjoy and
