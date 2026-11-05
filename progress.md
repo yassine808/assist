@@ -284,3 +284,69 @@
 - Note: `official playercards/` is gitignored, so a release build needs the
   assets staged locally for `extraResources` to include them.
 - Next: manual visual check of the Animated tab in the running app.
+
+### 2026-11-04 - Agent Mastery cards re-extracted from the local game install
+
+- Goal: rebuild all 30 Agent Mastery player cards and their animations from the
+  local VALORANT build instead of the wiki, with exact pixel coordinates.
+- Done:
+  - 	ools/carddump gained props, params (NameMap dump), a fixed nested
+    savepkg write and an honoured --limit in list.
+  - All 30 card packages located under
+    ShooterGame/Content/Personalization/PlayerCards/Bloomline/* and every
+    texture dumped at native size into official playercards/AgentMastery/Extracted/.
+  - Per agent: card.png (268x640, whole card art), nimation.png (native
+    flipbook atlas), rames/fNNN.png (every cell at its exact sheet rect),
+    info.json (pixel x/y/w/h plus u/v per frame), 	extures/ (all source
+    textures), plus a top-level index.json.
+- Verified: 30/30 agents. 28 cards use a uniform grid (16 frames of 256x256,
+  or 512x512, KAYO 8, Neon 256x512); Hush is 4096x2048 cut 11x5 = 55 frames of
+  372x409 (fractional 4096/11, 2048/5, boundaries rounded); Sova 2048x2048 cut
+  5x2 = 10 frames. Frame alpha channels are byte-identical (NCC 1.000000) to
+  the independent 2026 APNG set for every uniform-grid card, and RGB NCC is
+  0.998 for Hush/Sova, so grid, offsets and frame order are confirmed.
+  Contact sheets checked visually for all 30 cards and all frame 0s.
+- Not obtained: the overlay rect (X/Y/scale of the flipbook on the card quad).
+  It is not in the _UIData blueprint (strings only) and the
+  Materials/Playercard_<X>_MI actor is unversioned, so CUE4Parse returns no
+  properties without a .usmap; the tagged property stream could not be walked
+  by hand either.
+- Next: none for extraction. Decide whether the app needs a composite (which
+  would need the overlay rect) or the native parts as shipped.
+
+### 2026-11-05 - Agent Mastery animated previews
+
+- Goal: make the composited (animated) cards look right, since the first pass
+  drew the flipbook at scale 1.10 anchored (-6, 36) and most cards looked off.
+- Done:
+  - Tried to recover the true overlay rect from the game: _Mask/_Alpha are
+    card-space effect masks, not placement; _MI property stream still
+    undecodable (encrypted/unversioned); correlation of frame 0 against the base
+    art is degenerate (no shared structure).
+  - Switched to a uniform, non-distorting rule: fit the cell inside the card art
+    area (268x576), centred at 46% height, alpha-over the base. Rebuilt all 30
+    animated cards as 268x640 animated WebP (66 ms/frame) in
+    Extracted/animated/.
+  - New pages: preview_animated.html (baked), preview_placement.html
+    (live scale/x/y tuner).
+- Verified: 30 files, correct frame count and 66 ms ANMF duration, 268x640;
+  full contact sheet inspected for all 30 composites.
+- Next: per-card nudges if Yassine flags specific agents.
+
+### 2026-11-05 - Agent Mastery placement, second pass
+
+- Goal: fix the composited cards flagged as wrong (Iso, Hush, Harbor, Killjoy and
+  most of the rest).
+- Done:
+  - Compared contain / cover / cover-art against the base art for every card.
+    Cover (fill the 268x640 card, aspect kept, crop overflow) is the only rule
+    that puts the layers where the art expects them: Harbor's gauntlet meets the
+    sleeve at the top, Hush's diamond floats over the hand, Killjoy's gun reads
+    as the card's subject, Iso's pattern continues to the edges.
+  - Rebuilt all 30 animated WebP at quality 92 (cover rule) and regenerated
+    preview_animated.html, preview_placement.html (now a cover-baseline tuner)
+    and preview_all.html.
+- Verified: first frame of every baked file checked against the expected
+  composite (NCC 0.996-0.999, lossy WebP), 268x640, frame counts 8/10/16/55 as
+  extracted; 30-card contact sheet built from the shipped WebP files inspected.
+- Next: per-card overrides if a specific agent still looks off.
