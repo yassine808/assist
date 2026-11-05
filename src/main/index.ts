@@ -1,9 +1,14 @@
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
+import log from "electron-log";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
 import { createAppWindow, AppWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
 import { registerCardScheme, handleCardProtocol, listAnimatedCards } from "./playercards";
+
+// Bound the on-disk log. electron-log rotates the current file to `<name>.old.log`
+// once it passes this size, so a long-running install cannot grow it forever.
+log.transports.file.maxSize = 5 * 1024 * 1024;
 
 let python: PythonBridge | null = null;
 let appWindow: AppWindow | null = null;

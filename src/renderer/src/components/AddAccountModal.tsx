@@ -104,11 +104,13 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   const finished = effectivePhase === "created";
   const failed = effectivePhase === "error";
   const clientReady = effectivePhase === "waiting";
-  const step1Text = clientReady
-    ? "Riot Client ready"
-    : progress?.status === "closing"
-      ? "Closing Riot Client\u2026"
-      : "Opening Riot Client\u2026";
+  const step1Text = clientReady ? (
+    <><b className="aa-accent">Riot Client</b> ready</>
+  ) : progress?.status === "closing" ? (
+    <>Closing <b className="aa-accent">Riot Client</b>&hellip;</>
+  ) : (
+    <>Opening <b className="aa-accent">Riot Client</b>&hellip;</>
+  );
 
   let footer = (
     <button type="button" onClick={() => void handleClose()} className="btn-ghost h-10 px-5 text-[11px]">Cancel</button>

@@ -49,6 +49,10 @@ body {
   user-select: none;
 }
 
+/* Images are app art, not files. Without this Chromium starts an OS drag
+   (card art / emblem / agent icon dropped onto the desktop). */
+img { -webkit-user-drag: none; }
+
 /* thin, quiet scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -196,6 +200,9 @@ body {
 .page-title {
   font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #f3efe8;
 }
+/* Profiles page: thinner toolbar so the lobby cards get the vertical space */
+.page-title.is-compact { font-size: 21px; letter-spacing: 0.06em; }
+.page-title.is-compact .count-pill { height: 19px; min-width: 22px; margin-left: 8px; font-size: 10px; }
 .page-sub { font-size: 13px; color: rgba(236, 232, 225, 0.5); letter-spacing: 0.02em; }
 .count-pill {
   display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 8px; margin-left: 10px; vertical-align: middle;
@@ -439,6 +446,7 @@ body {
 .aa-signin-caption-tick { width: 16px; height: 16px; display: grid; place-items: center; color: #fff; border-radius: 4px; background: linear-gradient(155deg, #ff6a76, #d81f2e); box-shadow: 0 0 0 1px rgba(255, 70, 85, 0.5), 0 4px 12px rgba(255, 70, 85, 0.3); }
 .aa-signin-caption-tick svg { width: 10px; height: 10px; }
 .aa-signin-caption-text { font: 500 12px/1.45 var(--app-font); color: rgba(236, 232, 225, 0.55); }
+.aa-accent { color: #ff8a92; font-weight: 800; letter-spacing: 0.03em; }
 .aa-signin-status { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; width: 100%; max-width: 262px; margin-top: 4px; text-align: left; }
 .aa-signin-step { display: flex; align-items: center; gap: 10px; font: 600 11.5px/1.3 var(--app-font); letter-spacing: 0.04em; color: rgba(236, 232, 225, 0.38); transition: color 0.25s; }
 .aa-signin-step.is-active { color: #f3efe8; }

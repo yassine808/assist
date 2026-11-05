@@ -662,3 +662,50 @@
   `SettingsView.tsx`, and `npm run test` fails in `window.singleton.test.ts`.
 - Next: run the app and confirm a new account shows an animated card and the
   picker lands on the Animated tab.
+
+### 2026-11-05 — Interface sounds toggle in Settings
+
+- Goal: TO-DO "add SFX on/off setting" — `lib/sfx.ts` already had
+  `setEnabled`/`isEnabled` and `localStorage rs_sfx`, but nothing in the UI
+  touched it.
+- Done:
+  - `SettingsView`: new "Interface sounds" `SettingToggle` in the System card,
+    seeded from `sfx.isEnabled()`. Toggling calls `sfx.setEnabled` (persists to
+    `rs_sfx`) and plays one tick when switching on.
+  - System blurb now reads "Tray behaviour, sounds and language."
+  - Added a test in `SettingsView.test.tsx` asserting the switch flips
+    `aria-checked` and writes the matching `rs_sfx` value.
+  - Ticked the item in `TO-DO.md`.
+- Verified: `vitest` on `SettingsView.test.tsx` 9/9 passed, `tsc -p
+  tsconfig.web.json` clean, `npm run build` OK. ESLint still reports the
+  pre-existing `react-hooks/purity` error at `SettingsView.tsx` `Date.now()`
+  (present at HEAD, untouched).
+- Next: none.
+
+### 2026-11-05 — TO-DO sweep: lazy card art, drag guard, highlighted Riot Client, env example, log cap
+
+- Goal: clear the small open items in `TO-DO.md`; tick the ones already built.
+- Done:
+  - `ProfileCard`: card art uses `loading="lazy"` + `decoding="async"` so only
+    cards near the viewport fetch from valorant-api.com (top to bottom), with
+    a shimmering `.lobby-art-charge` placeholder until `onLoad`. Charge state
+    resets when a profile's card changes.
+  - `index.css`: `img { -webkit-user-drag: none; }` so Chromium never starts an
+    OS drag of card art / rank emblem / agent icon onto the desktop.
+  - `AddAccountModal`: "Riot Client" in both the opening and ready steps is
+    wrapped in `.aa-accent` (riot red, bold).
+  - `.env.example` with the single supported key, `HENRIKDEV_API_KEY`.
+  - `main/index.ts`: `electron-log` file transport capped at 5 MB; electron-log
+    rotates to `main.old.log` after that.
+  - Ticked finished items: SFX toggle, card skeleton, card scaling, drag guard,
+    highlighted Riot Client, Stay-signed-in image, `.env.example`, log cap,
+    auto-updater, launch-product setting, tray-close settings.
+- Verified: `pytest` 132 passed; `vitest` 33 passed with the known
+  `window.singleton.test.ts` failures (the test targets `openSettingsWindow` /
+  `openAgentMapWindow`, which no longer exist now that Settings is an overlay);
+  `tsc -p tsconfig.web.json` clean; `npm run build` OK; ESLint only the known
+  `react-hooks/purity` error in `SettingsView.tsx`.
+- Next: the stale `window.singleton.test.ts` needs a decision (delete or
+  rewrite for the overlay UI) before `typecheck`/`test` can go green.
+
+

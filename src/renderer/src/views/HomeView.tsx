@@ -129,18 +129,16 @@ export default function HomeView() {
   }, []);
 
   return (
-    <div className="px-9 py-8">
-      <header className="flex items-end justify-between mb-9 pb-5 border-b border-white/[0.06]">
-        <div>
-          <h1 className="page-title">
-            Profiles
-            {!loading && <span className="count-pill">{profiles.length}</span>}
-          </h1>
-        </div>
+    <div className="px-9 pt-4 pb-8">
+      <header className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+        <h1 className="page-title is-compact">
+          Profiles
+          {!loading && <span className="count-pill">{profiles.length}</span>}
+        </h1>
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowImportExport(true)}
-            className="btn-ghost h-9 px-4 text-[11px]"
+            className="btn-ghost h-8 px-3.5 text-[10px]"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
             Import / Export
@@ -148,7 +146,7 @@ export default function HomeView() {
           {(loading || profiles.length > 0) && (
             <button
               onClick={() => setShowAddAccount(true)}
-              className="btn-primary h-9 px-5 text-[11px]"
+              className="btn-primary h-8 px-4 text-[10px]"
             >
               <Plus size={14} strokeWidth={3} /> Add Account
             </button>

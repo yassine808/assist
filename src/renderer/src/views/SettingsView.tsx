@@ -6,6 +6,7 @@ import { useToast } from "../components/Toast";
 import { useAppearance } from "../hooks/useAppearance";
 import { CUSTOM_ID, SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES, customTheme } from "../lib/appearance";
 import { useIPC } from "../hooks/useIPC";
+import { sfx } from "../lib/sfx";
 import { base64ToBlob } from "../utils/base64";
 import type { Profile } from "../types/profile";
 
@@ -31,6 +32,13 @@ export default function SettingsView() {
   const [updateState, setUpdateState] = useState<string>("idle");
   const [updateVersion, setUpdateVersion] = useState<string>("");
   const [updatePercent, setUpdatePercent] = useState<number>(0);
+  const [sounds, setSounds] = useState(() => sfx.isEnabled());
+
+  const changeSounds = (v: boolean) => {
+    setSounds(v);
+    sfx.setEnabled(v);
+    if (v) sfx.tick(); // short confirmation, the first one also unlocks audio
+  };
 
   useEffect(() => {
     void call<ConfigState>("get_config").then((c) => setConfig(c ?? {}));
@@ -335,10 +343,16 @@ export default function SettingsView() {
       ),
     },
     {
-      id: "system", nav: "System", icon: SlidersHorizontal, blurb: "Tray behaviour and language.",
+      id: "system", nav: "System", icon: SlidersHorizontal, blurb: "Tray behaviour, sounds and language.",
       title: "System",
       rows: (
         <>
+          <SettingToggle
+            label="Interface sounds"
+            description="Hover, drag and launch effects"
+            checked={sounds}
+            onChange={changeSounds}
+          />
           <SettingToggle
             label="Close to Tray"
             description="Keep running in the tray when the window is closed"

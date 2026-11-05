@@ -11,6 +11,12 @@ export interface AppWindow {
   requestClose: () => void;
 }
 
+// The lobby card stack is fixed-size in CSS: title bar 40 + page top 16 +
+// toolbar 32 + divider 13 (12 padding + 1 border) + gap 16 + slot top 4 +
+// card 552.24 (472 × --lobby-k 1.17) + button margin 16 + button 56 ≈ 746.
+// Keep minHeight at that value so a short window can never crop the START button.
+const MIN_WINDOW_HEIGHT = 746;
+
 async function readTrayConfig(
   python: PythonBridge
 ): Promise<{ closeToTray: boolean; minimizeToTray: boolean }> {
@@ -33,7 +39,7 @@ export async function createAppWindow(
     width: 1100,
     height: 750,
     minWidth: 900,
-    minHeight: 600,
+    minHeight: MIN_WINDOW_HEIGHT,
     frame: false,
     backgroundColor: "#0f0f12",
     show: false,

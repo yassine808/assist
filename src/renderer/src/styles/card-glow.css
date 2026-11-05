@@ -74,6 +74,21 @@
 }
 .lobby-art-empty { background: radial-gradient(ellipse at 50% 35%, #24405a 0%, #0f1923 80%); }
 
+/* charging state: a shimmer inside the art box until the network image decodes */
+.lobby-art-charge {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(100deg, rgba(190, 225, 240, 0.05) 28%, rgba(190, 225, 240, 0.16) 50%, rgba(190, 225, 240, 0.05) 72%);
+  background-size: 220% 100%;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 240px, rgba(0,0,0,.45) 300px, transparent 340px);
+  mask-image: linear-gradient(180deg, #000 0, #000 240px, rgba(0,0,0,.45) 300px, transparent 340px);
+  animation: lobby-charge 1.4s ease-in-out infinite;
+}
+.lobby-art.is-charging { opacity: 0; }
+@keyframes lobby-charge {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
 /* ── hover: VALORANT-style "scan + lock" (the card itself never moves) ── */
 .lobby-scan { position: absolute; left: 0; right: 0; top: 0; height: 56px; z-index: 2; pointer-events: none; opacity: 0; transform: translateY(-100%);
   background: linear-gradient(180deg, transparent 0%, rgba(150, 225, 255, 0.05) 45%, rgba(170, 235, 255, 0.26) 100%);

@@ -51,10 +51,15 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   // Anything else (wide / square art) keeps the cover crop so it still fills the card.
   const artRef = useRef<HTMLImageElement>(null);
   const [portrait, setPortrait] = useState(false);
+  // Card art comes from valorant-api.com over the network. `loading="lazy"`
+  // defers the ones below the fold; this flag swaps the charging shimmer for
+  // the picture once that particular file has decoded.
+  const [artReady, setArtReady] = useState(false);
   const measureArt = (el: HTMLImageElement | null) => {
     if (el && el.naturalWidth > 0) setPortrait(el.naturalHeight / el.naturalWidth >= 1.3);
   };
   useEffect(() => {
+    setArtReady(false);
     measureArt(artRef.current);
   }, [vd?.player_card_bg]);
 
@@ -133,7 +138,20 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
 
             <div className="lobby-art-wrap">
               {vd?.player_card_bg
-                ? <img ref={artRef} src={vd.player_card_bg} alt="" className={`lobby-art${portrait ? " is-portrait" : ""}`} onLoad={(e) => measureArt(e.currentTarget)} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ? <>
+                    {!artReady && <span className="lobby-art-charge" aria-hidden />}
+                    <img
+                      ref={artRef}
+                      src={vd.player_card_bg}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
+                      className={`lobby-art${portrait ? " is-portrait" : ""}${artReady ? "" : " is-charging"}`}
+                      onLoad={(e) => { measureArt(e.currentTarget); setArtReady(true); }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; setArtReady(true); }}
+                    />
+                  </>
                 : <div className="lobby-art lobby-art-empty" />}
               <span className="lobby-scan" />
               <div className="lobby-actions">
