@@ -53,14 +53,13 @@ export default function ProfileGrid({
 
   // Ref callbacks must keep a stable identity: React re-invokes a changed callback on every render
   // (null, then the element), which would wipe each card's spring state in the middle of a drag.
+  // The cache is never pruned: deleting an entry on detach would hand React a *new* callback on the
+  // next render, which detaches and re-attaches every card's ref (and resets its spring) again.
   const refCache = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
   const refFor = (name: string) => {
     let cb = refCache.current.get(name);
     if (!cb) {
-      cb = (el) => {
-        engine.register(name, el);
-        if (!el) refCache.current.delete(name);
-      };
+      cb = (el) => engine.register(name, el);
       refCache.current.set(name, cb);
     }
     return cb;

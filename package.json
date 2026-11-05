@@ -1,6 +1,6 @@
 {
   "name": "riotswitcher",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Riot Account Manager — Switch between Riot accounts instantly",
   "main": "out/main/index.js",
   "author": "RiotSwitcher Contributors",
@@ -12,6 +12,8 @@
     "dev": "electron-vite dev",
     "dev:electron": "electron-vite dev",
     "dev:python": "python src/backend/main.py --dev",
+    "embed:env": "node build/embed-env.mjs",
+    "prebuild": "node build/embed-env.mjs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "build:py": "pyinstaller build/build-python.spec --noconfirm --distpath release --workpath build/pyinstaller",

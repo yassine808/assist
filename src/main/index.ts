@@ -15,6 +15,9 @@ let appWindow: AppWindow | null = null;
 
 registerCardScheme();
 
+// TEMP debug hook (remove)
+app.commandLine.appendSwitch("remote-debugging-port", "9222");
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import { app } from "electron";
 import { animatedCardDir } from "./playercards";
+import { sealedEnv } from "./env-secret";
 /**
  * Spawns the Python backend as a child process and communicates via
  * JSON-line protocol over stdin/stdout.
@@ -13,6 +14,12 @@ import { animatedCardDir } from "./playercards";
  * Event:    {"event":"valorant_data_updated","params":{...}}\n
  */
 
+/**
+ * API key for the Python backend, in priority order:
+ *   1. an unsealed .env next to the app (dev builds, and users who bring their own key),
+ *   2. the .env sealed into the build by build/embed-env.mjs.
+ * The key is only ever passed through the child process environment.
+ */
 function loadEnvKey(): string {
   try {
     const envPath = join(app.isPackaged ? process.resourcesPath : app.getAppPath(), ".env");
@@ -25,9 +32,9 @@ function loadEnvKey(): string {
       }
     }
   } catch {
-    // .env not found — rely on env var or dev fallback
+    // .env not found — fall through to the key sealed into the build
   }
-  return "";
+  return sealedEnv().HENRIKDEV_API_KEY?.trim() ?? "";
 }
 
 interface PendingCall {

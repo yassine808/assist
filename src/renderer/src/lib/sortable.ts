@@ -76,10 +76,41 @@ export class SortableEngine {
   }
 
   register(id: string, el: HTMLElement | null) {
-    if (!el) { this.bodies.delete(id); return; }
     const cur = this.bodies.get(id);
+    if (!el) {
+      if (!cur) return;
+      if (this.drag?.id === id) this.abortDrag();
+      this.releaseEl(cur);
+      this.bodies.delete(id);
+      return;
+    }
     if (cur?.el === el) return;
+    if (cur) {
+      // Same card, new DOM node (remount / HMR): carry the animation state over
+      // instead of dropping a lift that is still in flight and leaving the old
+      // node stuck with `is-lifted` and a stale transform.
+      const body: Body = {
+        el, x: cur.x, y: cur.y, vx: cur.vx, vy: cur.vy, s: cur.s, vs: cur.vs,
+        lx: cur.lx, ly: cur.ly, hasLayout: cur.hasLayout, idle: cur.idle, lifted: cur.lifted,
+      };
+      if (cur.lifted) {
+        el.classList.add("is-lifted");
+        el.style.transform = cur.el.style.transform;
+        el.style.transformOrigin = cur.el.style.transformOrigin;
+      }
+      this.releaseEl(cur);
+      this.bodies.set(id, body);
+      if (!body.idle || body.lifted) this.kick();
+      return;
+    }
     this.bodies.set(id, { el, x: 0, y: 0, vx: 0, vy: 0, s: 1, vs: 0, lx: 0, ly: 0, hasLayout: false, idle: true, lifted: false });
+  }
+
+  /** Clear the drag chrome a body may still carry on its element. */
+  private releaseEl(b: Body) {
+    b.el.classList.remove("is-lifted");
+    b.el.style.transform = "";
+    b.el.style.transformOrigin = "";
   }
 
   /** Call after any DOM/layout change (order, resize, scale). Existing items glide to their new slots. */
@@ -139,7 +170,10 @@ export class SortableEngine {
     cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.detach();
+    this.drag = null;
+    for (const b of this.bodies.values()) this.releaseEl(b);
     document.body.classList.remove("is-sorting");
+    this.slot?.classList.remove("is-on");
   }
 
   // ── internals ──────────────────────────────────────────────────────────
@@ -192,6 +226,26 @@ export class SortableEngine {
   private cancelPending() {
     this.detach();
     this.drag = null;
+  }
+
+  /**
+   * The lifted card's element disappeared mid-drag (its ref was detached). Drop
+   * the drag quietly: release the capture, clear the chrome and put the order
+   * back. Callbacks are skipped because this can run while React is unmounting.
+   */
+  private abortDrag() {
+    const d = this.drag;
+    this.detach();
+    this.drag = null;
+    if (d) {
+      if (this.captured) {
+        try { this.captured.releasePointerCapture(d.pointerId); } catch { /* element may be gone */ }
+        this.captured = null;
+      }
+      this.order = [...d.startOrder];
+    }
+    document.body.classList.remove("is-sorting");
+    this.slot?.classList.remove("is-on");
   }
 
   private activate() {
@@ -342,7 +396,7 @@ export class SortableEngine {
 
     for (const [id, b] of this.bodies) {
       const isDrag = !!d && d.id === id;
-      if (b.idle && !isDrag) continue;
+      if (b.idle && !isDrag && !b.lifted) continue;
 
       let tx = 0, ty = 0, ts = 1;
       let kPos = this.reduce ? 900 : 440, cPos = damping(kPos, this.reduce ? 1 : 0.8);

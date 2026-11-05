@@ -17,6 +17,8 @@ files:
   - build/icon.png
 
 extraResources:
+  - from: build/env.bin
+    to: env.bin
   - from: release/python
     to: python
     filter:
