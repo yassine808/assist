@@ -512,3 +512,29 @@
   - Sova APNG rebuilt: 268×640, 10 frames, 69 ms, 2.49 MB.
   - `manifest.csv` refreshed with the cover quads.
 - Next: push the tuner HTML and APNGs.
+
+### 2026-11-05 - Tuner: undistorted Hush/Gekko/Sova, track the shipped cards
+
+- Goal: Hush looked stretched; put the sheet on the card as-is. Same for Gekko
+  and Sova. Also keep the whole `official playercards/AgentMastery` folder in
+  git and ignore only the tuner's working sources.
+- Cause: the material quads are anisotropic. Hush 254.5x328.2 (1.17x),
+  Gekko 226.7x433.0 (1.90x), Sova 269.6x430.1 (1.57x) against cells of
+  372x410, 256x256 and 410x1024. The previous Hush/Sova "cover" default was
+  undistorted but cropped most of the frame.
+- Fix:
+  - `server.py`: `FULL_ART = {Gekko, Hush, Sova}` (Gekko's transparent surround
+    defeats the opacity test) and `TOP_SLICE = {Hush}`. Hush is fitted to the
+    card width at its own aspect and pinned to the top edge; Gekko/Sova cover
+    the card at their own aspect.
+  - Rebuilt the three APNGs and saved their placements in `placement.json`.
+  - `.gitignore`: only `official playercards/AgentMastery/_tuner/` is ignored;
+    `Animated/`, `manifest.csv` and `preview_all.html` are tracked.
+  - `manifest.csv` regenerated from the live placements.
+- Verified:
+  - `py_compile` on `server.py` + `prepare.py` passes.
+  - 30 APNGs are 268x640 and multi-frame; every frame-0 composition matches its
+    saved placement (mean abs diff < 3).
+  - Quads keep the cell aspect: Hush 268x294.8 (0.909), Gekko 640x640 (1.0),
+    Sova 268x670 (0.4). Hush APNG 11.68 MB -> 6.44 MB.
+- Next: reload the tuner; push.

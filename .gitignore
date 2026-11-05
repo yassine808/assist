@@ -28,8 +28,10 @@ electron.vite.config.*.mjs
 # Local agent/tooling scratch
 .claude/
 
-# Extracted game assets and toolchains (not source, ~1.8 GB)
-official playercards/
+# Extracted game textures and toolchains (not source, ~1.8 GB)
+# The shipped Agent Mastery cards, manifest and preview are tracked; the tuner's
+# generated working sources (_tuner) are not.
+official playercards/AgentMastery/_tuner/
 tools/dotnet/
 tools/retoc/
 tools/retoc.zip

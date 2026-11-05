@@ -40,9 +40,24 @@ SAVE_LOCK = threading.Lock()
 FULL_CARD_CACHE = {}
 
 
+# Cards whose flipbook is artwork rather than a soft effect layer. The material
+# quad for these squashes the cell (Hush 1.17x, Gekko 1.90x, Sova 1.57x), so the
+# tuner ignores it and keeps the cell's own pixel aspect instead.
+#   Gekko's sheet has a transparent surround, which the opacity test below cannot
+#   see, so it is listed here as well.
+FULL_ART = {"Gekko", "Hush", "Sova"}
+
+# Full-art cards whose cells are only the top slice of the card art (the rest of
+# the card, hands and frame, is in the base image). These are fitted to the card
+# width and pinned to the top edge so the slice joins the base art.
+TOP_SLICE = {"Hush"}
+
+
 def is_full_card(card):
     """True when the flipbook cell is the whole card art, not an effect layer."""
     agent = card["agent"]
+    if agent in FULL_ART:
+        return True
     if agent in FULL_CARD_CACHE:
         return FULL_CARD_CACHE[agent]
     sheet = Image.open(SRC / agent / "sheet.png").convert("RGBA")
@@ -65,12 +80,18 @@ def is_full_card(card):
 
 
 def card_default(card):
+    cw = float(card["cellW"])
+    ch = float(card["cellH"])
+    if card["agent"] in TOP_SLICE:
+        # Fit the card width, keep the cell's own aspect, pin the top edge to
+        # the top of the card (no crop, no stretch).
+        w = float(CARD_W)
+        h = w * ch / cw
+        return dict(cx=CARD_W / 2.0, cy=h / 2.0, w=w, h=h, rot=0.0)
     if is_full_card(card):
         # Cover the card without distorting the cell: keep the cell's own
         # aspect ratio, scale it until both card axes are covered, and let the
         # canvas crop the overflow.
-        cw = float(card["cellW"])
-        ch = float(card["cellH"])
         scale = max(CARD_W / cw, CARD_H / ch)
         return dict(cx=CARD_W / 2.0, cy=CARD_H / 2.0,
                     w=cw * scale, h=ch * scale, rot=0.0)
