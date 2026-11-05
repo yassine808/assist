@@ -18,10 +18,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update:status", handler);
   },
 
-  // Secondary windows
-  openSettings: () => ipcRenderer.invoke("open:settings"),
-  openAgentMaps: () => ipcRenderer.invoke("open:agent-maps"),
-
   // Local animated player cards (APNG) shipped with the app
   getAnimatedCards: () => ipcRenderer.invoke("cards:animated"),
 

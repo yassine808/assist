@@ -1,13 +1,32 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { hydrateFromConfig } from "./lib/appearance";
-import { TitleBar } from "./components/TitleBar";
+import { TitleBar, type Page } from "./components/TitleBar";
 import { ToastProvider } from "./components/Toast";
+import SettingsOverlay from "./components/SettingsOverlay";
 import HomeView from "./views/HomeView";
-import SettingsView from "./views/SettingsView";
 import AgentMapView from "./views/AgentMapView";
 
+/** A full-size scrolling page. Inactive pages stay mounted (state and layout kept) but are hidden. */
+function Pane({ active, children }: Readonly<{ active: boolean; children: ReactNode }>) {
+  return (
+    <div className={`view-pane ${active ? "is-active" : ""}`} aria-hidden={!active}>
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
-  const view = new URLSearchParams(window.location.search).get("view");
+  const [page, setPage] = useState<Page>("profiles");
+  const [visited, setVisited] = useState<Record<Page, boolean>>({ profiles: true, agents: false });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const navigate = useCallback((p: Page) => {
+    setVisited((v) => (v[p] ? v : { ...v, [p]: true }));
+    setPage(p);
+    setSettingsOpen(false);
+  }, []);
+  const toggleSettings = useCallback(() => setSettingsOpen((o) => !o), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
     void window.electronAPI?.call?.("get_config")
@@ -15,14 +34,26 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
+  // Keyboard navigation: Ctrl+1 / Ctrl+2 switch pages, Ctrl+, toggles settings.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      if (e.key === "1") { e.preventDefault(); navigate("profiles"); }
+      else if (e.key === "2") { e.preventDefault(); navigate("agents"); }
+      else if (e.key === ",") { e.preventDefault(); toggleSettings(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate, toggleSettings]);
+
   return (
     <ToastProvider>
       <div className="flex flex-col h-full">
-        <TitleBar />
-        <main className="flex-1 overflow-y-auto">
-          {view === "settings" && <SettingsView />}
-          {view === "agent-maps" && <AgentMapView />}
-          {view !== "settings" && view !== "agent-maps" && <HomeView />}
+        <TitleBar page={page} onNavigate={navigate} settingsOpen={settingsOpen} onToggleSettings={toggleSettings} />
+        <main className="app-main">
+          <Pane active={page === "profiles"}><HomeView /></Pane>
+          {visited.agents && <Pane active={page === "agents"}><AgentMapView /></Pane>}
+          <SettingsOverlay open={settingsOpen} onClose={closeSettings} />
         </main>
       </div>
     </ToastProvider>

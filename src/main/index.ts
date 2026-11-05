@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
-import { createAppWindow, AppWindow, openSettingsWindow, openAgentMapWindow } from "./window";
+import { createAppWindow, AppWindow } from "./window";
 import { initAutoUpdater, checkForUpdates, downloadUpdate, quitAndInstall, setUpdateWindow } from "./updater";
 import { registerCardScheme, handleCardProtocol, listAnimatedCards } from "./playercards";
 
@@ -90,8 +90,6 @@ function setupIpc(): void {
   ipcMain.handle("update:check", () => checkForUpdates());
   ipcMain.handle("update:download", () => downloadUpdate());
   ipcMain.handle("update:install", () => quitAndInstall());
-  ipcMain.handle("open:settings", () => openSettingsWindow(python!));
-  ipcMain.handle("open:agent-maps", () => openAgentMapWindow());
 
   // Animated player cards live on disk, next to the app.
   ipcMain.handle("cards:animated", () => listAnimatedCards());

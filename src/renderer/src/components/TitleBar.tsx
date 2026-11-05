@@ -1,18 +1,28 @@
 import { useEffect, useState } from "react";
-import { Minus, Square, X, Settings, Map } from "lucide-react";
+import { Minus, Square, X, Settings, Users, Map } from "lucide-react";
 
-/** The agent-map launcher only makes sense from the home window. */
-function isHomeView(): boolean {
-  const view = new URLSearchParams(window.location.search).get("view");
-  return view !== "settings" && view !== "agent-maps";
+export type Page = "profiles" | "agents";
+
+interface Props {
+  page: Page;
+  onNavigate: (page: Page) => void;
+  settingsOpen: boolean;
+  onToggleSettings: () => void;
 }
 
-export function TitleBar() {
+const TABS: { id: Page; label: string; hint: string; icon: typeof Users }[] = [
+  { id: "profiles", label: "Profiles", hint: "Profiles (Ctrl+1)", icon: Users },
+  { id: "agents", label: "Agent Map", hint: "Agent Map (Ctrl+2)", icon: Map },
+];
+
+export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: Readonly<Props>) {
   const [version, setVersion] = useState("");
 
   useEffect(() => {
     void window.electronAPI?.getVersion?.().then((v) => setVersion(v ?? ""));
   }, []);
+
+  const idx = TABS.findIndex((t) => t.id === page);
 
   return (
     <div className="drag-region flex items-center justify-between h-10 titlebar-surface backdrop-blur border-b border-white/[0.04] shrink-0 relative overflow-hidden group/title">
@@ -35,7 +45,6 @@ export function TitleBar() {
 
       {/* Left: Logo + brand */}
       <div className="flex items-center px-3 gap-2.5">
-        {/* Brand mark (same as the favicon) */}
         <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden className="drop-shadow-[0_0_6px_rgba(255,70,85,0.45)]">
           <polygon points="10,0 64,0 64,54 54,64 0,64 0,10" fill="#0f1923" />
           <polygon points="12,18 36,18 36,12 52,22 36,32 36,26 12,26" fill="#ff4655" />
@@ -44,7 +53,6 @@ export function TitleBar() {
         <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">
           RIOTSWITCHER
         </span>
-        {/* Version pill */}
         {version && (
           <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.06] uppercase">
             v{version}
@@ -52,23 +60,36 @@ export function TitleBar() {
         )}
       </div>
 
-      {/* Right: Page launchers + Window controls */}
-      <div className="no-drag flex h-full">
-        {isHomeView() && (
+      {/* Centre: page navigation */}
+      <nav className="no-drag nav-tabs absolute left-1/2 -translate-x-1/2 h-full" aria-label="Pages" style={{ ["--tab" as string]: idx }}>
+        {TABS.map((t) => (
           <button
-            className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200"
-            onClick={() => window.electronAPI.openAgentMaps()}
-            aria-label="Agent Map"
+            key={t.id}
+            type="button"
+            className={`nav-tab ${page === t.id ? "is-on" : ""}`}
+            onClick={() => onNavigate(t.id)}
+            title={t.hint}
+            aria-current={page === t.id ? "page" : undefined}
           >
-            <Map size={14} />
+            <t.icon size={13} />
+            <span>{t.label}</span>
           </button>
-        )}
+        ))}
+        <span className="nav-tab-ind" aria-hidden />
+      </nav>
+
+      {/* Right: settings + window controls */}
+      <div className="no-drag flex h-full">
         <button
-          className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200"
-          onClick={() => window.electronAPI.openSettings()}
+          className={`w-11 h-full flex items-center justify-center transition-all duration-200 ${
+            settingsOpen ? "text-white bg-white/[0.08]" : "text-white/30 hover:text-white/90 hover:bg-white/[0.06]"
+          }`}
+          onClick={onToggleSettings}
           aria-label="Settings"
+          aria-pressed={settingsOpen}
+          title="Settings (Ctrl+,)"
         >
-          <Settings size={14} />
+          <Settings size={14} className={`transition-transform duration-500 ${settingsOpen ? "rotate-90" : ""}`} />
         </button>
         <button
           className="w-11 h-full flex items-center justify-center text-white/30 hover:text-white/90 hover:bg-white/[0.06] transition-all duration-200 relative group/btn"

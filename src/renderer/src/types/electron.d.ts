@@ -19,8 +19,6 @@ declare global {
       onUpdateStatus: (
         callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void
       ) => () => void;
-      openSettings: () => Promise<void>;
-      openAgentMaps: () => Promise<void>;
       getAnimatedCards: () => Promise<{ name: string; url: string }[]>;
     };
   }

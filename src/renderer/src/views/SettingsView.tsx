@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Archive, Download, EyeOff, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useToast } from "../components/Toast";
 import { useAppearance } from "../hooks/useAppearance";
-import { SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES } from "../lib/appearance";
+import { CUSTOM_ID, SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES, customTheme } from "../lib/appearance";
 import { useIPC } from "../hooks/useIPC";
 import { base64ToBlob } from "../utils/base64";
 import type { Profile } from "../types/profile";
@@ -15,7 +16,7 @@ interface ConfigState {
 export default function SettingsView() {
   const { call } = useIPC();
   const toast = useToast();
-  const { theme, scale, setTheme, setScale } = useAppearance();
+  const { theme, scale, custom, setTheme, setScale, setCustom } = useAppearance();
   const mirrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -71,6 +72,12 @@ export default function SettingsView() {
     setScale(k);
     mirror("PlayerCardScale", k);
   };
+  const changeCustom = (hex: string) => {
+    setCustom(hex);
+    mirror("CustomThemeColor", hex);
+    void call("set_config", { key: "BackgroundTheme", value: CUSTOM_ID });
+  };
+  const customDef = customTheme(custom);
   const scalePct = Math.round((scale / SCALE_DEFAULT) * 100);
   const scaleFill = `${((scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100}%`;
 
@@ -139,8 +146,43 @@ export default function SettingsView() {
 
   const exportLabel = exporting ? "Exporting…" : exportSuccess ? "Exported!" : "Export";
 
+  // Scrollspy: the rail follows what you're reading; clicking a category glides to it.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const secRefs = useRef<(HTMLElement | null)[]>([]);
+  const lockUntil = useRef(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const computeActive = useCallback(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const y = sc.scrollTop + 110;
+    let idx = 0;
+    secRefs.current.forEach((el, i) => { if (el && el.offsetTop <= y) idx = i; });
+    setActiveIdx(idx);
+  }, []);
+
+  const onScroll = useCallback(() => {
+    if (Date.now() >= lockUntil.current) computeActive();
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(computeActive, 140); // re-sync once a smooth scroll has stopped
+  }, [computeActive]);
+
+  useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
+
+  const goTo = (i: number) => {
+    const sc = scrollRef.current, el = secRefs.current[i];
+    setActiveIdx(i);
+    if (!sc || !el) return;
+    lockUntil.current = Date.now() + 700;
+    const top = Math.max(0, el.offsetTop - 14);
+    if (typeof sc.scrollTo === "function") sc.scrollTo({ top, behavior: "smooth" });
+    else sc.scrollTop = top;
+  };
+
   const cards = [
     {
+      id: "appearance", nav: "Appearance", icon: Palette, blurb: "Make the app yours: background colour and card size.",
       title: "Appearance",
       rows: (
         <div className="py-2">
@@ -163,6 +205,21 @@ export default function SettingsView() {
                 <span className="nm">{t.name}</span>
               </button>
             ))}
+            <label
+              className={`theme-swatch ${theme === CUSTOM_ID ? "is-on" : ""}`}
+              style={{ ["--sw-base" as string]: customDef.base, ["--sw-glow" as string]: `rgba(${customDef.glow}, 0.55)` }}
+              title="Pick any colour"
+            >
+              <span className="chip chip-custom" />
+              <span className="nm">Custom</span>
+              <input
+                type="color"
+                value={custom}
+                className="swatch-color"
+                aria-label="Custom background colour"
+                onChange={(e) => changeCustom(e.target.value)}
+              />
+            </label>
           </div>
           <div className="pt-4 border-t border-white/5 mt-3">
             <div className="flex items-center justify-between">
@@ -198,6 +255,7 @@ export default function SettingsView() {
       ),
     },
     {
+      id: "riot", nav: "Riot Client", icon: Rocket, blurb: "What happens when you press START.",
       title: "Riot Client",
       rows: (
           <SettingDropdown
@@ -213,6 +271,7 @@ export default function SettingsView() {
       ),
     },
     {
+      id: "sync", nav: "Game Sync", icon: RefreshCw, blurb: "Keep your in-game settings identical across accounts.",
       title: "Game Settings Sync",
       rows: (
         <>
@@ -241,7 +300,8 @@ export default function SettingsView() {
       ),
     },
     {
-      title: "Appear Offline",
+      id: "privacy", nav: "Privacy", icon: EyeOff, blurb: "Control how you show up to friends.",
+      title: "Privacy",
       rows: (
           <SettingToggle
             label="Appear Offline"
@@ -252,6 +312,7 @@ export default function SettingsView() {
       ),
     },
     {
+      id: "system", nav: "System", icon: SlidersHorizontal, blurb: "Tray behaviour and language.",
       title: "System",
       rows: (
         <>
@@ -282,6 +343,7 @@ export default function SettingsView() {
       ),
     },
     {
+      id: "updates", nav: "Updates", icon: Download, blurb: "Stay on the latest version.",
       title: "Updates",
       rows: (
         <div className="py-2">
@@ -332,6 +394,7 @@ export default function SettingsView() {
       ),
     },
     {
+      id: "backup", nav: "Backup", icon: Archive, blurb: "Move your profiles between machines with an encrypted file.",
       title: "Import / Export Profiles",
       rows: (
         <div className="py-2 space-y-4">
@@ -411,23 +474,49 @@ export default function SettingsView() {
   ];
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="page-title mb-6">Settings</h1>
-      <div className="flex flex-col gap-4">
-        {cards.map((card, index) => (
-          <section
-            key={card.title}
-            className="view-card rounded-md bg-bg-card border border-white/10 p-4
-                       transition-[border-color,box-shadow] duration-200 ease-out
-                       hover:border-riot-red/40 hover:shadow-[0_0_20px_rgba(255,70,85,0.08)]"
-            style={{ animationDelay: `${index * 60}ms` }}
-          >
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-white/40 mb-1">
-              {card.title}
-            </h2>
-            <div className="divide-y divide-white/5">{card.rows}</div>
-          </section>
-        ))}
+    <div className="settings-shell">
+      <aside className="settings-nav" aria-label="Settings categories">
+        <div className="settings-nav-head">Settings</div>
+        <div className="settings-nav-list">
+          <span className="settings-nav-ind" style={{ transform: `translateY(${activeIdx * 100}%)` }} aria-hidden />
+          {cards.map((c, i) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`settings-nav-item ${i === activeIdx ? "is-on" : ""}`}
+              onClick={() => goTo(i)}
+              aria-current={i === activeIdx ? "true" : undefined}
+            >
+              <c.icon size={15} />
+              <span>{c.nav}</span>
+            </button>
+          ))}
+        </div>
+        <div className="settings-nav-foot"><kbd>Esc</kbd> to close</div>
+      </aside>
+
+      <div className="settings-scroll" ref={scrollRef} onScroll={onScroll}>
+        <div className="settings-content">
+          {cards.map((card, i) => (
+            <section
+              key={card.id}
+              id={`settings-${card.id}`}
+              ref={(el) => { secRefs.current[i] = el; }}
+              className={`set-sec ${i === activeIdx ? "is-on" : ""}`}
+              style={{ ["--s" as string]: i }}
+            >
+              <div className="set-sec-inner">
+                <div className="set-sec-head">
+                  <card.icon size={16} />
+                  <h2 className="set-sec-title">{card.title}</h2>
+                </div>
+                <p className="set-sec-blurb">{card.blurb}</p>
+                <div className="set-sec-card divide-y divide-white/5">{card.rows}</div>
+              </div>
+            </section>
+          ))}
+          <div className="settings-spacer" />
+        </div>
       </div>
     </div>
   );
