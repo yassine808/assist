@@ -212,6 +212,22 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
         self.assertIsNotNone(pm2.get("E1"))
         self.assertIsNotNone(pm2.get("E2"))
 
+    def test_export_carries_the_saved_playercard(self):
+        card = "card://animated/Reyna_Mastery_Card_animated.apng"
+        pm = self._pm()
+        pm.create(self._sample("Card", valorant_data={
+            "player_card_bg": card,
+            "player_card_source": "user",
+        }))
+        encrypted = pm.export_profiles("s3cret")
+
+        pm2 = self._pm("card.json")
+        pm2.import_profiles("s3cret", encrypted)
+
+        restored = pm2.get("Card")
+        self.assertEqual(card, restored["valorant_data"]["player_card_bg"])
+        self.assertEqual("user", restored["valorant_data"]["player_card_source"])
+
     def test_export_selected_profiles_only(self):
         pm = self._pm()
         pm.create(self._sample("Keep1"))

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { X, Shuffle, Loader2 } from "lucide-react";
+import { X, Shuffle, Loader2, Monitor, Check } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
+import { useToast } from "./Toast";
 
 const keyframes = `
 @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -30,10 +31,12 @@ const CATEGORIES: { id: Category; label: string }[] = [
 
 export default function PlayerCardPicker({ profileName, currentCardUrl, onClose, onApplied }: Readonly<PlayerCardPickerProps>) {
   const { call } = useIPC();
+  const toast = useToast();
   const [cards, setCards] = useState<PlayerCard[]>([]);
   const [animated, setAnimated] = useState<PlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [shortcutState, setShortcutState] = useState<"idle" | "busy" | "done">("idle");
   const [filter, setFilter] = useState("");
   // New profiles start with an animated card, so the picker opens on that tab
   // and the static catalogue lives one click away.
@@ -79,6 +82,25 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
     const randomCard = active[Math.floor(Math.random() * active.length)]; // SonarCloud: safe — used for UI shuffle only
     void handleSelect(randomCard);
   }, [active, handleSelect]);
+
+  const handleShortcut = useCallback(async () => {
+    setShortcutState("busy");
+    try {
+      const result = await window.electronAPI.createProfileShortcut(profileName);
+      setShortcutState("done");
+      toast.show({
+        kind: "success",
+        title: "Desktop shortcut created",
+        message: result.path,
+        duration: 3000,
+      });
+      setTimeout(() => setShortcutState("idle"), 2000);
+    } catch (e) {
+      console.error("Failed to create desktop shortcut", e);
+      setShortcutState("idle");
+      toast.show({ kind: "error", title: "Shortcut failed", message: String(e) });
+    }
+  }, [profileName, toast]);
 
   const filtered = useMemo(
     () => active.filter((c) => c.displayName.toLowerCase().includes(filter.toLowerCase())),
@@ -170,6 +192,17 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
               <p className="text-white/40 text-xs mt-0.5">{profileName}</p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => void handleShortcut()}
+                disabled={shortcutState === "busy"}
+                title="Create a desktop shortcut that launches this profile directly"
+                className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-semibold
+                           text-white/70 hover:text-white bg-white/5 hover:bg-white/10
+                           disabled:opacity-40 transition-colors"
+              >
+                {shortcutState === "done" ? <Check size={12} /> : <Monitor size={12} />}
+                {shortcutState === "done" ? "Shortcut ready" : "Desktop shortcut"}
+              </button>
               <button
                 onClick={() => void handleRandom()}
                 disabled={applying || active.length === 0}

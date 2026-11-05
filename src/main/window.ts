@@ -9,6 +9,8 @@ interface WindowCallbacks {
 export interface AppWindow {
   win: BrowserWindow;
   requestClose: () => void;
+  /** Let an app-level quit through the close-to-tray interceptor. */
+  permitClose: () => void;
 }
 
 // The lobby card stack is fixed-size in CSS: title bar 40 + page top 16 +
@@ -18,6 +20,12 @@ export interface AppWindow {
 // window at the minimum shows one row without scrolling and never crops START;
 // a second row is what brings the scrollbar back.
 const MIN_WINDOW_HEIGHT = 788;
+
+// The lobby grid fits four cards side by side: 4 × 186px × the largest card
+// scale (1.4) + three 32px gaps + the page's 36px side padding ≈ 1210px.
+// Capping the window here keeps the grid at four columns; a fifth card would
+// need ~1290px at the default scale, so widening can never reflow the lobby.
+const MAX_WINDOW_WIDTH = 1210;
 
 async function readTrayConfig(
   python: PythonBridge
@@ -41,6 +49,7 @@ export async function createAppWindow(
     width: 1100,
     height: 790,
     minWidth: 900,
+    maxWidth: MAX_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
     frame: false,
     backgroundColor: "#0f0f12",
@@ -93,5 +102,12 @@ export async function createAppWindow(
     win.close();
   };
 
-  return { win, requestClose };
+  // Tray "Exit" / app.quit() also fires the window's close event. Without this
+  // the close-to-tray handler would preventDefault() and swallow the quit, so
+  // the app stayed alive with no window and no way back.
+  const permitClose = () => {
+    allowClose = true;
+  };
+
+  return { win, requestClose, permitClose };
 }

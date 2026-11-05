@@ -21,6 +21,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Local animated player cards (APNG) shipped with the app
   getAnimatedCards: () => ipcRenderer.invoke("cards:animated"),
 
+  // Desktop shortcut that starts a profile directly
+  createProfileShortcut: (name: string) =>
+    ipcRenderer.invoke("profile:createShortcut", name),
+
+  // Open an external https page (Support / sponsorship)
+  openExternal: (url: string) => ipcRenderer.invoke("shell:openExternal", url),
+
   // Python backend proxy
   call: (method: string, params?: Record<string, unknown>) =>
     ipcRenderer.invoke("python:call", method, params),

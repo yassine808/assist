@@ -16,6 +16,7 @@ from profile_manager import ProfileManager
 from protocol import Protocol, ensure_utf8_streams
 from riot_client import RiotClientManager
 from riot_processes import close_valorant_then_client
+from running_profile import RunningProfileWatcher
 from session_manager import SessionManager, sanitize_directory_name
 from valorant_tracker import ValorantTracker
 
@@ -153,12 +154,35 @@ def _capture_session(name, sessions, profiles, config, install_dir_provider):
 
 def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
                      sessions, league, protocol, data_dir,
-                     playercards,
+                     playercards, running,
                      _league_config_dir, _swap_profile, _set_playercard,
                      _check_current_account, _capture_current_account, _close_all,
                      _profile_dir_name, _cleanup_league_readonly,
                      _capture_session):
     """Build the dispatch table mapping method names to handler functions."""
+
+    def _get_profiles(_params):
+        """Profiles with the live ``is_running`` flag filled in.
+
+        ``is_running`` is runtime state, not part of the saved profile, so it is
+        derived from the Riot Client watcher every time the list is read.
+        """
+        active = running.current()
+        result = []
+        for profile in profiles.load():
+            item = dict(profile)
+            item["is_running"] = bool(active) and item.get("profile_name") == active
+            result.append(item)
+        return result
+
+    def _launch_profile(name):
+        result = orchestrator.switch_to(name)
+        if result.get("ok"):
+            # The client has just spawned; the watcher confirms the live
+            # account as soon as the session file is written and emits the
+            # update that re-renders the card.
+            running.refresh()
+        return result
 
     def _create_profile(params):
         """Create a profile and immediately back up the live Riot session.
@@ -202,7 +226,7 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
 
     return {
         "ping": lambda p: "pong",
-        "get_profiles": lambda p: profiles.load(),
+        "get_profiles": _get_profiles,
         "create_profile": lambda p: _create_profile(p),
         "delete_profile": lambda p: _delete_profile(p.get("name")),
         "update_profile": lambda p: profiles.update(p.get("name"), p.get("data")),
@@ -217,12 +241,12 @@ def _build_handlers(profiles, config, riot, tracker, detector, orchestrator,
         "set_config_many": lambda p: config.set_many(p.get("items") or {}),
         "set_riot_client_location": lambda p: riot.set_location(p.get("folder")),
         "detect_riot_client_location": lambda p: riot.detect_install_dir(),
-        "get_riot_client_status": lambda p: riot.status(),
+        "get_riot_client_status": lambda p: {**riot.status(), "profile": running.current()},
         "kill_riot_processes": lambda p: (riot.kill_all(), None)[1],
         "stop_riot_client": lambda p: (riot.stop_and_wait(), None)[1],
         "close_all": lambda p: _close_all(),
         "launch_riot_client": lambda p: riot.launch_client(),
-        "launch_profile": lambda p: orchestrator.switch_to(p.get("name") or ""),
+        "launch_profile": lambda p: _launch_profile(p.get("name") or ""),
         "stop_profile": lambda p: orchestrator.stop(),
         "read_live_account": lambda p: rad.read_live_account(),
         "check_current_account": lambda p: _check_current_account(),
@@ -331,6 +355,17 @@ def main():
             "profile_switch_progress",
             {"step": step, "status": status, "message": message, **extra},
         )
+    )
+
+    running = RunningProfileWatcher(
+        profiles,
+        config,
+        process_running=riot.is_running,
+        live_account=rad.read_live_account,
+        on_change=lambda name: protocol.send_event(
+            "riot_client_status",
+            {"status": "running" if name else "stopped", "profile": name},
+        ),
     )
 
     def _handle_event(name, data):
@@ -454,11 +489,13 @@ def main():
     handlers = _build_handlers(
         profiles, config, riot, tracker, detector, orchestrator,
         sessions, league, protocol, data_dir,
-        playercards,
+        playercards, running,
         _league_config_dir, _swap_profile, _set_playercard,
         _check_current_account, _capture_current_account, _close_all,
         _profile_dir_name, _cleanup_league_readonly, _capture_profile_session,
     )
+
+    running.start()
 
     protocol.send_event("backend_ready", {"data_dir": data_dir})
     sys.stderr.write(f"[backend] ready, data_dir={data_dir}\n")
@@ -473,6 +510,7 @@ def main():
     finally:
         # stdin closed: tear the refresh timer and worker down explicitly rather
         # than relying on daemon-thread death at interpreter exit.
+        running.stop()
         tracker.stop()
 
 

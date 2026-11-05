@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Archive, Check, Copy, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
+import { Archive, Check, Coffee, Copy, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
 import { useToast } from "../components/Toast";
@@ -13,6 +13,8 @@ import type { Profile } from "../types/profile";
 interface ConfigState {
   [key: string]: unknown;
 }
+
+const SUPPORT_URL = "https://github.com/sponsors/yassine808";
 
 export default function SettingsView() {
   const { call } = useIPC();
@@ -594,6 +596,34 @@ export default function SettingsView() {
                 {importResult}
               </p>
             )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "support", nav: "Support", icon: Coffee, blurb: "RiotSwitcher is free and open source — support keeps it going.",
+      title: "Support the Project",
+      rows: (
+        <div className="py-2">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-white/70 text-sm font-medium">Buy me a coffee</p>
+              <p className="text-white/40 text-xs mt-0.5">
+                One-time or monthly support through GitHub Sponsors. Entirely optional.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void window.electronAPI?.openExternal(SUPPORT_URL).catch((e: unknown) => {
+                  console.error("open sponsor page failed", e);
+                  toast.show({ kind: "error", title: "Could not open the link", message: String(e) });
+                });
+              }}
+              className="btn-primary h-8 px-4 text-[10px] shrink-0 inline-flex items-center gap-1.5"
+            >
+              <Coffee size={13} /> Support
+            </button>
           </div>
         </div>
       ),
