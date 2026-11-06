@@ -1,0 +1,229 @@
+name: Release (signed)
+
+# DRAFT - not wired to tags yet.
+#
+# `release.yml` still owns the `v*` trigger. Once SignPath Foundation approves
+# this project and the secrets/variables from docs/SIGNING.md are set, this
+# workflow takes over: it builds, signs the inner binaries, packages, signs the
+# installer, and only then publishes. Two workflows publishing to the same
+# release would race, so only one may carry the tag trigger at a time.
+#
+# Before adopting, read docs/SIGNING.md section 5.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and release (e.g. v3.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-signed-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  PYINSTALLER_VERSION: "6.16.0"
+  # Signing happens remotely at SignPath; electron-builder must never look for
+  # a local certificate. Same setting release.yml uses today.
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: windows-latest
+    environment:
+      name: release
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install Python dependencies
+        # Quoted for the same reason as release.yml: a bare ":all:" reads as a
+        # nested mapping in YAML.
+        run: "python -m pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt pyinstaller==${{ env.PYINSTALLER_VERSION }}" # NOSONAR
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run the gate
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test
+          python -m pytest tests/ -q
+
+      - name: Restore the bundled API key
+        if: ${{ env.HENRIKDEV_API_KEY != '' }}
+        shell: bash
+        env:
+          HENRIKDEV_API_KEY: ${{ secrets.HENRIKDEV_API_KEY }}
+        run: echo "HENRIKDEV_API_KEY=$HENRIKDEV_API_KEY" > .env
+
+      - name: Build the Python backend
+        run: npm run build:py
+
+      - name: Build the Electron app
+        run: npm run build
+
+      # ---- pass 1: sign the binaries that get packed INTO the installer ----
+      #
+      # `--dir` stops electron-builder after producing win-unpacked, i.e. after
+      # out/ is packed into the asar but before any installer exists. That is
+      # the only moment when both `main.exe` (PyInstaller, the usual AV false
+      # positive) and `RiotSwitcher.exe` can be signed and still end up inside
+      # the final artifacts.
+      - name: Package unpacked
+        run: npx electron-builder --win --dir --publish never
+
+      - name: Stage inner binaries for signing
+        shell: pwsh
+        run: |
+          $root = "unsigned-binaries"
+          New-Item -ItemType Directory -Force -Path "$root/release/python" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$root/release/win-unpacked" | Out-Null
+          Copy-Item "release/python/main.exe" "$root/release/python/main.exe"
+          Copy-Item "release/win-unpacked/RiotSwitcher.exe" "$root/release/win-unpacked/RiotSwitcher.exe"
+          # Fail early if a path moved, instead of handing SignPath an empty set.
+          Get-ChildItem -Recurse -File $root | ForEach-Object { $_.FullName }
+
+      - name: Upload inner binaries
+        id: upload-inner
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-binaries
+          path: unsigned-binaries/**
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign inner binaries
+        id: sign-inner
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          # Artifact configuration created in the SignPath UI; its origin root
+          # is this repository and its pattern is **/*.exe.
+          artifact-configuration-slug: pe-files
+          github-artifact-id: ${{ steps.upload-inner.outputs.artifact-id }}
+          # Manual approval in the SignPath UI, then this step returns the
+          # signed files. Without the wait the package step would run on the
+          # unsigned copies.
+          wait-for-completion: true
+          output-artifact-directory: signed-binaries
+
+      - name: Restore signed inner binaries
+        shell: pwsh
+        run: |
+          # SignPath returns the same relative paths it was given.
+          Copy-Item "signed-binaries/release/python/main.exe" "release/python/main.exe" -Force
+          Copy-Item "signed-binaries/release/win-unpacked/RiotSwitcher.exe" "release/win-unpacked/RiotSwitcher.exe" -Force
+
+      # ---- package from the signed tree ------------------------------------
+      #
+      # --prepackaged reuses the already-packed win-unpacked directory, so the
+      # signatures from pass 1 travel into the installer instead of being
+      # thrown away by a second build.
+      - name: Package installers
+        run: npx electron-builder --win nsis portable --prepackaged release/win-unpacked --publish never
+
+      # ---- pass 2: sign the installer and the portable exe -----------------
+      - name: Upload installers
+        id: upload-outer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installers
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign installers
+        id: sign-outer
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: pe-files
+          github-artifact-id: ${{ steps.upload-outer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-installers
+
+      - name: Restore signed installers
+        shell: pwsh
+        run: |
+          Get-ChildItem "signed-installers" -Recurse -File -Filter *.exe |
+            ForEach-Object { Copy-Item $_.FullName (Join-Path "release" $_.Name) -Force }
+
+      - name: Verify every signature
+        shell: pwsh
+        run: |
+          # A "successful" signing run that hands back unsigned bytes is worse
+          # than no signing at all, because it would publish silently. Hard
+          # fail on anything that is not a valid, trusted signature.
+          $files = @(
+            "release/win-unpacked/RiotSwitcher.exe",
+            "release/win-unpacked/resources/python/main.exe"
+          ) + @(Get-ChildItem "release" -File -Filter *.exe | ForEach-Object { $_.FullName })
+
+          $bad = @()
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f
+            "{0,-10} {1}" -f $sig.Status, $f
+            if ($sig.Status -ne "Valid") { $bad += $f }
+          }
+          if ($bad.Count -gt 0) {
+            throw "unsigned or invalid signature: $($bad -join ', ')"
+          }
+          "all signatures valid"
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.event.inputs.tag }}"
+          # Only what a user downloads: no signed-* staging dirs, no blockmap
+          # churn from the two extra signing passes.
+          $files = @(Get-ChildItem release -File |
+            Where-Object { $_.Name -match '\.(exe|blockmap)$' -or $_.Name -eq 'latest.yml' } |
+            ForEach-Object { $_.FullName })
+          if ($files.Count -eq 0) { throw "no release artifacts in release/" }
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @files --clobber
+            gh release edit $tag --draft=false
+          } else {
+            gh release create $tag @files --title "RiotSwitcher $tag" --generate-notes
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RiotSwitcher-windows-signed
+          path: |
+            release/*.exe
+            release/latest.yml
+          if-no-files-found: error
