@@ -1,7 +1,6 @@
 """RiotSwitcher Python backend entry point."""
 
 import os
-import shutil
 import subprocess
 import sys
 import threading
@@ -149,6 +148,10 @@ def _restrict_data_dir(path):
 
 def _move_item(source, destination):
     """Move a file or folder, falling back to copy-then-delete across volumes."""
+    # Imported here rather than at module scope: `shutil` costs ~25 ms of
+    # interpreter start-up and only the one-off legacy migration needs it.
+    import shutil
+
     try:
         shutil.move(source, destination)
         return True

@@ -373,7 +373,7 @@ class SessionManager:
             os.makedirs(tmp_path, exist_ok=True)
             with tarfile.open(fileobj=io.BytesIO(payload), mode="r") as archive:
                 for member in archive.getmembers():
-                    if not self._member_is_within(tmp_path, member.name):
+                    if not self._member_is_allowed(tmp_path, member):
                         return 1
                 archive.extractall(tmp_path)
         except (OSError, tarfile.TarError):
@@ -385,6 +385,20 @@ class SessionManager:
             return 0
         self._remove_dir_recursive(tmp_path)
         return 1
+
+    @staticmethod
+    def _member_is_allowed(root, member):
+        """Return True for a plain file/dir member that stays under `root`.
+
+        Rejects absolute paths and `..` escapes, and also links and device
+        entries: a symlink member extracted first would let a later member
+        write outside the destination even though every name looks relative.
+        The archive is written by this app, but the check costs nothing and the
+        extraction path is the one place where that assumption matters.
+        """
+        if member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
+            return False
+        return SessionManager._member_is_within(root, member.name)
 
     @staticmethod
     def _member_is_within(root, name):

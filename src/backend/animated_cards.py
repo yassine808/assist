@@ -1,10 +1,15 @@
 """Local catalogue of animated player cards.
 
-The animated cards ship with the app as APNG files and are served to the
-renderer over the privileged ``card://`` scheme by the Electron main process.
-The backend only needs the folder to pick a random file and build the same URL
-the renderer already uses, so a freshly created profile can start with an
-animated card instead of waiting for the remote catalogue.
+The animated cards ship with the app as animated WebP files and are served to
+the renderer over the privileged ``card://`` scheme by the Electron main
+process. The backend only needs the folder to pick a random file and build the
+same URL the renderer already uses, so a freshly created profile can start with
+an animated card instead of waiting for the remote catalogue.
+
+Older builds shipped the same art as APNG and some profile data still stores
+those URLs, so both extensions are listed: whichever files are present get a
+URL. A legacy ``.apng`` URL is resolved to its WebP sibling by the main
+process, so either form works.
 
 The folder arrives through ``RIOTSWITCHER_ANIMATED_CARDS_DIR`` (set by the
 Electron main process) because its path differs between a dev checkout and a
@@ -19,7 +24,9 @@ import urllib.parse
 ENV_DIR = "RIOTSWITCHER_ANIMATED_CARDS_DIR"
 CARD_SCHEME = "card"
 CARD_HOST = "animated"
-CARD_EXTENSION = ".apng"
+# Animated WebP is what ships; APNG stays accepted for dev checkouts and for
+# profiles saved by builds that shipped the old format.
+CARD_EXTENSIONS = (".webp", ".apng")
 
 
 def card_dir():
@@ -28,7 +35,7 @@ def card_dir():
 
 
 def list_card_urls():
-    """Return one ``card://animated/<file>`` URL per installed APNG, sorted."""
+    """Return one ``card://animated/<file>`` URL per installed card, sorted."""
     directory = card_dir()
     if not directory or not os.path.isdir(directory):
         return []
@@ -40,7 +47,7 @@ def list_card_urls():
     urls = [
         f"{CARD_SCHEME}://{CARD_HOST}/{urllib.parse.quote(name)}"
         for name in names
-        if name.lower().endswith(CARD_EXTENSION)
+        if name.lower().endswith(CARD_EXTENSIONS)
     ]
     return sorted(urls)
 

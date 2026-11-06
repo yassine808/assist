@@ -63,6 +63,9 @@ export async function createAppWindow(python: PythonBridge, callbacks: WindowCal
       sandbox: true,
       webSecurity: true,
       allowRunningInsecureContent: false,
+      // No editable text in the app; skipping the spellchecker avoids loading
+      // the dictionary into the renderer process.
+      spellcheck: false,
     },
   });
 

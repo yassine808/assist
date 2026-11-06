@@ -26,6 +26,7 @@ extraResources:
   - from: official playercards/AgentMastery/Animated
     to: playercards/animated
     filter:
+      - "*.webp"
       - "*.apng"
 
 win:

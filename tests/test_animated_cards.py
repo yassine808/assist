@@ -17,7 +17,12 @@ from backend import animated_cards  # noqa: E402
 class TestAnimatedCards(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        for name in ("Astra_Mastery_Card_animated.apng", "Jett_Mastery_Card_animated.apng", "notes.txt"):
+        for name in (
+            "Astra_Mastery_Card_animated.apng",
+            "Jett_Mastery_Card_animated.apng",
+            "Reyna_Mastery_Card_animated.webp",
+            "notes.txt",
+        ):
             with open(os.path.join(self._tmp.name, name), "w", encoding="utf-8") as handle:
                 handle.write("x")
 
@@ -27,7 +32,7 @@ class TestAnimatedCards(unittest.TestCase):
     def _with_dir(self):
         return mock.patch.dict(os.environ, {animated_cards.ENV_DIR: self._tmp.name})
 
-    def test_lists_only_apng_files_as_card_urls(self):
+    def test_lists_card_files_of_both_supported_formats(self):
         with self._with_dir():
             urls = animated_cards.list_card_urls()
         self.assertEqual(
@@ -35,6 +40,7 @@ class TestAnimatedCards(unittest.TestCase):
             [
                 "card://animated/Astra_Mastery_Card_animated.apng",
                 "card://animated/Jett_Mastery_Card_animated.apng",
+                "card://animated/Reyna_Mastery_Card_animated.webp",
             ],
         )
 

@@ -80,6 +80,9 @@ export class PythonBridge extends EventEmitter {
 
     this.process = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
+      // The backend is a console-subsystem exe; without this Windows opens a
+      // short-lived console window on top of the app at every start.
+      windowsHide: true,
       env: {
         ...process.env,
         PYTHONUTF8: "1",

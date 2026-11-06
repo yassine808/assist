@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent, shell } from "electron";
+import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent, session, shell } from "electron";
 import log from "electron-log";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
@@ -61,6 +61,11 @@ function setup(): void {
     // Keep the Windows taskbar button on the RiotSwitcher identity instead of
     // inheriting Electron's default icon/AppUserModelID.
     if (process.platform === "win32") app.setAppUserModelId("com.riotswitcher.app");
+    // The app needs no browser permission (camera, microphone, notifications,
+    // clipboard read...). Deny every request from the renderer, so a bug or a
+    // compromised renderer cannot turn an Electron default into a capability.
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+    session.defaultSession.setPermissionCheckHandler(() => false);
     python = new PythonBridge();
     // Register before start(): backend_ready can arrive on the first stdout
     // chunk, and the pending profile must not be dropped.

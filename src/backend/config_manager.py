@@ -58,13 +58,25 @@ class ConfigManager:
             pass
 
     def save(self):
-        """Persist config to disk. Returns True on success."""
+        """Persist config to disk atomically. Returns True on success.
+
+        Same temp-then-replace pattern as the profile store: a crash or power
+        loss mid-write leaves the previous file intact instead of a truncated
+        one, which would silently reset every setting on the next start.
+        """
         with self._lock:
+            tmp = self._path + ".tmp"
             try:
-                with open(self._path, "w", encoding="utf-8") as fh:
+                with open(tmp, "w", encoding="utf-8") as fh:
                     json.dump(self._values, fh, indent=2, ensure_ascii=False)
+                os.replace(tmp, self._path)
                 return True
             except OSError:
+                try:
+                    if os.path.isfile(tmp):
+                        os.remove(tmp)
+                except OSError:
+                    pass
                 return False
 
     def get(self, key, default=None):

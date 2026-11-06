@@ -31,6 +31,15 @@
 - [x] Pause every animation while the window is backgrounded or unfocused
 - [x] Add CI quality gates and a project-specific API-key leak check
 - [x] Rebuild the 3.1.1 installer + portable with the sealed key and 30 cards
+- [ ] Optimise: replace the per-name `tasklist` process polling with one
+      Toolhelp32 snapshot; measure startup, idle CPU and bundle size
+- [ ] Optimise: stop packing `lucide-react` (32 MB) into `app.asar`
+- [ ] Optimise: convert the 30 animated cards from APNG to animated WebP
+      (76 MB -> 9 MB, decision by Yassine on 2026-11-06)
+- [ ] Harden: atomic config writes, tar link rejection, permission denial,
+      `windowsHide` on the backend spawn, spellcheck off
+- [ ] Prepare the free code-signing path (SignPath OSS) + false-positive pack
+- [ ] Rebuild, re-run the full gate, record the measured before/after numbers
 
 ## Log
 
@@ -1251,3 +1260,47 @@
     succeeded."
 - Next: wait for winget-pkgs moderation; after merge add the `winget install
   Yassine808.RiotSwitcher` line to the README.
+
+### 2026-11-06 - Performance, size and hardening pass
+
+- Goal: make RiotSwitcher faster and lighter without touching the UI, tighten
+  what can be tightened without changing behaviour, and set up a real fix for
+  "the installer gets flagged".
+- Done so far:
+  - `riot_processes`: process detection now reads one Toolhelp32 snapshot per
+    call instead of spawning `tasklist` once per known process name. Measured
+    on this machine: `are_any_running()` 1326 ms -> 11 ms. The running-profile
+    watcher calls this every 2 s, so idle work drops from ~65% of a core to
+    ~0.5%, and the app stops spawning ~4.5 `tasklist.exe` per second (which is
+    also what heuristic AV flags). `tasklist` remains as the non-Windows /
+    API-failure fallback.
+  - `lucide-react` moved to devDependencies: Vite already bundles it into the
+    renderer, but electron-builder also packed its 32 MB of source into
+    `app.asar`. Measured: `app.asar` 26.58 MB -> 3.06 MB, `win-unpacked`
+    490.8 MB -> 467.2 MB.
+  - `python-bridge`: spawn the backend with `windowsHide: true` so no console
+    window flashes over the app at start-up.
+  - `config_manager.save`: temp-then-replace, like the profile store, so a crash
+    mid-write cannot truncate `configs.json` and reset every setting.
+  - `session_manager`: tar extraction now rejects symlink/hardlink/device
+    members and non file/dir entries, in addition to the existing `..` check.
+  - `index.ts` / `window.ts`: deny every renderer permission request and check,
+    and disable the spellchecker (no editable text in the app).
+  - `main.py`: `shutil` imported only inside the one-off migration helper.
+  - Animated cards: converted a trial run of all 30 APNGs to animated WebP
+    q90 -- 76.2 MB -> 9.1 MB (88% smaller), 16 frames per card preserved,
+    worst-frame PSNR 30.8 dB, alpha kept. Yassine approved the conversion.
+- Verified:
+  - `python -m ruff check src/backend tests/`: clean.
+  - `python -m compileall -q src/backend tests`: clean.
+  - `python -m pytest tests/ -q`: 177 passed.
+  - `npm run typecheck`, `npm run lint`: clean.
+  - `npm run test`: 15 files, 64 tests passed.
+  - `npm run build`: succeeded. `npx electron-builder --dir`: `app.asar`
+    3.06 MB, no `lucide-react` inside.
+  - Backend smoke test over stdin: `ping`, `get_profiles` and
+    `get_riot_client_status` answered correctly; process detection reported the
+    real running `RiotClientServices.exe` + `VALORANT.exe`.
+- Next: swap the WebP assets in and teach `playercards.ts` +
+  `animated_cards.py` about `.webp` (with a legacy `.apng` fallback), rebuild,
+  then write the signing/submission docs.

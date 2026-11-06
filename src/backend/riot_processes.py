@@ -5,6 +5,8 @@ Mirrors the original Godot RiotProcesses utility. The blocking helpers
 never stalls other requests; call them through the job worker.
 
 Uses taskkill /F /T (force + tree kill) per process for fastest termination.
+Process *detection* reads one Toolhelp32 snapshot (see `_toolhelp_names`), not
+one `tasklist` spawn per process name.
 
 VALORANT is never terminated by a switch or by app shutdown. `VALORANT_PROCESSES`
 is otherwise used only to detect the game so a switch can be refused while it is
@@ -13,8 +15,20 @@ after the user answers "Quit VALORANT?" in the confirmation dialog. Vanguard is
 never targeted by anything in this module.
 """
 
+import ctypes
 import subprocess
+import sys
 import time
+
+_WINDOWS = sys.platform.startswith("win")
+
+# Toolhelp32 snapshot constants. Reading the process table with this API is a
+# single kernel call (~1 ms), where the old per-name `tasklist` spawns cost ~1.3
+# seconds for the nine known names -- and the running-profile watcher asks every
+# two seconds, so the subprocess version kept a core busy and churned the disk.
+_TH32CS_SNAPPROCESS = 0x00000002
+_INVALID_HANDLE = ctypes.c_void_p(-1).value
+_MAX_PATH = 260
 
 PROCESS_NAMES = [
     "RiotClientServices.exe",
@@ -32,24 +46,121 @@ KILL_TIMEOUT_S = 8.0
 POLL_INTERVAL_S = 0.2
 
 
-def is_running(process_name):
-    """True while the named process is running. Blocking."""
+_UNSET = object()
+_process_api_cache = _UNSET
+
+
+def _process_api():
+    """Return (kernel32, PROCESSENTRY32W, entry size), or None when unavailable.
+
+    Built once and cached: resolving the DLL and setting argument types costs
+    more than the snapshot itself, and the watcher calls this every two seconds.
+    """
+    global _process_api_cache
+    if _process_api_cache is not _UNSET:
+        return _process_api_cache
+    if not _WINDOWS:
+        _process_api_cache = None
+        return None
+
+    class _PROCESSENTRY32W(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", ctypes.c_ulong),
+            ("cntUsage", ctypes.c_ulong),
+            ("th32ProcessID", ctypes.c_ulong),
+            ("th32DefaultHeapID", ctypes.c_void_p),
+            ("th32ModuleID", ctypes.c_ulong),
+            ("cntThreads", ctypes.c_ulong),
+            ("th32ParentProcessID", ctypes.c_ulong),
+            ("pcPriClassBase", ctypes.c_long),
+            ("dwFlags", ctypes.c_ulong),
+            ("szExeFile", ctypes.c_wchar * _MAX_PATH),
+        ]
+
+    try:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateToolhelp32Snapshot.argtypes = [ctypes.c_ulong, ctypes.c_ulong]
+        kernel32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+        kernel32.Process32FirstW.argtypes = [ctypes.c_void_p, ctypes.POINTER(_PROCESSENTRY32W)]
+        kernel32.Process32FirstW.restype = ctypes.c_int
+        kernel32.Process32NextW.argtypes = [ctypes.c_void_p, ctypes.POINTER(_PROCESSENTRY32W)]
+        kernel32.Process32NextW.restype = ctypes.c_int
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        kernel32.CloseHandle.restype = ctypes.c_int
+    except (OSError, AttributeError):
+        _process_api_cache = None
+        return None
+
+    _process_api_cache = (kernel32, _PROCESSENTRY32W, ctypes.sizeof(_PROCESSENTRY32W))
+    return _process_api_cache
+
+
+def _toolhelp_names():
+    """Lower-case exe names from one Toolhelp32 process snapshot, or None.
+
+    None means "not available here" (non-Windows host, or the API call failed)
+    and the caller falls back to `tasklist`. The snapshot is opened and closed
+    inside this function so no handle leaks between calls.
+    """
+    api = _process_api()
+    if api is None:
+        return None
+    kernel32, entry_type, entry_size = api
+
+    snapshot = kernel32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snapshot or snapshot == _INVALID_HANDLE:
+        return None
+    try:
+        entry = entry_type()
+        entry.dwSize = entry_size
+        names = set()
+        if not kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
+            return None
+        while True:
+            names.add(entry.szExeFile.lower())
+            if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
+                return names
+    finally:
+        kernel32.CloseHandle(snapshot)
+
+
+def _tasklist_names():
+    """Lower-case exe names from one `tasklist` call (fallback path)."""
     try:
         listing = subprocess.run(
-            ["tasklist", "/FI", f"IMAGENAME eq {process_name}", "/NH"],
+            ["tasklist", "/NH", "/FO", "CSV"],
             capture_output=True,
             text=True,
-            timeout=3,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            timeout=10,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         ).stdout
     except (OSError, subprocess.SubprocessError):
-        return False
-    return process_name.lower() in listing.lower()
+        return set()
+    names = set()
+    for line in listing.splitlines():
+        head = line.split(",", 1)[0].strip().strip('"')
+        if head:
+            names.add(head.lower())
+    return names
+
+
+def _running_names():
+    """Lower-case exe names of every running process, one snapshot per call."""
+    names = _toolhelp_names()
+    if names is not None:
+        return names
+    return _tasklist_names()
+
+
+def is_running(process_name):
+    """True while the named process is running. Blocking, but ~1 ms."""
+    return (process_name or "").lower() in _running_names()
 
 
 def running_processes():
     """Return the names of every known Riot process currently running."""
-    return [name for name in PROCESS_NAMES if is_running(name)]
+    names = _running_names()
+    return [name for name in PROCESS_NAMES if name.lower() in names]
 
 
 def are_any_running():
