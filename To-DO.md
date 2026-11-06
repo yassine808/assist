@@ -29,3 +29,5 @@
 - [x] if user singed out of riot client, then it should be removed from the app aswell
 - [x] fix app doesn't wanna exit (exiting null)
 - [x] export should carry the saved playercard for profiles aswell
+
+-[] instead of "Close VALORANT before switching accounts" show a windows with a question "quit valorant" or no, just like delete confirmation

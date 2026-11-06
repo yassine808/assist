@@ -1097,3 +1097,23 @@
   - `node scripts/check-api-leaks.mjs`: clean.
   - `npm run build`: succeeded.
 - Next: commit and push the branch.
+
+### 2026-11-06 - Re-verify sonarcube branch and push pending edits
+
+- Goal: re-scan the existing `sonarcube` branch, confirm zero issues, and push
+  the two edits Yassine left in the working tree.
+- Done:
+  - Confirmed `HEAD` already equals `origin/sonarcube` at `52ba785`.
+  - Re-ran the full gate; no code fixes were needed.
+  - Staged `To-DO.md` (new VALORANT quit-confirmation note) and
+    `package-lock.json` (version 3.0.0 -> 3.1.1, `engines` sync) by name.
+- Verified:
+  - `npm run lint`: 0 errors, 0 warnings.
+  - `npm run typecheck`: clean.
+  - `npm run test`: 13 files, 55 tests passed.
+  - `npm run test:py`: 160 passed.
+  - `python -m ruff check src/backend tests/`: clean.
+  - `python -m compileall -q src/backend tests`: clean.
+  - `npm run check:api-leaks`: clean.
+  - `npm run build`: succeeded.
+- Next: push the branch.
