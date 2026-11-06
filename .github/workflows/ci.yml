@@ -188,9 +188,12 @@ jobs:
           echo "renderer bundle has no API key bridge references"
       - name: Verify the animated card catalogue
         # The picker and packaged installers depend on all 30 Agent Mastery
-        # APNGs. Count the source assets so a partial checkout or accidental
+        # cards. Count the source assets so a partial checkout or accidental
         # deletion fails before it becomes a release with missing art.
+        # The set was converted from APNG to animated WebP (76 MB -> 9 MB), so
+        # both extensions count; electron-builder's filter packs both.
         run: |
-          cards=$(find "official playercards/AgentMastery/Animated" -maxdepth 1 -type f -name '*.apng' | wc -l)
+          cards=$(find "official playercards/AgentMastery/Animated" -maxdepth 1 -type f \
+            \( -name '*.apng' -o -name '*.webp' \) | wc -l)
           echo "animated cards: $cards"
           test "$cards" -eq 30
