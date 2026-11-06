@@ -202,7 +202,7 @@ export class SortableEngine {
     window.removeEventListener("blur", this.onBlur);
   }
 
-  private onMove = (e: PointerEvent) => {
+  private readonly onMove = (e: PointerEvent) => {
     if (e.pointerId !== this.drag?.pointerId) return;
     const d = this.drag!;
     // The button was released while the pointer was outside the window, so
@@ -218,22 +218,22 @@ export class SortableEngine {
     if (d.active) this.kick();
   };
 
-  private onUp = (e: PointerEvent) => {
+  private readonly onUp = (e: PointerEvent) => {
     if (e.pointerId !== this.drag?.pointerId) return;
     this.finish(true);
   };
 
-  private onCancel = (e: PointerEvent) => {
+  private readonly onCancel = (e: PointerEvent) => {
     if (e.pointerId !== this.drag?.pointerId) return;
     this.finish(false);
   };
 
   /** Window lost focus mid-drag: put everything back instead of leaving a stuck card. */
-  private onBlur = () => {
+  private readonly onBlur = () => {
     if (this.drag) this.finish(false);
   };
 
-  private onKey = (e: KeyboardEvent) => {
+  private readonly onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape" && this.drag?.active) this.finish(false);
   };
 
@@ -398,7 +398,7 @@ export class SortableEngine {
     if (v) sc.scrollTop += v * 1100 * dt;
   }
 
-  private tick = (t: number) => {
+  private readonly tick = (t: number) => {
     this.raf = 0;
     const dt = clamp((t - (this.last || t)) / 1000, 0.001, 0.034);
     this.last = t;

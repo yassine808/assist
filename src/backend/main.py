@@ -25,6 +25,9 @@ from valorant_tracker import ValorantTracker
 # Cached valorant-api.com map metadata (static list, fetched at most once).
 _MAPS_CACHE = None
 
+# icacls flag that adds an access rule; repeated once per grantee below.
+_ICACLS_GRANT = "/grant:r"
+
 
 def _make_tracker(protocol, profiles, agent_db, playercards, config=None):
     tracker = ValorantTracker(
@@ -132,9 +135,9 @@ def _restrict_data_dir(path):
             [
                 "icacls", path,
                 "/inheritance:r",
-                "/grant:r", f"{account}:(OI)(CI)F",
-                "/grant:r", "*S-1-5-18:(OI)(CI)F",
-                "/grant:r", "*S-1-5-32-544:(OI)(CI)F",
+                _ICACLS_GRANT, f"{account}:(OI)(CI)F",
+                _ICACLS_GRANT, "*S-1-5-18:(OI)(CI)F",
+                _ICACLS_GRANT, "*S-1-5-32-544:(OI)(CI)F",
             ],
             capture_output=True,
             timeout=15,

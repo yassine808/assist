@@ -46,7 +46,8 @@ export function profileLaunchArgs(name: string): string[] {
 /** Quote one argv element for the single `.lnk` arguments string. */
 function quoteArg(arg: string): string {
   if (!/[\s"]/.test(arg)) return arg;
-  return `"${arg.replaceAll('"', String.raw`\"`)}"`;
+  const escaped = arg.replaceAll('"', String.raw`\"`);
+  return `"${escaped}"`;
 }
 
 export interface ShortcutResult {
