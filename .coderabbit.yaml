@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+early_access: false
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+  path_filters:
+    - "!out/**"
+    - "!release/**"
+    - "!data/**"
+    - "!official playercards/**"
+    - "!package-lock.json"
+    - "!LICENSE"
+  path_instructions:
+    - path: "src/backend/**/*.py"
+      instructions: |
+        Python must stay 3.9 compatible: no match statements and no PEP 604
+        unions evaluated at runtime. Backend modules are flat files imported as
+        top-level modules, not as a package. The app may only read and write
+        Riot Client session files; flag anything that writes into a VALORANT
+        install, Vanguard, game memory or game traffic.
+    - path: "src/renderer/**/*.{ts,tsx}"
+      instructions: |
+        React 19 function components and hooks, Tailwind utility classes. Do
+        not suggest new npm dependencies; the renderer must never gain access
+        to the API key bridge.
+    - path: ".github/workflows/**"
+      instructions: |
+        Keep permissions least-privilege and pin actions to major tags.
+
+chat:
+  auto_reply: true

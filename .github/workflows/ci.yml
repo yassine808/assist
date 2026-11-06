@@ -66,6 +66,10 @@ jobs:
   test:
     name: Unit Tests (Vitest)
     runs-on: ubuntu-latest
+    # Codecov's OIDC upload needs an id token; everything else stays read-only.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -73,7 +77,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run test
+      - run: npm run test:coverage
+      - name: Upload coverage to Codecov
+        # Without this upload the Codecov check stays queued forever: the app is
+        # installed, but nothing ever sends it a report.
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          use_oidc: true
+          fail_ci_if_error: false
 
   audit:
     name: Dependency Audit

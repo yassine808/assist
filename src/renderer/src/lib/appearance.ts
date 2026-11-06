@@ -136,8 +136,13 @@ export function setTheme(id: string): void {
 /** Pick a custom colour and switch to it. */
 export function setCustomColor(hex: string): void {
   if (!isValidHex(hex)) return;
+  // Store the colour rebuilt from the parsed channels, not the argument: the
+  // stored value is always a "#rrggbb" string even if the caller passes
+  // something odd that still matches the pattern (Sonar S8475).
+  const [r, g, b] = hexToRgb(hex);
+  const safe = `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
   try {
-    localStorage.setItem(CUSTOM_KEY, hex);
+    localStorage.setItem(CUSTOM_KEY, safe);
   } catch {
     /* ignore */
   }

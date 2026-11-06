@@ -1,0 +1,53 @@
+# Qlty configuration (Qlty CLI and Qlty Cloud both read this file).
+# Without a committed qlty.toml, Qlty Cloud generates a throwaway config with
+# `qlty init`; this pins the plugins and keeps the gates predictable.
+config_version = "0"
+
+exclude_patterns = [
+  "**/node_modules/**",
+  "out/**",
+  "release/**",
+  "data/**",
+  "coverage/**",
+  "build/pyinstaller/**",
+  "official playercards/**",
+  "**/*.apng",
+  "**/*.png",
+  "**/*.ico",
+]
+
+test_patterns = [
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "tests/**/test_*.py",
+]
+
+[[source]]
+name = "default"
+default = true
+
+[[plugin]]
+name = "eslint"
+package_file = "package.json"
+
+[[plugin]]
+name = "prettier"
+
+[[plugin]]
+name = "ruff"
+version = "0.16.0"
+
+[[plugin]]
+name = "bandit"
+
+[[plugin]]
+name = "osv-scanner"
+
+[[plugin]]
+name = "actionlint"
+
+[[plugin]]
+name = "yamllint"
+
+[[plugin]]
+name = "markdownlint"

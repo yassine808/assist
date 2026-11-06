@@ -1,0 +1,24 @@
+# Codecov settings. CI uploads coverage/lcov.info from Vitest (v8 provider).
+coverage:
+  precision: 1
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 5%
+
+comment:
+  layout: "reach, diff, flags, files"
+  require_changes: false
+
+ignore:
+  - "src/**/*.test.ts"
+  - "src/**/*.test.tsx"
+  - "tests/**"
+  - "build/**"
+  - "scripts/**"
+  - "docs/**"
