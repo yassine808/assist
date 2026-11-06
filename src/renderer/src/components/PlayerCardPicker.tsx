@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { X, Shuffle, Monitor, Check } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
+import { useAppActive } from "../hooks/useAppActive";
+import { visibleImageSrc } from "../lib/pausedImage";
 import { useToast } from "./Toast";
 
 const keyframes = `
@@ -58,6 +60,7 @@ const CATEGORIES: { id: Category; label: string }[] = [
 export default function PlayerCardPicker({ profileName, currentCardUrl, onClose, onApplied }: Readonly<PlayerCardPickerProps>) {
   const { call } = useIPC();
   const toast = useToast();
+  const appActive = useAppActive();
   const [cards, setCards] = useState<PlayerCard[]>([]);
   const [animated, setAnimated] = useState<PlayerCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,6 +157,7 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
       <div className="grid grid-cols-4 gap-2">
         {filtered.map((card, index) => {
           const loaded = loadedArt[card.largeArt] === true;
+          const imageSrc = visibleImageSrc(card.largeArt, appActive);
           return (
             <button
               key={card.uuid}
@@ -180,13 +184,17 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
                 />
               )}
               <img
-                src={card.largeArt}
+                src={imageSrc}
                 alt={card.displayName}
                 className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
                 loading="lazy"
                 decoding="async"
-                onLoad={() => markLoaded(card.largeArt)}
-                onError={() => markLoaded(card.largeArt)}
+                onLoad={() => {
+                  if (imageSrc === card.largeArt) markLoaded(card.largeArt);
+                }}
+                onError={() => {
+                  if (imageSrc === card.largeArt) markLoaded(card.largeArt);
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent
                               opacity-0 group-hover:opacity-100 transition-opacity" />

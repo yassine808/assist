@@ -91,7 +91,8 @@ export default function SettingsView() {
   // Scrollspy: the rail follows what you're reading; clicking a category glides to it.
   const scrollRef = useRef<HTMLDivElement>(null);
   const secRefs = useRef<(HTMLElement | null)[]>([]);
-  const lockUntil = useRef(0);
+  const scrollLocked = useRef(false);
+  const scrollLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [spacer, setSpacer] = useState(0);
@@ -108,12 +109,15 @@ export default function SettingsView() {
   }, []);
 
   const onScroll = useCallback(() => {
-    if (Date.now() >= lockUntil.current) computeActive();
+    if (!scrollLocked.current) computeActive();
     if (settleTimer.current) clearTimeout(settleTimer.current);
     settleTimer.current = setTimeout(computeActive, 140); // re-sync once a smooth scroll has stopped
   }, [computeActive]);
 
-  useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    if (scrollLockTimer.current) clearTimeout(scrollLockTimer.current);
+  }, []);
 
   // Every section must be able to reach the top of the panel, otherwise the last (short) ones can
   // never become "active". The spacer is exactly the extra room the last section needs.
@@ -139,7 +143,11 @@ export default function SettingsView() {
     const sc = scrollRef.current, el = secRefs.current[i];
     setActiveIdx(i);
     if (!sc || !el) return;
-    lockUntil.current = Date.now() + 700;
+    // Hold the scrollspy while the smooth scroll is in flight. A timer avoids
+    // reading wall-clock time during a component render (React purity rule).
+    scrollLocked.current = true;
+    if (scrollLockTimer.current) clearTimeout(scrollLockTimer.current);
+    scrollLockTimer.current = setTimeout(() => { scrollLocked.current = false; }, 700);
     const top = Math.max(0, el.offsetTop - 14);
     if (typeof sc.scrollTo === "function") sc.scrollTo({ top, behavior: "smooth" });
     else sc.scrollTop = top;

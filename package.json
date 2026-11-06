@@ -19,6 +19,7 @@
     "build:py": "pyinstaller build/build-python.spec --noconfirm --distpath release --workpath build/pyinstaller",
     "dist": "npm run build && npm run build:py && electron-builder",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "check:api-leaks": "node scripts/check-api-leaks.mjs",
     "lint": "eslint src/renderer/src/ src/main/",
     "lint:fix": "eslint src/renderer/src/ src/main/ --fix",
     "test": "vitest run",

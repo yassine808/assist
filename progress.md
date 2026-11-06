@@ -28,6 +28,9 @@
 - [x] Use the supplied chevron icon for the Electron window and taskbar
 - [x] Make the minimum window width fit four profile cards per row
 - [x] Move the version label from the title bar into Settings
+- [x] Pause every animation while the window is backgrounded or unfocused
+- [x] Add CI quality gates and a project-specific API-key leak check
+- [x] Rebuild the 3.1.1 installer + portable with the sealed key and 30 cards
 
 ## Log
 
@@ -1022,3 +1025,46 @@
   skeleton tests); `npm run typecheck` clean.
 - Next: final installer + portable build, then check the sealed env and 30
   animated APNGs inside both artifacts.
+
+### 2026-11-06 - Background pause, CI gates, final 3.1.1 artifacts
+
+- Goal: stop every animation when RiotSwitcher is backgrounded/unfocused
+  (including while a fullscreen game has focus), keep the beams scene stable
+  across resize, add project CI checks plus an API-key leak gate, and ship
+  rebuilt installer + portable artifacts.
+- Done:
+  - `useAppActive` defines active as `visibilityState === "visible"` and
+    `document.hasFocus()`; `AppActiveProvider` toggles `html.app-inactive`.
+    CSS pauses every animation timeline, `ProfileCard` and
+    `PlayerCardPicker` swap APNG `src` for a transparent GIF while inactive,
+    and the beams canvas stops its RAF and preserves beam positions on resize.
+  - `PlayerCardPicker` uses one `aspect-[67/160]` tile for normal and animated
+    cards, renders eight shimmer tiles during the initial load, and keeps a
+    per-image shimmer until `onLoad`.
+  - `ProfileGrid` renders DOM order from state (no ref reads during render)
+    and uses a `SortableItem` child with a stable ref callback.
+    `SettingsView` replaces `Date.now()` scroll locking with a timer.
+  - Added `scripts/check-api-leaks.mjs` + `npm run check:api-leaks`: scans
+    tracked text, checks `.env` / sealed artifacts are absent from current
+    tree and full history, catches provider key patterns, rejects exact `.env`
+    values, and keeps the env bridge out of `src/renderer`.
+  - CI adds an `api-leak` job (full-history checkout) and includes it in
+    `build.needs`; build now rejects API-key bridge symbols in
+    `out/renderer` and asserts exactly 30 Agent Mastery APNGs.
+- Verified:
+  - `npm run lint`: 0 errors (2 Fast Refresh warnings).
+  - `npm run typecheck`: clean.
+  - `npm run test`: 13 files, 54 tests passed.
+  - `python -m pytest tests/ -q`: 160 passed.
+  - `npm run check:api-leaks`: clean; 182 tracked files and 1 local `.env`
+    value checked; no tracked or historical `.env`/sealed artifacts.
+  - `npm run dist` succeeded for 3.1.1. `release\win-unpacked\resources`
+    contains `env.bin` (109 bytes), `python\main.exe`, and 30 APNGs. Both
+    `RiotSwitcher Setup 3.1.1.exe` and
+    `RiotSwitcher-3.1.1-portable.exe` contain `resources\env.bin`,
+    `resources\python\main.exe`, and all 30 APNGs.
+  - The sealed blob decrypts to `HENRIKDEV_API_KEY` (41 chars); its shard is
+    present only in `out\main\index.js`, and no key plaintext or shard exists
+    anywhere under `out\renderer`.
+- Next: Yassine installs/tests both artifacts; commit and push only after his
+  approval.

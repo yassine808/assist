@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useAppActive } from "../../hooks/useAppActive";
 
 interface BeamsBackgroundProps {
   className?: string;
@@ -55,6 +56,10 @@ function glowHue(): number {
 /** Animated light beams that follow the theme colour. Sits behind the app. */
 export function BeamsBackground({ className = "", intensity = "strong" }: Readonly<BeamsBackgroundProps>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const active = useAppActive();
+  // Survive pause/resume and resize without scattering the light pattern. The
+  // old code rebuilt every beam on each resize, which looked like a restart.
+  const scene = useRef({ w: 0, h: 0, beams: [] as Beam[] });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,19 +67,37 @@ export function BeamsBackground({ className = "", intensity = "strong" }: Readon
     if (!canvas || !ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let w = 0;
-    let h = 0;
-    let beams: Beam[] = [];
+    let { w, h, beams } = scene.current;
     let hue = glowHue();
     let frame = 0;
     let raf = 0;
 
     const resize = () => {
-      w = Math.max(1, Math.round(window.innerWidth * SCALE));
-      h = Math.max(1, Math.round(window.innerHeight * SCALE));
+      const nextW = Math.max(1, Math.round(window.innerWidth * SCALE));
+      const nextH = Math.max(1, Math.round(window.innerHeight * SCALE));
+      if (beams.length === 0) {
+        beams = Array.from({ length: BEAM_COUNT }, () => createBeam(nextW, nextH));
+      } else {
+        // Keep each beam's relative position, thickness and speed. Rebuilding
+        // them here made every resize flash a brand-new background.
+        const sx = nextW / w;
+        const sy = nextH / h;
+        for (const beam of beams) {
+          beam.x *= sx;
+          beam.y *= sy;
+          beam.width *= sx;
+          beam.length *= sy;
+          beam.speed *= sy;
+        }
+      }
+      w = nextW;
+      h = nextH;
+      scene.current = { w, h, beams };
       canvas.width = w;
       canvas.height = h;
-      beams = Array.from({ length: BEAM_COUNT }, () => createBeam(w, h));
+      // Resizing a canvas clears it. Draw the preserved frame immediately so
+      // the window never shows a blank background between resize events.
+      render(false);
     };
 
     const resetBeam = (b: Beam, i: number) => {
@@ -122,23 +145,17 @@ export function BeamsBackground({ className = "", intensity = "strong" }: Readon
       render(true);
       raf = requestAnimationFrame(loop);
     };
-    const onVisibility = () => {
-      cancelAnimationFrame(raf);
-      if (!document.hidden && !reduced) loop();
-    };
 
     resize();
     window.addEventListener("resize", resize);
-    document.addEventListener("visibilitychange", onVisibility);
     if (reduced) render(false);
-    else loop();
+    else if (active) loop();
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [intensity]);
+  }, [intensity, active]);
 
   return (
     <div aria-hidden className={`beams-bg ${className}`}>

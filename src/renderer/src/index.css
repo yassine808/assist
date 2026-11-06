@@ -39,6 +39,16 @@ html {
   background: var(--bg-base);
 }
 
+/* The window is covered by another app (or minimised): freeze every CSS
+   timeline. Chromium can keep compositor animations running for an occluded
+   window; pausing them removes that work until the user comes back. */
+html.app-inactive,
+html.app-inactive *,
+html.app-inactive *::before,
+html.app-inactive *::after {
+  animation-play-state: paused !important;
+}
+
 /* Clean background: one flat base colour with a single soft light from the top (the light stays in every theme). */
 body {
   background:

@@ -3,6 +3,8 @@ import { Check, Copy, Palette, Trash2 } from "lucide-react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
 import { sfx } from "../lib/sfx";
+import { isAnimatedCardUrl, visibleImageSrc } from "../lib/pausedImage";
+import { useAppActive } from "../hooks/useAppActive";
 import type { LaunchState } from "../hooks/useProfileLaunch";
 import "../styles/card-glow.css";
 
@@ -46,6 +48,7 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   const rankName = VALORANT_TIER_NAMES[tier] ?? "Unranked";
   const agentIcon = agentIconFor(vd);
   const [copied, setCopied] = useState(false);
+  const active = useAppActive();
 
   // Tall portrait art (the 1:2 "large" player cards) is shown whole, fitted to the width.
   // Anything else (wide / square art) keeps the cover crop so it still fills the card.
@@ -62,6 +65,8 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   // stays at opacity 0 behind the shimmer. Deriving it from the URL can never
   // go stale.
   const cardSrc = vd?.player_card_bg ?? "";
+  const animatedCard = isAnimatedCardUrl(cardSrc);
+  const artSrc = visibleImageSrc(cardSrc, active);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const artReady = cardSrc !== "" && loadedSrc === cardSrc;
   const measureArt = (el: HTMLImageElement | null) => {
@@ -75,6 +80,13 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
     el.style.display = "";
     measureArt(el);
   }, [cardSrc]);
+
+  useEffect(() => {
+    // An APNG has no pause API. Swapping it for a transparent still stops the
+    // decoder; clearing readiness makes the charging shimmer return while the
+    // original decodes again after focus.
+    if (!active && animatedCard) setLoadedSrc(null);
+  }, [active, animatedCard]);
 
   useEffect(() => {
     if (launchState === "launched") sfx.launched();
@@ -154,19 +166,21 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
                     {!artReady && <span className="lobby-art-charge" aria-hidden />}
                     <img
                       ref={artRef}
-                      src={cardSrc}
+                      src={artSrc}
                       alt=""
                       loading="lazy"
                       decoding="async"
                       draggable={false}
                       className={`lobby-art${portrait ? " is-portrait" : ""}${artReady ? "" : " is-charging"}`}
                       onLoad={(e) => {
+                        if (artSrc !== cardSrc) return;
                         measureArt(e.currentTarget);
-                        setLoadedSrc(e.currentTarget.getAttribute("src") ?? "");
+                        setLoadedSrc(cardSrc);
                       }}
                       onError={(e) => {
+                        if (artSrc !== cardSrc) return;
                         e.currentTarget.style.display = "none";
-                        setLoadedSrc(e.currentTarget.getAttribute("src") ?? "");
+                        setLoadedSrc(cardSrc);
                       }}
                     />
                   </>

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "../types/profile";
 import type { LaunchState } from "../hooks/useProfileLaunch";
 import { SortableEngine } from "../lib/sortable";
@@ -16,6 +16,68 @@ interface Props {
   onModifyCard?: (p: Profile) => void;
   /** Called with the full new order after a drag (or Alt+Arrow) finishes. */
   onReorder?: (names: string[]) => void;
+}
+
+interface SortableItemProps {
+  name: string;
+  index: number;
+  order: number;
+  engine: SortableEngine;
+  profile: Profile;
+  activeProfileName: string | null;
+  launchState: LaunchState;
+  onLaunch: (name: string) => void;
+  onDelete: (p: Profile) => void;
+  onModifyCard?: (p: Profile) => void;
+}
+
+function SortableItem({
+  name,
+  index,
+  order,
+  engine,
+  profile,
+  activeProfileName,
+  launchState,
+  onLaunch,
+  onDelete,
+  onModifyCard,
+}: Readonly<SortableItemProps>) {
+  // Stable per card: a new callback identity would make React detach and
+  // reattach the node, wiping the card's spring state mid-drag.
+  const setRef = useCallback(
+    (el: HTMLDivElement | null) => engine.register(name, el),
+    [engine, name]
+  );
+
+  return (
+    <div
+      ref={setRef}
+      className="sortable-item"
+      style={{ order }}
+      onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
+      onDragStart={(e) => e.preventDefault()}
+      onClickCapture={(e) => {
+        if (engine.consumeSuppressedClick()) { e.stopPropagation(); e.preventDefault(); }
+      }}
+      onKeyDown={(e) => {
+        if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+        e.preventDefault();
+        engine.move(name, e.key === "ArrowLeft" ? -1 : 1);
+      }}
+    >
+      <ProfileCard
+        index={index}
+        profile={profile}
+        running={profile.is_running}
+        activeProfileName={activeProfileName}
+        launchState={launchState}
+        onLaunch={onLaunch}
+        onDelete={onDelete}
+        onModifyCard={onModifyCard}
+      />
+    </div>
+  );
 }
 
 export default function ProfileGrid({
@@ -38,12 +100,22 @@ export default function ProfileGrid({
   const dataNames = useMemo(() => profiles.map((p) => p.profile_name), [profiles]);
 
   // The DOM order never changes (moving nodes would replay every card's intro animation);
-  // the visual order is applied with CSS `order`.
-  const domRef = useRef<string[]>([]);
-  domRef.current = [
-    ...domRef.current.filter((n) => dataNames.includes(n)),
-    ...dataNames.filter((n) => !domRef.current.includes(n)),
-  ];
+  // the visual order is applied with CSS `order`. State, not a ref, because this
+  // list is rendered; keep existing members first and append newly added ones.
+  const [domNames, setDomNames] = useState<string[]>(() =>
+    profiles.map((profile) => profile.profile_name)
+  );
+  useEffect(() => {
+    setDomNames((current) => {
+      const next = [
+        ...current.filter((name) => dataNames.includes(name)),
+        ...dataNames.filter((name) => !current.includes(name)),
+      ];
+      return next.length === current.length && next.every((name, i) => name === current[i])
+        ? current
+        : next;
+    });
+  }, [dataNames]);
 
   const visualNames = useMemo(() => {
     if (!liveOrder) return dataNames;
@@ -51,23 +123,11 @@ export default function ProfileGrid({
     return [...kept, ...dataNames.filter((n) => !kept.includes(n))];
   }, [liveOrder, dataNames]);
 
-  // Ref callbacks must keep a stable identity: React re-invokes a changed callback on every render
-  // (null, then the element), which would wipe each card's spring state in the middle of a drag.
-  // The cache is never pruned: deleting an entry on detach would hand React a *new* callback on the
-  // next render, which detaches and re-attaches every card's ref (and resets its spring) again.
-  const refCache = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
-  const refFor = (name: string) => {
-    let cb = refCache.current.get(name);
-    if (!cb) {
-      cb = (el) => engine.register(name, el);
-      refCache.current.set(name, cb);
-    }
-    return cb;
-  };
-
   const byName = useMemo(() => new Map(profiles.map((p) => [p.profile_name, p])), [profiles]);
   const onReorderRef = useRef(onReorder);
-  onReorderRef.current = onReorder;
+  useEffect(() => {
+    onReorderRef.current = onReorder;
+  }, [onReorder]);
 
   engine.setOrder(visualNames);
   engine.setEnabled(!loading && profiles.length > 1);
@@ -100,7 +160,7 @@ export default function ProfileGrid({
   }, [engine, loading]);
 
   // After every reorder / add / delete, glide the cards to their new slots.
-  const signature = visualNames.join("\u0000") + "|" + domRef.current.join("\u0000");
+  const signature = visualNames.join("\u0000") + "|" + domNames.join("\u0000");
   useLayoutEffect(() => {
     engine.layoutChanged();
   }, [engine, signature]);
@@ -110,37 +170,23 @@ export default function ProfileGrid({
       <div ref={slotRef} className="sort-slot" aria-hidden />
       {loading
         ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-        : domRef.current.map((name, domIndex) => {
+        : domNames.map((name, domIndex) => {
             const p = byName.get(name);
             if (!p) return null;
             return (
-              <div
+              <SortableItem
                 key={name}
-                ref={refFor(name)}
-                className="sortable-item"
-                style={{ order: visualNames.indexOf(name) + 1 }}
-                onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
-                onDragStart={(e) => e.preventDefault()}
-                onClickCapture={(e) => {
-                  if (engine.consumeSuppressedClick()) { e.stopPropagation(); e.preventDefault(); }
-                }}
-                onKeyDown={(e) => {
-                  if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-                  e.preventDefault();
-                  engine.move(name, e.key === "ArrowLeft" ? -1 : 1);
-                }}
-              >
-                <ProfileCard
-                  index={domIndex}
-                  profile={p}
-                  running={p.is_running}
-                  activeProfileName={activeProfileName}
-                  launchState={launchingProfile === p.profile_name ? launchState : "idle"}
-                  onLaunch={onLaunch}
-                  onDelete={onDelete}
-                  onModifyCard={onModifyCard}
-                />
-              </div>
+                name={name}
+                index={domIndex}
+                order={visualNames.indexOf(name) + 1}
+                engine={engine}
+                profile={p}
+                activeProfileName={activeProfileName}
+                launchState={launchingProfile === p.profile_name ? launchState : "idle"}
+                onLaunch={onLaunch}
+                onDelete={onDelete}
+                onModifyCard={onModifyCard}
+              />
             );
           })}
     </div>

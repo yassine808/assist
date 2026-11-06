@@ -76,6 +76,21 @@ jobs:
       # non-blocking so routine upstream advisories do not wedge main.
       - run: npm audit --audit-level=high
 
+  api-leak:
+    name: API Key Leak Check
+    runs-on: ubuntu-latest
+    steps:
+      # Full history so the scanner can catch a .env or sealed key that was
+      # committed once and later deleted. The script prints file:line + rule,
+      # never the secret itself.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm run check:api-leaks
+
   python:
     name: Python Lint & Tests
     runs-on: ubuntu-latest
@@ -106,7 +121,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, audit, python]
+    needs: [typecheck, lint, test, audit, api-leak, python]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -130,3 +145,21 @@ jobs:
       - name: Report Electron version
         run: node -p "'electron ' + require('electron/package.json').version"
       - run: npm run build
+      - name: Verify the API key bridge is main-process only
+        # The renderer is remote-content-capable and ships as readable JS. It
+        # must never mention the env bridge or the inlined key shard; only the
+        # main bundle may contain those symbols.
+        run: |
+          if grep -RIl -E 'HENRIKDEV_API_KEY|__RS_ENV_SHARD_A__|env-shard-a' out/renderer; then
+            echo "::error::API key bridge leaked into the renderer bundle"
+            exit 1
+          fi
+          echo "renderer bundle has no API key bridge references"
+      - name: Verify the animated card catalogue
+        # The picker and packaged installers depend on all 30 Agent Mastery
+        # APNGs. Count the source assets so a partial checkout or accidental
+        # deletion fails before it becomes a release with missing art.
+        run: |
+          cards=$(find "official playercards/AgentMastery/Animated" -maxdepth 1 -type f -name '*.apng' | wc -l)
+          echo "animated cards: $cards"
+          test "$cards" -eq 30

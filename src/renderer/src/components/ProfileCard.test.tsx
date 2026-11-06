@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 import ProfileCard from "./ProfileCard";
+import { AppActiveProvider } from "../hooks/useAppActive";
 import type { Profile } from "../types/profile";
 
 /**
@@ -39,6 +40,12 @@ function renderCard(card: string) {
   return { ...utils, art, onLaunch, onDelete };
 }
 
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  document.documentElement.classList.remove("app-inactive");
+});
+
 describe("ProfileCard playercard art", () => {
   it("shows the new card after the selection loads", () => {
     const { art, rerender } = renderCard(CARD_A);
@@ -71,6 +78,22 @@ describe("ProfileCard playercard art", () => {
 
     expect(art().getAttribute("src")).toBe(CARD_B);
     expect(art().className).not.toContain("is-charging");
+  });
+
+  it("swaps an APNG for a still while the window is inactive", () => {
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { container } = render(
+      <AppActiveProvider>
+        <ProfileCard profile={makeProfile(CARD_A)} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />
+      </AppActiveProvider>
+    );
+    const art = container.querySelector<HTMLImageElement>("img.lobby-art")!;
+
+    expect(art.getAttribute("src")).toMatch(/^data:image\/gif;base64,/);
+
+    hasFocus.mockReturnValue(true);
+    fireEvent.focus(window);
+    expect(art.getAttribute("src")).toBe(CARD_A);
   });
 
   it("un-hides the art when a failed card is replaced by a good one", () => {

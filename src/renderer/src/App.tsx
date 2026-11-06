@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { hydrateFromConfig } from "./lib/appearance";
+import { AppActiveProvider } from "./hooks/useAppActive";
 import { TitleBar, type Page } from "./components/TitleBar";
 import { ToastProvider } from "./components/Toast";
 import SettingsOverlay from "./components/SettingsOverlay";
@@ -48,16 +49,18 @@ export default function App() {
   }, [navigate, toggleSettings]);
 
   return (
-    <ToastProvider>
-      <BeamsBackground />
-      <div className="flex flex-col h-full relative z-10">
-        <TitleBar page={page} onNavigate={navigate} settingsOpen={settingsOpen} onToggleSettings={toggleSettings} />
-        <main className="app-main">
-          <Pane active={page === "profiles"}><HomeView /></Pane>
-          {visited.agents && <Pane active={page === "agents"}><AgentMapView /></Pane>}
-          <SettingsOverlay open={settingsOpen} onClose={closeSettings} />
-        </main>
-      </div>
-    </ToastProvider>
+    <AppActiveProvider>
+      <ToastProvider>
+        <BeamsBackground />
+        <div className="flex flex-col h-full relative z-10">
+          <TitleBar page={page} onNavigate={navigate} settingsOpen={settingsOpen} onToggleSettings={toggleSettings} />
+          <main className="app-main">
+            <Pane active={page === "profiles"}><HomeView /></Pane>
+            {visited.agents && <Pane active={page === "agents"}><AgentMapView /></Pane>}
+            <SettingsOverlay open={settingsOpen} onClose={closeSettings} />
+          </main>
+        </div>
+      </ToastProvider>
+    </AppActiveProvider>
   );
 }
