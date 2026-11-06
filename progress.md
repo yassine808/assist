@@ -38,7 +38,9 @@
       (76 MB -> 9 MB, decision by Yassine on 2026-11-06)
 - [ ] Harden: atomic config writes, tar link rejection, permission denial,
       `windowsHide` on the backend spawn, spellcheck off
-- [ ] Prepare the free code-signing path (SignPath OSS) + false-positive pack
+- [x] Prepare the free code-signing path (SignPath OSS) + false-positive pack
+      (docs/SIGNING.md + draft workflow; the SignPath application itself is
+      still to be submitted by Yassine)
 - [ ] Rebuild, re-run the full gate, record the measured before/after numbers
 - [x] Drag-to-reorder: whole card is the drag surface (no top handle) and the
       engine measures late-registered cards so reordering actually works
@@ -1486,3 +1488,32 @@
   unknown-publisher. The SignPath OSS item in the plan is untouched.
 - Next: decide on the free signing route (SignPath Foundation application) and
   the Microsoft false-positive submission.
+
+### 2026-11-06 - Free signing path drafted, main CI turned green again
+
+- Goal: prepare the SignPath OSS route so the next release can be signed, and
+  stop main from shipping on a red CI.
+- Done:
+  - `docs/SIGNING.md`: why a self-signed cert is useless here; the Foundation
+    application text (project details, description, build/release facts) ready
+    to paste; the secret/variable map (`SIGNPATH_API_TOKEN` secret,
+    organization/project/policy variables); the two-pass pipeline; the blockmap
+    trade-off; the per-release Microsoft false-positive pack; the four steps
+    that switch the tag trigger over.
+  - `.github/workflows/release-signed.yml`: build -> `--dir` -> SignPath pass 1
+    (python/main.exe + win-unpacked/RiotSwitcher.exe) -> `--prepackaged`
+    installers -> SignPath pass 2 -> `Get-AuthenticodeSignature` hard gate ->
+    publish. Left on `workflow_dispatch` so it cannot race `release.yml`.
+  - CI repair: `tests/test_kill_before_launch.py` handle test was Windows-only
+    in practice (`subprocess.CREATE_NO_WINDOW` does not exist on Linux) and is
+    now skipped off Windows; the animated card guard counted `*.apng` only
+    after the WebP conversion, so it failed with `animated cards: 0` - now
+    counts both extensions; two test files run through Prettier.
+- Verified:
+  - `docs/SIGNING.md` written and the workflow registered by GitHub as
+    "Release (signed)" (active, dispatch-only).
+  - Local: `prettier --check` on the new workflow, `pytest` 182 passed,
+    `ruff` clean, `vitest` 89/89, `typecheck` and `lint` clean.
+  - CI run 42277768558 on `e5d299d`: success, all jobs.
+- Next: submit the SignPath Foundation application, then set the four
+  secrets/variables and flip the trigger per SIGNING.md section 5.
