@@ -1464,3 +1464,25 @@
   - Policy is on `origin/main` in 26a0aa3.
 - Next: nothing; the approval list only needs a new entry if a dependency starts
   shipping an install script (`npm install-scripts ls` will name it).
+
+### 2026-11-06 - Release v3.1.5
+
+- Goal: ship the current main as a signed-off build and publish it as a GitHub
+  release.
+- Done:
+  - Committed the pending 3.1.5 bump (`package.json`, `package-lock.json`) plus
+    the `tests/conftest.py` fix (`kill_all` stub now returns `[]` so the
+    real `kill_and_wait` waiting logic stays exercised).
+  - Annotated tag `v3.1.5`; pushed `main` and the tag.
+  - `release.yml` built the Python backend, the Electron app and both Windows
+    targets, then published the release itself.
+- Verified: local gate green before tagging - `typecheck`, `lint`, `vitest`
+  89/89, `pytest` 182 passed, `ruff` clean, `compileall` clean. CI run
+  42275483132 succeeded end to end; `gh release view v3.1.5` reports
+  draft=false with `RiotSwitcher.Setup.3.1.5.exe` (139 MB),
+  `RiotSwitcher-3.1.5-portable.exe` (127 MB), blockmap and `latest.yml`.
+- Note: the release is unsigned (`CSC_IDENTITY_AUTO_DISCOVERY: false`). No
+  Authenticode certificate is configured, so SmartScreen/AV reputation is still
+  unknown-publisher. The SignPath OSS item in the plan is untouched.
+- Next: decide on the free signing route (SignPath Foundation application) and
+  the Microsoft false-positive submission.
