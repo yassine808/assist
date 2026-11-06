@@ -29,10 +29,11 @@ function agentIconFor(vd: Profile["valorant_data"] | undefined): string {
   return "";
 }
 
-function StartIcon({ state }: Readonly<{ state: LaunchState }>) {
+/** Spinner icon shown only while a launch is in flight. */
+function StartIcon() {
   return (
     <svg
-      className={`start-icon ${state === "launching" ? "spin" : ""}`}
+      className="start-icon spin"
       width="26"
       height="26"
       viewBox="0 0 24 24"
@@ -43,17 +44,7 @@ function StartIcon({ state }: Readonly<{ state: LaunchState }>) {
       focusable="false"
     >
       <rect x="2.5" y="2.5" width="19" height="19" rx="3" />
-      {state === "launched" ? (
-        <path
-          className="check"
-          d="M7 12.5l3.2 3.2L17 8.8"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <path d="M12 6.5l5.5 5.5-5.5 5.5L6.5 12z" />
-      )}
+      <path d="M12 6.5l5.5 5.5-5.5 5.5L6.5 12z" />
     </svg>
   );
 }
@@ -383,10 +374,13 @@ export default function ProfileCard({
       <div className="lobby-ctl">
         <button className={`lobby-start ${btnClass}`} onClick={play} disabled={busy} onMouseEnter={sfx.hover}>
           <span className="lobby-start-label">{label}</span>
-          {busy && <StartIcon state={launchState} />}
+          {launchState === "launching" && <StartIcon />}
           {launchState === "launching" && <span className="lobby-bar" />}
         </button>
-        {running && onSignOut && (
+        {/* Sign-out only makes sense on a settled, running profile: during a
+            launch it would kill the client that is being started, and it also
+            stole width from the wider LAUNCHING/LAUNCHED labels. */}
+        {running && onSignOut && !busy && (
           <button
             type="button"
             className="lobby-signout"

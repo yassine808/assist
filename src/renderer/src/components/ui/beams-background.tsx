@@ -22,6 +22,9 @@ interface Beam {
 const OPACITY = { subtle: 0.7, medium: 0.85, strong: 1 } as const;
 const BEAM_COUNT = 30;
 const SCALE = 0.5; // render at half resolution: far cheaper blur, looks the same
+// Global drift multiplier. 1 was the original pace; 0.5 halves both the travel
+// speed and the brightness pulse so the background light moves calmly.
+const SPEED = 0.5;
 
 function createBeam(w: number, h: number): Beam {
   return {
@@ -133,8 +136,8 @@ export function BeamsBackground({ className = "", intensity = "strong" }: Readon
       ctx.filter = "blur(18px)";
       beams.forEach((b, i) => {
         if (move) {
-          b.y -= b.speed;
-          b.pulse += b.pulseSpeed;
+          b.y -= b.speed * SPEED;
+          b.pulse += b.pulseSpeed * SPEED;
           if (b.y + b.length < -50) resetBeam(b, i);
         }
         draw(b);

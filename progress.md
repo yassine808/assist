@@ -40,6 +40,8 @@
       `windowsHide` on the backend spawn, spellcheck off
 - [ ] Prepare the free code-signing path (SignPath OSS) + false-positive pack
 - [ ] Rebuild, re-run the full gate, record the measured before/after numbers
+- [x] Drag-to-reorder: whole card is the drag surface (no top handle) and the
+      engine measures late-registered cards so reordering actually works
 
 ## Log
 
@@ -1339,3 +1341,96 @@
     `app.asar` 3.06 MB.
 - Next: write the signing/submission docs; the pre-signing gate is otherwise
   green.
+
+### 2026-11-06 - Drag-to-reorder: whole-card surface + "stuck on the first card" fix
+
+- Goal: drop the top drag handle so the whole playercard is the drag surface,
+  and fix the drag that kept pointing at slot 0 and never moved the card.
+- Done:
+  - `ProfileGrid.tsx`: pointerdown / dragstart / click-suppression / Alt+Arrow
+    handlers moved from the `.sortable-handle` button to the `.sortable-item`
+    wrapper (focusable, `role="group"`, `aria-label`). The handle button and its
+    `GripVertical` import are gone.
+  - `sortable.css`: handle rules removed; `.sortable-item` and the card inside
+    show `cursor: grab` (grabbing while dragging), plus a `:focus-visible`
+    outline for keyboard reordering.
+  - `sortable.ts` root cause: `layoutChanged()` ran once before the cards
+    registered (React StrictMode re-attaches refs), so every body stayed at
+    `hasLayout:false`, `lx=ly=0`. Hit-testing then saw nine slots stacked at
+    0,0, took its "no geometry" early return, and never swapped; the drop
+    marker sat on card 1. Fix: geometry is measured on demand — `measure()` on
+    every `pointerDown`, and new/replaced bodies set `layoutPending` so the next
+    frame measures them.
+  - `sortable.geometry.test.ts` (new, 4 tests): press lifts the pressed card,
+    single-row reorder, cross-row reorder, and reorder when cards registered
+    after the last layout pass.
+- Verified:
+  - Live app via CDP: drag pressed at the card centre (y=431, not the top) moved
+    `Ereeeeeeen#9999` from slot 3 to 4 and `I spread Love#23522` to 3; order
+    persisted to `data/profiles_data.json` through `reorder_profiles`, then
+    dragged back so the real profile order is unchanged.
+  - No `.sortable-handle` left in the DOM (0), card cursor `grab`, wrapper
+    `role="group"`, `tabIndex=0`.
+  - `npm run typecheck`, `npm run lint`: clean. `npm run test`: 17 files, 75
+    tests passed. `npm run build`: succeeded.
+- Next: nothing; waiting on Yassine to try it by hand.
+
+### 2026-11-06 - Inertial wheel scrolling + visible scrollbars
+
+- Goal: make wheel scrolling feel very smooth instead of Chromium's 100 px notch
+  jump, and make the scrollbar readable.
+- Done:
+  - New `lib/smoothScroll.ts`: one capture-phase `wheel` listener turns deltas
+    into a target and a rAF loop eases the scroller towards it with an
+    exponential approach (`TAU = 95 ms`, frame-rate independent). Mouse notches
+    get a 1.12 gain, trackpad deltas pass 1:1, wheel input accumulates while an
+    animation is running.
+  - Safety rails: `ctrl` (pinch) and `shift` (horizontal) are never touched,
+    `prefers-reduced-motion` disables the module, `data-native-scroll` opts an
+    element out, a scroller at its end hands the wheel to the next ancestor, and
+    scrollbar drags / keyboard paging / programmatic scrolls / blur /
+    visibility change all cancel immediately.
+  - `main.tsx`: `installSmoothScroll()` before render.
+  - `index.css`: scrollbar 10 px -> 12 px, tinted by the active theme
+    (`color-mix` with `--glow`), visible dark rail with a hairline divider,
+    brighter hover/active states, 44 px minimum thumb, no arrow buttons.
+  - `lib/smoothScroll.test.ts` (new, 11 tests): delta normalisation, scroller
+    picking (boundaries, nesting, opt-out), and the animation itself (eased ramp
+    over several frames, accumulation, clamping) with a stubbed rAF.
+- Verified:
+  - Live (window visible, CDP wheel `deltaY 400`): scrollTop ramped
+    `0 -> 72 -> 223 -> 303 -> 339 -> ... -> 448` across ~20 frames with
+    decreasing deltas (151, 80, 36, 28, 16, 9, 5, 2, 1, 0) and settled exactly on
+    448 = 400 x 1.12. A second pass could not be run live: the window was
+    occluded afterwards (`visibilityState: hidden`), which throttles rAF and
+    stops Chromium acking synthetic input.
+  - Scrollbar width measured at 12 px on the active pane
+    (`offsetWidth - clientWidth`).
+  - `npm run typecheck`, `npm run lint`: clean. `npm run test`: 18 files, 86
+    tests passed. `npm run build`: succeeded.
+- Next: Yassine to judge the feel; `TAU` (95 ms) and `WHEEL_GAIN` (1.12) are the
+  two knobs if it needs to be floatier or snappier.
+
+### 2026-11-06 — LAUNCHED button clipped, redundant check icon, slower beams
+
+- Goal: the START button's LAUNCHED state was cut on both edges and showed a
+  square check icon; the background beams moved too fast.
+- Cause: the control row sits outside the scaled card stage with fixed 22px
+  type, and the sign-out button takes 46px of the row. Label + icon needed
+  ~199px inside a 163px button, so flex centring clipped both ends.
+- Done:
+  - `ProfileCard`: the spinner icon now renders only while launching; LAUNCHED
+    is a bare label. The sign-out button is hidden while a launch is in flight.
+  - `card-glow.css`: the row scales itself with `--ctl = --lobby-k / 1.17`
+    (height, gaps, icon, sign-out, font). Launching/launched type is 20px with
+    0.16em tracking so LAUNCHING + icon fits at every card scale. Centring uses
+    a negative `margin-right` equal to the tracking instead of the old
+    `padding-left`; dead `.start-icon .check` / `@keyframes draw` removed.
+  - `beams-background.tsx`: `SPEED = 0.5` halves the beam drift and brightness
+    pulse (one constant to tune).
+- Verified: headless Electron measurement of 40 button cases (k 0.82 / 1.0 /
+  1.17 / 1.4 × idle/switch/running/launching/launched × sign-out) -> 0 overflow
+  in every state the app can now produce; label ink centred within 0.1px.
+  `vitest` ProfileCard 9/9 and ProfileGrid 3/3; `tsc -p tsconfig.web.json` exit
+  0; ESLint and Prettier clean on the touched files; `npm run build` OK.
+- Next: look at the LAUNCHED state and the beams in the running dev app.

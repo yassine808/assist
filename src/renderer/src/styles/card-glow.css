@@ -687,12 +687,18 @@
   }
 }
 
-/* START button row: the sign-out button sits to its right while the profile runs. */
+/* START button row: the sign-out button sits to its right while the profile runs.
+   The row lives outside the scaled card stage, so it scales itself: --ctl is 1
+   at the default card size (--lobby-k: 1.17) and follows the card-size slider.
+   Without this the fixed 22px label overflowed the button once the card was
+   scaled down (or the sign-out button took part of the row), and "LAUNCHED"
+   was clipped on both edges. */
 .lobby-ctl {
+  --ctl: calc(var(--lobby-k) / 1.17);
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  margin-top: 16px;
+  gap: calc(8px * var(--ctl));
+  margin-top: calc(16px * var(--ctl));
 }
 .lobby-ctl .lobby-start {
   flex: 1 1 auto;
@@ -702,8 +708,8 @@
 }
 .lobby-signout {
   flex: none;
-  width: 46px;
-  height: 56px;
+  width: calc(46px * var(--ctl));
+  height: calc(56px * var(--ctl));
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -715,6 +721,10 @@
     color 0.2s,
     border-color 0.2s,
     transform 0.12s;
+}
+.lobby-signout svg {
+  width: calc(16px * var(--ctl));
+  height: calc(16px * var(--ctl));
 }
 .lobby-signout:hover {
   background: #442530;
@@ -734,13 +744,17 @@
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: 56px;
-  margin-top: 16px;
+  height: calc(56px * var(--ctl, 1));
+  margin-top: calc(16px * var(--ctl, 1));
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font: 700 22px/1 var(--app-font, system-ui, sans-serif);
+  gap: calc(10px * var(--ctl, 1));
+  padding: 0 calc(8px * var(--ctl, 1));
+  font-family: var(--app-font, system-ui, sans-serif);
+  font-size: calc(22px * var(--ctl, 1));
+  font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.18em;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -788,6 +802,10 @@
 
 .lobby-start.is-launching,
 .lobby-start.is-launched {
+  /* "LAUNCHING" is nine letters plus the spinner: a slightly smaller size and
+     tracking keep the whole label inside the button at every card scale. */
+  font-size: calc(20px * var(--ctl, 1));
+  letter-spacing: 0.16em;
   background: linear-gradient(180deg, #14243b, #0b1525);
   border-color: rgba(190, 212, 238, 0.6);
   box-shadow:
@@ -797,31 +815,25 @@
 .lobby-start.is-launched {
   animation: launched-pop 0.7s ease-out;
 }
-.lobby-start.is-launched .lobby-start-label {
-  letter-spacing: 0.22em;
-  padding-left: 0.22em;
-}
 .lobby-start-label {
   transition: letter-spacing 0.5s ease;
-  padding-left: 0.16em;
+  /* letter-spacing adds a gap after the last letter too; pulling it back keeps
+     the text optically centred instead of nudged left */
+  margin-right: -0.18em;
+}
+.lobby-start.is-launching .lobby-start-label,
+.lobby-start.is-launched .lobby-start-label {
+  margin-right: -0.16em;
 }
 .start-icon {
   flex: none;
+  width: calc(26px * var(--ctl, 1));
+  height: calc(26px * var(--ctl, 1));
   color: rgba(236, 244, 255, 0.9);
 }
 .start-icon.spin path {
   transform-origin: 12px 12px;
   animation: rank-spin 1.6s linear infinite;
-}
-.start-icon .check {
-  stroke-dasharray: 22;
-  stroke-dashoffset: 22;
-  animation: draw 0.4s ease-out 0.1s forwards;
-}
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 @keyframes launched-pop {
   0% {

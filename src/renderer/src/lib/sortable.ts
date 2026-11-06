@@ -89,6 +89,7 @@ export class SortableEngine {
   private enabled = true;
   private reduce = false;
   private captured: HTMLElement | null = null;
+  private layoutPending = false;
 
   setHandlers(h: SortableHandlers) {
     this.handlers = h;
@@ -153,7 +154,8 @@ export class SortableEngine {
       }
       this.releaseEl(cur);
       this.bodies.set(id, body);
-      if (!body.idle || body.lifted) this.kick();
+      if (!body.hasLayout) this.layoutPending = true;
+      if (!body.idle || body.lifted || !body.hasLayout) this.kick();
       return;
     }
     this.bodies.set(id, {
@@ -170,6 +172,10 @@ export class SortableEngine {
       idle: true,
       lifted: false,
     });
+    // A registered body has no geometry yet: measure it on the next frame so
+    // hit-testing and the drop slot never work off 0,0.
+    this.layoutPending = true;
+    this.kick();
   }
 
   /** Clear the drag chrome a body may still carry on its element. */
@@ -181,6 +187,21 @@ export class SortableEngine {
 
   /** Call after any DOM/layout change (order, resize, scale). Existing items glide to their new slots. */
   layoutChanged() {
+    this.layoutPending = false;
+    this.measure();
+    this.syncSlot();
+    this.kick();
+  }
+
+  /**
+   * Read every body's slot geometry from the DOM. Cheap, and deliberately read
+   * on demand instead of trusting a cached pass: a body can be registered after
+   * the last layout pass (React StrictMode re-attaches refs, cards remount), and
+   * a body that was never measured sits at 0,0 — that made every slot look like
+   * slot 0, so hit-testing refused to reorder and the drop marker stuck to the
+   * first card.
+   */
+  private measure() {
     for (const b of this.bodies.values()) {
       const nx = b.el.offsetLeft,
         ny = b.el.offsetTop;
@@ -199,8 +220,6 @@ export class SortableEngine {
         b.idle = false;
       }
     }
-    this.syncSlot();
-    this.kick();
   }
 
   /** True once after a drag, so the click that follows the release can be swallowed. */
@@ -216,13 +235,10 @@ export class SortableEngine {
     // used to leave `this.drag` set forever, which made every later press a
     // no-op and kept the stuck card following the cursor. Clear it first.
     if (this.drag) this.finish(false);
-    if (
-      (e.target as HTMLElement | null)?.closest(
-        "button:not([data-drag-handle]), a, input, select, textarea, [data-no-drag]",
-      )
-    ) {
-      return;
-    }
+    if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [data-no-drag]")) return;
+    // The press is the last moment before geometry matters: re-read it so a
+    // newly mounted card (or a resized grid) is never hit-tested from 0,0.
+    this.measure();
     this.drag = {
       id,
       pointerId: e.pointerId,
@@ -499,6 +515,10 @@ export class SortableEngine {
 
   private readonly tick = (t: number) => {
     this.raf = 0;
+    if (this.layoutPending) {
+      this.layoutPending = false;
+      this.measure();
+    }
     const dt = clamp((t - (this.last || t)) / 1000, 0.001, 0.034);
     this.last = t;
     const d = this.drag?.active ? this.drag : null;

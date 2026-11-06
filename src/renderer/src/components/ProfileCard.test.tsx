@@ -189,3 +189,61 @@ describe("ProfileCard sign-out button", () => {
     expect(row?.lastElementChild?.classList.contains("lobby-signout")).toBe(true);
   });
 });
+
+describe("ProfileCard launch button", () => {
+  // Regression for the LAUNCHED state: it used to render a square check icon
+  // after the label while the fixed-width label overflowed the button, so the
+  // text was cut on both edges. LAUNCHED is now label-only and centred.
+  it("shows the spinner icon while launching", () => {
+    const { container } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running={false}
+        launchState="launching"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const button = container.querySelector(".lobby-start");
+    expect(button?.textContent).toBe("LAUNCHING");
+    expect(button?.querySelector("svg.start-icon")).not.toBeNull();
+  });
+
+  it("renders LAUNCHED as a bare, centred label", () => {
+    const { container } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running={false}
+        launchState="launched"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const button = container.querySelector(".lobby-start");
+    expect(button?.classList.contains("is-launched")).toBe(true);
+    expect(button?.textContent).toBe("LAUNCHED");
+    expect(button?.querySelector("svg")).toBeNull();
+    expect(button?.querySelector(".lobby-start-label")).not.toBeNull();
+  });
+
+  it("hides sign-out while a launch is in flight", () => {
+    // The sign-out button used to stay visible and take ~46px from the row,
+    // which is what squeezed LAUNCHING/LAUNCHED into an overflow.
+    for (const launchState of ["launching", "launched"] as const) {
+      const { container, unmount } = render(
+        <ProfileCard
+          profile={makeProfile(CARD_A)}
+          running
+          launchState={launchState}
+          onLaunch={vi.fn()}
+          onDelete={vi.fn()}
+          onSignOut={vi.fn()}
+        />,
+      );
+      expect(container.querySelector(".lobby-signout")).toBeNull();
+      unmount();
+    }
+  });
+});

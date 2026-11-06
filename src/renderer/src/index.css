@@ -87,24 +87,33 @@ img {
   -webkit-user-drag: none;
 }
 
-/* thin, quiet scrollbars */
+/* Scrollbars: a visible, theme-tinted rail instead of a hairline. The thumb
+   keeps a 3px transparent border so it still reads as a slim handle. */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(6, 11, 18, 0.55);
+  border-left: 1px solid rgba(190, 225, 240, 0.07);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(190, 225, 240, 0.14);
-  border-radius: 8px;
+  min-height: 44px;
   border: 3px solid transparent;
+  border-radius: 999px;
   background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--glow) 55%, rgba(190, 225, 240, 0.45));
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(190, 225, 240, 0.28);
-  background-clip: padding-box;
-  border: 3px solid transparent;
+  background-color: color-mix(in srgb, var(--glow) 72%, rgba(230, 245, 255, 0.6));
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--glow) 88%, #ffffff 14%);
+}
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none;
+  background: transparent;
 }
 
 .drag-region {
