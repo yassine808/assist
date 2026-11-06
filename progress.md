@@ -17,6 +17,17 @@
 - [x] Rewrite README (TL;DR, screenshots, license, latest-release link)
 - [x] Add `LICENSE` (GPL-3.0 full text)
 - [x] Bump to v3.0.0 and add an annotated release tag
+- [x] App exit stops neither VALORANT nor the Riot Client; remove the
+      VALORANT-killing helpers and IPC methods
+- [x] Store app data in `C:\ProgramData\RiotSwitcher`, move legacy `%APPDATA%`
+      data once, and restrict the folder ACL
+- [x] Remove the Import/Export backup option (UI, IPC handlers, modal, tests)
+- [x] Verify the clean favicon and rebuild the installer + portable with all
+      30 animated cards
+- [x] Remove the maximum window-width cap, keep the minimum size
+- [x] Use the supplied chevron icon for the Electron window and taskbar
+- [x] Make the minimum window width fit four profile cards per row
+- [x] Move the version label from the title bar into Settings
 
 ## Log
 
@@ -926,3 +937,88 @@
 - Verified: `pytest` 154 passed with the VALORANT/RiotClientServices PIDs
   identical before and after the run; ruff and compileall clean.
 - Next: publish v3.1.1 and verify the exe icons + 30 bundled cards.
+### 2026-11-06 � Exit safety, ProgramData storage, backup option removed
+
+- Goal: closing the app must leave VALORANT and the Riot Client running; saved
+  sessions stay encrypted in one fixed machine-wide folder; the Import/Export
+  backup option is gone; the exe still ships all 30 animated cards and the
+  clean (non-red) icon.
+- Done:
+  - `main.py`: data directory is now `C:\ProgramData\RiotSwitcher` (override
+    `RIOTSWITCHER_DATA_DIR`, dev still `./data`). First packaged start moves
+    `profiles`, `profiles_data.json`, `configs.json`, `playercards.db`,
+    `agents.enc`, `shared` and `local.key` from `%APPDATA%\RiotSwitcher` and
+    deletes the old copy, so no second token copy remains. Target files are
+    never overwritten. `icacls` limits the folder to the current user, SYSTEM
+    and Administrators.
+  - Exit path already stopped only the Python threads; removed the remaining
+    `close_all` and `kill_riot_processes` IPC handlers plus the unused
+    `kill_valorant` / `close_valorant_then_client` helpers. A switch still
+    stops and restarts the Riot Client only, and refuses while VALORANT runs.
+  - Removed `ImportExportModal`, `utils/base64`, their tests, the HomeView
+    button/modal, the Settings > Backup card and its handlers, and the
+    `export_profiles` / `import_profiles` backend handlers. `ProfileManager`'s
+    dormant round-trip methods and tests were left untouched.
+  - README, AGENTS, ARCHITECTURE and progress updated for the new path, DPAPI
+    sessions and the removed backup feature.
+- Verified:
+  - `npm run typecheck` clean.
+  - `npm run test`: 12 files, 48 tests passed.
+  - `python -m pytest tests/ -q`: 160 passed.
+  - Ruff and compileall clean.
+  - `npm run build` and `npm run dist` succeeded (version 3.1.1).
+  - `release\win-unpacked\resources\playercards\animated`: 30 APNGs; the
+    portable `app-64.7z` also contains 30 APNGs and `resources\python\main.exe`.
+  - `build/icon.ico`, `build/icon.png`, `favicon.ico`, `favicon.png` and
+    `icon-512.png` contain 0 reddish pixels.
+  - `npm run lint` still reports the pre-existing `ProfileGrid` ref-during-
+    render and `SettingsView` `Date.now` purity errors; no new lint error came
+    from this change.
+  - After the full test runs, VALORANT (23540), VALORANT-Win64-Shipping
+    (7164) and RiotClientServices (25168) were still running with their
+    original start times.
+- Next: install the rebuilt 3.1.1 artifacts and confirm the Windows icon cache
+  no longer shows the old red-glow icon (the shipped assets are clean).
+
+### 2026-11-06 — Free window width, chevron taskbar icon
+
+- Goal: remove the maximum window-resize cap but keep the existing minimum;
+  replace Electron's default atom taskbar icon with the supplied chevron icon.
+- Done: dropped `maxWidth`/`MAX_WINDOW_WIDTH` from `window.ts`; `minWidth: 900`
+  and `minHeight: 788` are unchanged. The window now passes
+  `build/icon.png` as its `icon`, and `index.ts` calls
+  `app.setAppUserModelId("com.riotswitcher.app")` on Windows so the taskbar
+  button uses the RiotSwitcher identity instead of Electron's default.
+- Verified: `npm run typecheck` clean; `vitest` 49 passed (including new
+  window options + icon assertions); the existing 12 ESLint errors are
+  unchanged and pre-date this task.
+- Next: rebuild the installer and portable, then confirm the taskbar icon in a
+  running dev window.
+
+### 2026-11-06 — Four cards at minimum width; version moved to Settings
+
+- Goal: at the minimum window size show four profile cards per row instead of
+  three, and move the version label out of the title bar into Settings.
+- Done: `MIN_WINDOW_WIDTH = 1060` in `window.ts` (four cards at the default
+  1.17 scale need ~1038px of content plus the Windows resize border); the
+  minimum height stays 788 and the width above the floor stays free.
+  `TitleBar.tsx` no longer fetches or renders the version. Settings > Updates
+  now shows an "Installed version" row, read from the same `getVersion` bridge.
+- Verified: `npm run typecheck` clean; window + Settings tests 8 passed;
+  the restarted dev window reports 1116×798 outer at its default 1100×790.
+- Next: rebuild installer + portable with the final window and version changes.
+
+### 2026-11-06 — Equal picker tiles and charging skeletons
+
+- Goal: normal playercards must use the same picker tile size as animated
+  cards, and both categories need a smooth skeleton charge while loading.
+- Done: both catalogues serve 268×640 art, so `PlayerCardPicker` now uses one
+  `aspect-[67/160]` tile for every category instead of `3/4` for normal cards.
+  The initial catalogue load renders eight charging tiles instead of a spinner,
+  and each individual image keeps a shimmer overlay until its `onLoad` fires.
+  The shimmer is a CSS gradient animation and is disabled under
+  `prefers-reduced-motion`.
+- Verified: picker suite 8 passed (new tile-size, skeleton-grid and per-image
+  skeleton tests); `npm run typecheck` clean.
+- Next: final installer + portable build, then check the sealed env and 30
+  animated APNGs inside both artifacts.

@@ -56,7 +56,6 @@ graph TB
         PC[ProfileCard]
         AB[AddAccountModal]
         PP[PlayerCardPicker]
-        IE[ImportExportModal]
     end
 
     EM --> PB
@@ -123,10 +122,9 @@ selected from the query string, not a router — `App.tsx` reads `?view=` from
 
 ### Cross-Platform Features
 - **League of Legends settings sync** — share hotkeys, video, audio, and interface settings across profiles
-- **Import/Export** — encrypted backup of all profiles, transferable across PCs with a passkey
 
 ### System
-- **Auto-kill on launch** — kills VALORANT + Riot Client automatically when switching profiles
+- **Safe switching** — a profile switch restarts the Riot Client, never VALORANT; the switch is refused while VALORANT runs
 - **Close/Minimize to tray** — keep RiotSwitcher running in the background
 - **Auto-detect Riot Client** — finds install directory from registry, JSON, and metadata
 
@@ -147,11 +145,6 @@ mindmap
       Compare win rates and agent stats
       Monitor peak rank progress
       Review recent match performance
-    Backup & Transfer
-      Export encrypted profile backup
-      Transfer profiles to a new PC
-      Restore after a fresh Windows install
-      Share account list with a friend
     League Sync
       Keep same hotkeys across VALORANT accounts
       Share video settings everywhere
@@ -316,43 +309,6 @@ Map splash art and display names come from `https://valorant-api.com/v1/maps`
 via the `get_valorant_maps` handler. A failed fetch is **not** cached, so a
 transient network failure does not permanently blank every map.
 
-### Import/Export Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as ImportExportModal
-    participant BE as Python Backend
-    participant FS as File System
-
-    rect rgb(30, 40, 60)
-    Note over U,FS: Export Flow
-    U->>UI: Enter passkey + click Export
-    UI->>BE: export_profiles(passkey)
-    BE->>FS: Load profiles_data.json
-    BE->>BE: JSON serialize profiles
-    BE->>BE: PBKDF2 derive key (480k iterations)
-    BE->>BE: Fernet encrypt with derived key
-    BE-->>UI: Encrypted bytes
-    UI->>UI: Download as .rsprofile file
-    UI-->>U: "Exported!" ✓
-    end
-
-    rect rgb(30, 40, 60)
-    Note over U,FS: Import Flow
-    U->>UI: Select .rsprofile file + enter passkey
-    UI->>BE: import_profiles(passkey, data, merge=true)
-    BE->>BE: PBKDF2 derive key (480k iterations)
-    BE->>BE: Fernet decrypt with derived key
-    BE->>BE: JSON parse profiles
-    BE->>FS: Load existing profiles
-    BE->>BE: Deduplicate by PUUID + name
-    BE->>FS: Write merged profiles
-    BE-->>UI: {imported, skipped, total}
-    UI-->>U: "Imported X of Y profiles" ✓
-    end
-```
-
 ---
 
 ## Component Architecture
@@ -374,7 +330,6 @@ graph TB
 
     subgraph "Modals"
         AAM[AddAccountModal]
-        IEM[ImportExportModal]
         PCP[PlayerCardPicker]
         CFD[ConfirmDelete]
     end
@@ -392,7 +347,6 @@ graph TB
     PG --> PC2
     PG --> PC3
     HG --> AAM
-    HG --> IEM
     PC1 --> PCP
     PC1 --> CFD
     SB --> RC
@@ -445,10 +399,8 @@ sequenceDiagram
 | 16 | `set_riot_client_location` | Set Riot Client install path |
 | 17 | `detect_riot_client_location` | Auto-detect Riot Client path |
 | 18 | `get_riot_client_status` | Get Riot Client status |
-| 19 | `kill_riot_processes` | Kill all Riot processes |
 | 20 | `stop_riot_client` | Kill and wait for Riot Client |
 | 21 | `launch_riot_client` | Spawn Riot Client |
-| 22 | `close_all` | Close VALORANT and Riot Client |
 | 23 | `launch_profile` | Full profile switch sequence |
 | 24 | `stop_profile` | Stop profile switch |
 | 25 | `read_live_account` | Read current logged-in account |
@@ -469,8 +421,6 @@ sequenceDiagram
 | 40 | `league_cleanup_readonly` | Remove read-only flags |
 | 41 | `league_resolve_source` | Get source profile info |
 | 42 | `league_get_metadata` | Get snapshot metadata |
-| 43 | `export_profiles` | Encrypt and export profiles |
-| 44 | `import_profiles` | Decrypt and import profiles |
 | 45 | `get_playercards` | Fetch all playercards |
 | 46 | `set_playercard` | Set profile playercard |
 

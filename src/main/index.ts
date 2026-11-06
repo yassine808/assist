@@ -58,6 +58,9 @@ function setup(): void {
   });
 
   app.whenReady().then(async () => {
+    // Keep the Windows taskbar button on the RiotSwitcher identity instead of
+    // inheriting Electron's default icon/AppUserModelID.
+    if (process.platform === "win32") app.setAppUserModelId("com.riotswitcher.app");
     python = new PythonBridge();
     // Register before start(): backend_ready can arrive on the first stdout
     // chunk, and the pending profile must not be dropped.

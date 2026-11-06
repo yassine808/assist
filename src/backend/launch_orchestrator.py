@@ -154,9 +154,9 @@ class LaunchOrchestrator:
     def stop(self):
         """Stop the Riot Client this app started. VALORANT is left running.
 
-        Reached from the "stop profile" / app-shutdown path. `kill_all` would
-        also terminate VALORANT and ValorantWin64Shipping, which is never what
-        closing the switcher should do.
+        Only the explicit "stop profile" action reaches this. Closing the
+        switcher never stops either process; `kill_all` would also terminate
+        VALORANT and ValorantWin64Shipping, which shutdown must never do.
         """
         self._emit("stop", "started", "Stopping Riot Client")
         rp.shutdown_stop()

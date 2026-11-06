@@ -22,6 +22,7 @@ export default function SettingsView() {
   const mirrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [config, setConfig] = useState<ConfigState>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [appVersion, setAppVersion] = useState<string>("");
   const [updateState, setUpdateState] = useState<string>("idle");
   const [updateVersion, setUpdateVersion] = useState<string>("");
   const [updatePercent, setUpdatePercent] = useState<number>(0);
@@ -36,6 +37,7 @@ export default function SettingsView() {
   useEffect(() => {
     void call<ConfigState>("get_config").then((c) => setConfig(c ?? {}));
     void call<Profile[]>("get_profiles").then((p) => setProfiles(p ?? []));
+    void window.electronAPI?.getVersion?.().then((v) => setAppVersion(v ?? ""));
   }, [call]);
 
   useEffect(() => {
@@ -304,6 +306,12 @@ export default function SettingsView() {
       title: "Updates",
       rows: (
         <div className="py-2">
+          <div className="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
+            <span className="text-xs text-white/40">Installed version</span>
+            <span className="text-xs font-semibold text-white/75">
+              {appVersion ? `v${appVersion}` : "—"}
+            </span>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/70 text-sm font-medium">

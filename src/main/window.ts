@@ -22,11 +22,11 @@ export interface AppWindow {
 // a second row is what brings the scrollbar back.
 const MIN_WINDOW_HEIGHT = 788;
 
-// The lobby grid fits four cards side by side: 4 × 186px × the largest card
-// scale (1.4) + three 32px gaps + the page's 36px side padding ≈ 1210px.
-// Capping the window here keeps the grid at four columns; a fifth card would
-// need ~1290px at the default scale, so widening can never reflow the lobby.
-const MAX_WINDOW_WIDTH = 1210;
+// Four cards at the default 1.17 scale need 4 × 217.62 + 3 × 32 + 72 ≈ 1038px
+// of content. The Windows resize border adds ~16px, so this minimum keeps four
+// profiles on one row instead of wrapping the fourth to a second row. The
+// width above this floor is free: widening only adds empty space/reflows.
+const MIN_WINDOW_WIDTH = 1060;
 
 // A stalled page load (slow GPU init, blocked renderer) can keep the window
 // hidden forever, because neither `ready-to-show` nor the post-load show runs.
@@ -55,9 +55,9 @@ export async function createAppWindow(
   const win = new BrowserWindow({
     width: 1100,
     height: 790,
-    minWidth: 900,
-    maxWidth: MAX_WINDOW_WIDTH,
+    minWidth: MIN_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
+    icon: join(__dirname, "../../build/icon.png"),
     frame: false,
     backgroundColor: "#0f0f12",
     show: false,

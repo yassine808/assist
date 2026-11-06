@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Minus, Square, X, Settings, Users, Map } from "lucide-react";
 
 export type Page = "profiles" | "agents";
@@ -16,12 +15,6 @@ const TABS: { id: Page; label: string; hint: string; icon: typeof Users }[] = [
 ];
 
 export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: Readonly<Props>) {
-  const [version, setVersion] = useState("");
-
-  useEffect(() => {
-    void window.electronAPI?.getVersion?.().then((v) => setVersion(v ?? ""));
-  }, []);
-
   // the red underline sits on Settings while the panel is open, otherwise on the current page
   const idx = settingsOpen ? TABS.length : TABS.findIndex((t) => t.id === page);
 
@@ -54,11 +47,6 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
         <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">
           RIOTSWITCHER
         </span>
-        {version && (
-          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.06] uppercase">
-            v{version}
-          </span>
-        )}
       </div>
 
       {/* Centre: page navigation */}

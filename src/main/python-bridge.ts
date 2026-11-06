@@ -55,7 +55,7 @@ export class PythonBridge extends EventEmitter {
     // In dev, the source backend lives at <projectRoot>/src/backend/main.py and
     // runs via the system Python with the --dev flag (project-local data dir).
     // In a packaged app, spawn the PyInstaller-bundled executable from the
-    // resources/python folder (no --dev flag => %APPDATA%\RiotSwitcher).
+    // resources/python folder (no --dev flag => C:\ProgramData\RiotSwitcher).
     let command: string;
     let args: string[];
 

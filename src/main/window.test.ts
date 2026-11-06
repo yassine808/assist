@@ -79,12 +79,20 @@ describe("app window close-to-tray", () => {
     delete process.env.ELECTRON_RENDERER_URL;
   });
 
-  it("caps the width so the lobby never reflows past four cards", async () => {
+  it("keeps the minimum size but leaves the maximum width free", async () => {
     await createAppWindow(fakePython() as never, { onCloseToTray: vi.fn() });
     const options = FakeWindow.instances[0]!.options;
-    expect(options.maxWidth).toBe(1210);
-    expect(options.minWidth).toBe(900);
+    expect(options.minWidth).toBe(1060);
+    expect(options.minHeight).toBe(788);
+    expect(options.maxWidth).toBeUndefined();
+    expect(options.maxHeight).toBeUndefined();
     expect(options.frame).toBe(false);
+  });
+
+  it("uses the app icon for the window and taskbar", async () => {
+    await createAppWindow(fakePython() as never, { onCloseToTray: vi.fn() });
+    const options = FakeWindow.instances[0]!.options;
+    expect(options.icon).toMatch(/build[\\/]icon\.png$/);
   });
 
   it("hides to the tray instead of closing when CloseToTray is on", async () => {

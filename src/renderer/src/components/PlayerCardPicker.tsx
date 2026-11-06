@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { X, Shuffle, Loader2, Monitor, Check } from "lucide-react";
+import { X, Shuffle, Monitor, Check } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 import { useToast } from "./Toast";
 
@@ -7,7 +7,33 @@ const keyframes = `
 @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 @keyframes backdropFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pickerCharge {
+  0% { background-position: 180% 0, 0 0; }
+  100% { background-position: -80% 0, 0 0; }
+}
+.picker-card-skeleton {
+  background:
+    linear-gradient(100deg, rgba(190, 225, 240, 0.03) 24%, rgba(190, 225, 240, 0.16) 48%, rgba(190, 225, 240, 0.03) 72%),
+    radial-gradient(ellipse at 50% 30%, rgba(36, 64, 90, 0.65), rgba(15, 25, 35, 0.7));
+  background-size: 220% 100%, 100% 100%;
+  animation: pickerCharge 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .picker-card-skeleton { animation: none; }
+}
 `;
+
+// Both catalogue images are 268x640 (the animated APNGs and the normal
+// playercards), so every picker tile uses the same tall frame.
+const TILE_SHAPE = "aspect-[67/160]";
+
+function CardSkeleton({ delay = 0 }: Readonly<{ delay?: number }>) {
+  return (
+    <div className={`relative ${TILE_SHAPE} rounded-md overflow-hidden border-2 border-transparent bg-white/[0.03]`}>
+      <div className="picker-card-skeleton absolute inset-0" style={{ animationDelay: `${delay}ms` }} />
+    </div>
+  );
+}
 
 interface PlayerCard {
   uuid: string;
@@ -38,13 +64,14 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   const [applying, setApplying] = useState(false);
   const [shortcutState, setShortcutState] = useState<"idle" | "busy" | "done">("idle");
   const [filter, setFilter] = useState("");
+  const [loadedArt, setLoadedArt] = useState<Record<string, boolean>>({});
   // New profiles start with an animated card, so the picker opens on that tab
   // and the static catalogue lives one click away.
   const [category, setCategory] = useState<Category>("animated");
-  // The two sets have different art shapes: normal cards are wide/square,
-  // the animated agent cards are tall portraits (268x640). Cropping them to
-  // the same box cut off the art, so each category gets its own frame.
-  const tileShape = category === "animated" ? "aspect-[67/160]" : "aspect-[3/4]";
+
+  const markLoaded = useCallback((url: string) => {
+    setLoadedArt((current) => (current[url] ? current : { ...current, [url]: true }));
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -110,8 +137,10 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   let gridContent: ReactNode;
   if (loading) {
     gridContent = (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="text-riot-red" style={{ animation: "pulse 2s ease-in-out infinite" }} />
+      <div className="grid grid-cols-4 gap-2" aria-label="Loading cards">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <CardSkeleton key={index} delay={-index * 120} />
+        ))}
       </div>
     );
   } else if (filtered.length === 0) {
@@ -123,45 +152,58 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   } else {
     gridContent = (
       <div className="grid grid-cols-4 gap-2">
-        {filtered.map((card, index) => (
-          <button
-            key={card.uuid}
-            onClick={() => void handleSelect(card)}
-            disabled={applying}
-            className={`relative ${tileShape} rounded-md overflow-hidden border-2 transition-all
-                       disabled:opacity-40 group ${
-              card.largeArt === currentCardUrl
-                ? "border-riot-red shadow-[0_0_12px_rgba(255,70,85,0.4)]"
-                : "border-transparent hover:border-white/30"
-            }`}
-            style={{
-              animation: `cardIn 0.35s ease-out ${index * 0.03}s both`,
-              transition: "transform 0.2s ease, border-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.04)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-          >
-            <img
-              src={card.largeArt}
-              alt={card.displayName}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent
-                            opacity-0 group-hover:opacity-100 transition-opacity" />
-            <span className="absolute bottom-1 left-1 right-1 text-[9px] font-semibold text-white/80
-                             truncate opacity-0 group-hover:opacity-100 transition-opacity">
-              {card.displayName}
-            </span>
-            {card.largeArt === currentCardUrl && (
-              <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-riot-red flex items-center justify-center">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-            )}
-          </button>
-        ))}
+        {filtered.map((card, index) => {
+          const loaded = loadedArt[card.largeArt] === true;
+          return (
+            <button
+              key={card.uuid}
+              onClick={() => void handleSelect(card)}
+              disabled={applying}
+              className={`relative ${TILE_SHAPE} rounded-md overflow-hidden border-2 transition-all
+                         disabled:opacity-40 group bg-white/[0.03] ${
+                card.largeArt === currentCardUrl
+                  ? "border-riot-red shadow-[0_0_12px_rgba(255,70,85,0.4)]"
+                  : "border-transparent hover:border-white/30"
+              }`}
+              style={{
+                animation: `cardIn 0.35s ease-out ${index * 0.03}s both`,
+                transition: "transform 0.2s ease, border-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.04)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            >
+              {!loaded && (
+                <div
+                  className="picker-card-skeleton absolute inset-0"
+                  style={{ animationDelay: `${-index * 120}ms` }}
+                  aria-hidden="true"
+                />
+              )}
+              <img
+                src={card.largeArt}
+                alt={card.displayName}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => markLoaded(card.largeArt)}
+                onError={() => markLoaded(card.largeArt)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent
+                              opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="absolute bottom-1 left-1 right-1 text-[9px] font-semibold text-white/80
+                               truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                {card.displayName}
+              </span>
+              {card.largeArt === currentCardUrl && (
+                <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-riot-red flex items-center justify-center">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     );
   }

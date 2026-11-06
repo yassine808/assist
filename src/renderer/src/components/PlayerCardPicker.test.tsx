@@ -73,6 +73,36 @@ describe("PlayerCardPicker categories", () => {
     expect(screen.getByRole("button", { name: /^Animated/ })).toBeDefined();
   });
 
+  it("uses the same tall tile for animated and normal cards", async () => {
+    renderPicker();
+
+    const animatedTile = (await screen.findByText("Astra")).closest("button");
+    expect(animatedTile?.className).toContain("aspect-[67/160]");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Normal/ }));
+
+    const normalTile = (await screen.findByText("Jett Card")).closest("button");
+    expect(normalTile?.className).toContain("aspect-[67/160]");
+  });
+
+  it("shows charging skeleton tiles while the catalogue loads", () => {
+    call.mockImplementation(() => new Promise(() => {}));
+    renderPicker();
+
+    const loadingGrid = screen.getByLabelText("Loading cards");
+    expect(loadingGrid.querySelectorAll(".picker-card-skeleton")).toHaveLength(8);
+  });
+
+  it("keeps the skeleton over a card image until it has loaded", async () => {
+    renderPicker();
+
+    const tile = (await screen.findByText("Astra")).closest("button");
+    expect(tile?.querySelector(".picker-card-skeleton")).not.toBeNull();
+
+    fireEvent.load(tile?.querySelector("img") as HTMLImageElement);
+    await waitFor(() => expect(tile?.querySelector(".picker-card-skeleton")).toBeNull());
+  });
+
   it("sends the animated card URL to set_playercard", async () => {
     renderPicker();
     fireEvent.click(await screen.findByText("Astra"));
