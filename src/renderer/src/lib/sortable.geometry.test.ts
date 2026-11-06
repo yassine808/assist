@@ -65,7 +65,17 @@ describe("SortableEngine geometry", () => {
   function setup(measureBeforeRegister: boolean) {
     const container = document.createElement("div");
     container.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, right: 1000, bottom: 2500, width: 1000, height: 2500, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+      ({
+        left: 0,
+        top: 0,
+        right: 1000,
+        bottom: 2500,
+        width: 1000,
+        height: 2500,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
     document.body.appendChild(container);
 
     handlers = { onOrderChange: vi.fn(), onCommit: vi.fn(), onSwap: vi.fn(), onLift: vi.fn(), onDrop: vi.fn() };
@@ -129,7 +139,17 @@ describe("SortableEngine geometry", () => {
     document.body.innerHTML = "";
     const container = document.createElement("div");
     container.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, right: 1000, bottom: 2500, width: 1000, height: 2500, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+      ({
+        left: 0,
+        top: 0,
+        right: 1000,
+        bottom: 2500,
+        width: 1000,
+        height: 2500,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
     document.body.appendChild(container);
 
     handlers = { onOrderChange: vi.fn(), onCommit: vi.fn(), onSwap: vi.fn(), onLift: vi.fn(), onDrop: vi.fn() };

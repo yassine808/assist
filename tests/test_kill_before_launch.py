@@ -58,6 +58,10 @@ class TestKillAndWait(unittest.TestCase):
 
         wait.assert_not_called()
 
+    @unittest.skipUnless(
+        sys.platform == "win32",
+        "kill_all spawns taskkill with CREATE_NO_WINDOW, so it only runs on Windows",
+    )
     def test_kill_all_returns_the_taskkill_handles(self):
         """The caller needs the handles to wait on; discarding them was the bug."""
         fake = mock.MagicMock()

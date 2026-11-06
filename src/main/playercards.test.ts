@@ -57,8 +57,14 @@ describe("resolveCardPath", () => {
 
 describe("listAnimatedCards", () => {
   it("lists both formats with a cleaned-up display name", () => {
-    writeFileSync(join(root, "official playercards", "AgentMastery", "Animated", "Astra_Mastery_Card_animated.webp"), "x");
-    writeFileSync(join(root, "official playercards", "AgentMastery", "Animated", "Jett_Mastery_Card_animated.apng"), "x");
+    writeFileSync(
+      join(root, "official playercards", "AgentMastery", "Animated", "Astra_Mastery_Card_animated.webp"),
+      "x",
+    );
+    writeFileSync(
+      join(root, "official playercards", "AgentMastery", "Animated", "Jett_Mastery_Card_animated.apng"),
+      "x",
+    );
     writeFileSync(join(root, "official playercards", "AgentMastery", "Animated", "notes.txt"), "x");
 
     expect(listAnimatedCards()).toEqual([
