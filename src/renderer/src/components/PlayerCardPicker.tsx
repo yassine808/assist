@@ -3,26 +3,6 @@ import { X, Shuffle, Monitor, Check } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
 import { useToast } from "../lib/toast";
 
-const keyframes = `
-@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-@keyframes backdropFade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes cardIn { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes pickerCharge {
-  0% { background-position: 180% 0, 0 0; }
-  100% { background-position: -80% 0, 0 0; }
-}
-.picker-card-skeleton {
-  background:
-    linear-gradient(100deg, rgba(190, 225, 240, 0.03) 24%, rgba(190, 225, 240, 0.16) 48%, rgba(190, 225, 240, 0.03) 72%),
-    radial-gradient(ellipse at 50% 30%, rgba(36, 64, 90, 0.65), rgba(15, 25, 35, 0.7));
-  background-size: 220% 100%, 100% 100%;
-  animation: pickerCharge 1.5s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .picker-card-skeleton { animation: none; }
-}
-`;
-
 // Both catalogue images are 268x640 (the animated APNGs and the normal
 // playercards), so every picker tile uses the same tall frame.
 const TILE_SHAPE = "aspect-[67/160]";
@@ -210,7 +190,6 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
 
   return (
     <>
-      <style>{keyframes}</style>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <button
           type="button"

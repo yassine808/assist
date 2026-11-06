@@ -53,18 +53,14 @@ function SortableItem({
   // The drag container carries the button contract (role, tabIndex, keyboard
   // handling), but it cannot be a native <button>: the card inside has its own
   // buttons and nested native buttons are invalid HTML.
-  const reorderProps = {
-    role: "button" as const,
-    tabIndex: 0,
-    "aria-label": `Reorder ${profile.profile_name}`,
-  };
-
   return (
     <div
       ref={setRef}
       className="sortable-item"
       style={{ order }}
-      {...reorderProps}
+      role="button"
+      tabIndex={0}
+      aria-label={`Reorder ${profile.profile_name}`}
       onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
       onDragStart={(e) => e.preventDefault()}
       onClickCapture={(e) => {

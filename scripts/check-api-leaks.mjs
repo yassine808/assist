@@ -10,17 +10,26 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
-import { delimiter, extname } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname } from "node:path";
 
 const ROOT = process.cwd();
-// Only fixed, non-user-writable directories: the scanner must never pick up a
-// `git` planted earlier on a manipulated PATH.
-const GIT_SEARCH_PATH = (
+// Fixed, well-known install locations only, invoked by absolute path: the
+// scanner must never resolve a `git` that a manipulated PATH put first.
+const GIT_CANDIDATES =
   process.platform === "win32"
-    ? [String.raw`C:\Windows\System32`, String.raw`C:\Program Files\Git\cmd`]
-    : ["/usr/local/bin", "/usr/bin", "/bin"]
-).join(delimiter);
+    ? [
+        String.raw`C:\Program Files\Git\cmd\git.exe`,
+        String.raw`C:\Program Files\Git\bin\git.exe`,
+        String.raw`C:\Program Files (x86)\Git\cmd\git.exe`,
+      ]
+    : ["/usr/local/bin/git", "/usr/bin/git", "/bin/git"];
+const GIT_BIN = GIT_CANDIDATES.find((candidate) => existsSync(candidate));
+
+if (GIT_BIN === undefined) {
+  console.error(`[api-leak] git not found in a fixed location: ${GIT_CANDIDATES.join(", ")}`);
+  process.exit(1);
+}
 const SECRET_PATHS = [".env", "build/env.bin", "build/env-shard-a.bin"];
 const SKIP_EXT = new Set([
   ".7z", ".apng", ".bin", ".db", ".dll", ".exe", ".gif", ".ico", ".jpg", ".jpeg",
@@ -39,11 +48,10 @@ const GENERIC_RULES = [
 ];
 
 function git(args) {
-  return execFileSync("git", args, {
+  return execFileSync(GIT_BIN, args, {
     cwd: ROOT,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
-    env: { ...process.env, PATH: GIT_SEARCH_PATH },
   });
 }
 

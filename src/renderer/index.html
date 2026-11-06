@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- React writes inline style properties (card order, sizes, theme
-         swatches) and Vite injects styles in dev, so style-src needs
-         'unsafe-inline'; scripts stay restricted to 'self'. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https:; img-src 'self' data: https: card:" /> <!-- NOSONAR -->
+    <!-- React writes style properties through the CSSOM and the production
+         bundle links its stylesheet, so style-src stays free of
+         'unsafe-inline'. The dev server re-adds it for Vite's HMR <style>
+         tags (see electron.vite.config.ts). Scripts stay 'self'. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' data: https:; img-src 'self' data: https: card:" />
     <meta name="theme-color" content="#0a1017" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
