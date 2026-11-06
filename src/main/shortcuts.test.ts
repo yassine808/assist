@@ -1,6 +1,7 @@
 // @vitest-environment node
 // Main-process helpers; see the note in updater.test.ts.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { join } from "node:path";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const { writeShortcutLink, desktop } = vi.hoisted(() => ({
   writeShortcutLink: vi.fn(),
@@ -24,8 +25,18 @@ import {
   sanitizeShortcutName,
 } from "./shortcuts";
 
+const realPlatform = process.platform;
+
 describe("profile desktop shortcuts", () => {
-  beforeEach(() => writeShortcutLink.mockReset());
+  beforeEach(() => {
+    writeShortcutLink.mockReset();
+    // Shortcuts are Windows-only; run the same logic on every CI runner.
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: realPlatform, configurable: true });
+  });
 
   it("strips characters Windows rejects from the file name", () => {
     expect(sanitizeShortcutName('Bad/Name: "x"|?*')).toBe("Bad_Name_ _x____");
@@ -40,7 +51,7 @@ describe("profile desktop shortcuts", () => {
   });
 
   it("builds the shortcut in the Desktop folder", () => {
-    expect(profileShortcutPath("Main", desktop)).toBe("C:\\Users\\Test\\Desktop\\RiotSwitcher - Main.lnk");
+    expect(profileShortcutPath("Main", desktop)).toBe(join(desktop, "RiotSwitcher - Main.lnk"));
   });
 
   it("passes the app path as well as the profile when running from source", () => {
@@ -59,7 +70,7 @@ describe("profile desktop shortcuts", () => {
     const result = createProfileShortcut("Main Account");
 
     expect(result.ok).toBe(true);
-    expect(result.path).toBe("C:\\Users\\Test\\Desktop\\RiotSwitcher - Main Account.lnk");
+    expect(result.path).toBe(join(desktop, "RiotSwitcher - Main Account.lnk"));
     expect(writeShortcutLink).toHaveBeenCalledWith(
       result.path,
       "create",
