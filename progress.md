@@ -1434,3 +1434,33 @@
   `vitest` ProfileCard 9/9 and ProfileGrid 3/3; `tsc -p tsconfig.web.json` exit
   0; ESLint and Prettier clean on the touched files; `npm run build` OK.
 - Next: look at the LAUNCHED state and the beams in the running dev app.
+
+### 2026-11-06 - npm allowScripts policy made durable
+
+- Goal: stop npm from silently skipping dependency install scripts (the cause of
+  the missing Electron runtime: `node_modules\electron` had no `dist\`).
+- Done:
+  - npm 11 keeps a script allowlist and skips any install script not in it.
+  - The accidental block pinned exact versions (`electron@44.10.2`,
+    `esbuild@0.25.12`, `electron-winstaller@5.4.0`). A pin only matches that
+    exact version, so the next bump silently falls back to "skipped" - the same
+    failure again. Replaced with name-only approvals, which match every version:
+    `"esbuild": true`, `"electron-winstaller": true`.
+  - Dropped the electron entry entirely: electron 44.10.2 ships no install
+    scripts (its `index.js` fetches the binary lazily), so npm itself reports the
+    pin as "no install scripts".
+- Verified:
+  - `npm install-scripts prune --dry-run` before the change listed
+    `electron@44.10.2 (no install scripts)`.
+  - `npm install-scripts prune` removed it; `npm install-scripts ls` now reports
+    "No packages with unreviewed install scripts."
+  - `npm rebuild esbuild electron-winstaller --foreground-scripts` ran both
+    scripts through the policy ("Selecting 7-Zip for arch x64", esbuild
+    postinstall) - the allowlist is actually being consulted.
+  - `node_modules/electron/dist/electron.exe` still present; `npm install` clean;
+    `npm run test` 18 files / 86 tests passed (run twice; one earlier run
+    reported worker errors while the dev server was rebuilding, and two
+    consecutive clean runs afterwards showed no code fault).
+  - Policy is on `origin/main` in 26a0aa3.
+- Next: nothing; the approval list only needs a new entry if a dependency starts
+  shipping an install script (`npm install-scripts ls` will name it).
