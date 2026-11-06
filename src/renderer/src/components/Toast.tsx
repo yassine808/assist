@@ -1,16 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-
-export type ToastKind = "success" | "error" | "info" | "loading";
-
-export interface ToastOptions {
-  /** Reusing an id updates that toast in place (e.g. loading -> success). */
-  id?: string;
-  kind?: ToastKind;
-  title: string;
-  message?: string;
-  /** ms before auto-dismiss. Loading toasts stay until updated or dismissed. */
-  duration?: number;
-}
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { ToastContext, type ToastApi, type ToastKind, type ToastOptions } from "../lib/toast";
 
 interface ToastItem extends Required<Pick<ToastOptions, "id" | "kind" | "title">> {
   message: string;
@@ -18,18 +7,6 @@ interface ToastItem extends Required<Pick<ToastOptions, "id" | "kind" | "title">
   stamp: number; // bumps on every update so the countdown bar restarts
   leaving: boolean;
 }
-
-export interface ToastApi {
-  show: (opts: ToastOptions) => string;
-  update: (id: string, patch: Partial<Omit<ToastOptions, "id">>) => void;
-  dismiss: (id: string) => void;
-}
-
-// Without a provider (e.g. isolated component tests) the API quietly does nothing.
-const noop: ToastApi = { show: () => "", update: () => undefined, dismiss: () => undefined };
-const ToastContext = createContext<ToastApi>(noop);
-
-export const useToast = (): ToastApi => useContext(ToastContext);
 
 const MAX_VISIBLE = 4;
 const EXIT_MS = 380;

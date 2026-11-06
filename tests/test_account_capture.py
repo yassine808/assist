@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 _SRC = Path(__file__).resolve().parent.parent / "src"
@@ -122,26 +123,29 @@ class CaptureSessionTests(_TempDirMixin):
 class HandlerWiringTests(_TempDirMixin):
     def _handlers(self, capture, capture_current=None):
         return main._build_handlers(
-            self._pm(),
-            self._config(),
-            riot=mock.MagicMock(),
-            tracker=mock.MagicMock(),
-            detector=mock.MagicMock(),
-            orchestrator=mock.MagicMock(),
-            sessions=self._sm(),
-            league=mock.MagicMock(),
-            protocol=mock.MagicMock(),
-            data_dir=self.root,
-            playercards=mock.MagicMock(),
-            running=mock.MagicMock(),
-            _league_config_dir=lambda: "",
-            _swap_profile=mock.MagicMock(return_value=True),
-            _set_playercard=mock.MagicMock(),
-            _check_current_account=mock.MagicMock(),
-            _capture_current_account=capture_current or mock.MagicMock(),
-            _profile_dir_name=lambda name: name,
-            _cleanup_league_readonly=mock.MagicMock(),
-            _capture_session=capture,
+            SimpleNamespace(
+                profiles=self._pm(),
+                config=self._config(),
+                riot=mock.MagicMock(),
+                tracker=mock.MagicMock(),
+                detector=mock.MagicMock(),
+                orchestrator=mock.MagicMock(),
+                sessions=self._sm(),
+                league=mock.MagicMock(),
+                protocol=mock.MagicMock(),
+                playercards=mock.MagicMock(),
+                running=mock.MagicMock(),
+                helpers=SimpleNamespace(
+                    league_config_dir=lambda: "",
+                    swap_profile=mock.MagicMock(return_value=True),
+                    set_playercard=mock.MagicMock(),
+                    check_current_account=mock.MagicMock(),
+                    capture_current_account=capture_current or mock.MagicMock(),
+                    profile_dir_name=lambda name: name,
+                    cleanup_league_readonly=mock.MagicMock(),
+                    capture_session=capture,
+                ),
+            )
         )
 
     def test_create_profile_handler_captures_the_session(self):

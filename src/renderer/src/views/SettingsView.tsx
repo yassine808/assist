@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Coffee, Download, Palette, RefreshCw, Rocket, SlidersHorizontal } from "lucide-react";
 import { SettingToggle } from "../components/SettingToggle";
 import { SettingDropdown } from "../components/SettingDropdown";
-import { useToast } from "../components/Toast";
+import { useToast } from "../lib/toast";
 import { useAppearance } from "../hooks/useAppearance";
 import { CUSTOM_ID, SCALE_DEFAULT, SCALE_MAX, SCALE_MIN, THEMES, customTheme } from "../lib/appearance";
 import { useIPC } from "../hooks/useIPC";

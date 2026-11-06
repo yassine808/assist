@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AppActiveContext } from "./appActiveContext";
 
 /**
  * Whether the window is actually on screen.
@@ -12,8 +13,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 function windowIsActive(): boolean {
   return document.visibilityState === "visible";
 }
-
-const AppActiveContext = createContext(true);
 
 export function AppActiveProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [active, setActive] = useState(windowIsActive);
@@ -37,9 +36,4 @@ export function AppActiveProvider({ children }: Readonly<{ children: ReactNode }
   }, [active]);
 
   return <AppActiveContext.Provider value={active}>{children}</AppActiveContext.Provider>;
-}
-
-/** Read the provider value. Defaults to `true` outside the app shell (tests, isolated cards). */
-export function useAppActive(): boolean {
-  return useContext(AppActiveContext);
 }

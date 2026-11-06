@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { X, Shuffle, Monitor, Check } from "lucide-react";
 import { useIPC } from "../hooks/useIPC";
-import { useToast } from "./Toast";
+import { useToast } from "../lib/toast";
 
 const keyframes = `
 @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }

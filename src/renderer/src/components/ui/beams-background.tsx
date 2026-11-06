@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAppActive } from "../../hooks/useAppActive";
+import { useAppActive } from "../../hooks/appActiveContext";
 
 interface BeamsBackgroundProps {
   className?: string;

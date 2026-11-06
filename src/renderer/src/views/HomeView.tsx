@@ -6,7 +6,7 @@ import DeleteProfileModal from "../components/DeleteProfileModal";
 import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
-import { useToast } from "../components/Toast";
+import { useToast } from "../lib/toast";
 import type { Profile } from "../types/profile";
 
 export default function HomeView() {

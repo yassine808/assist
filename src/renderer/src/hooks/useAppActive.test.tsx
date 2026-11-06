@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { AppActiveProvider, useAppActive } from "./useAppActive";
+import { AppActiveProvider } from "./useAppActive";
+import { useAppActive } from "./appActiveContext";
 
 function Probe() {
   const active = useAppActive();

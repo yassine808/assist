@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import threading
+from types import SimpleNamespace
 
 import animated_cards
 import riot_account_detect as rad

@@ -1068,3 +1068,32 @@
     anywhere under `out\renderer`.
 - Next: Yassine installs/tests both artifacts; commit and push only after his
   approval.
+
+### 2026-11-06 — Sonar pass: broken namespace refactor, lint warnings, test wiring
+
+- Goal: scan the current `sonarcube` branch, fix every reported issue, and push
+  the clean result.
+- Found:
+  - `main.py` called `SimpleNamespace` without importing it; the backend could
+    not start, and Ruff reported two `F821` errors.
+  - `tests/test_account_capture.py` still called the old positional
+    `_build_handlers(...)` signature; 2 pytest failures.
+  - Two `react-refresh/only-export-components` ESLint warnings from `Toast.tsx`
+    and `useAppActive.tsx`.
+- Done:
+  - Added `from types import SimpleNamespace`.
+  - Rewrote the handler-wiring test to build the same `ctx` / `helpers`
+    namespace the real entry point uses (no test assertions weakened).
+  - Moved toast types, context and `useToast` to `lib/toast.ts`; moved the app
+    active context and hook to `hooks/appActiveContext.ts`. Component files now
+    export only components; consumers import the new modules.
+- Verified:
+  - `npm run lint`: 0 errors, 0 warnings.
+  - `npm run typecheck`: clean.
+  - `npm run test`: 13 files, 55 tests passed.
+  - `python -m pytest tests/ -q`: 160 passed.
+  - `python -m ruff check src/backend tests/`: clean.
+  - `python -m compileall -q src/backend tests`: clean.
+  - `node scripts/check-api-leaks.mjs`: clean.
+  - `npm run build`: succeeded.
+- Next: commit and push the branch.
