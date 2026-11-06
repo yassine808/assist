@@ -40,7 +40,7 @@ jobs:
       name: release
       url: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag }}
           fetch-depth: 0
