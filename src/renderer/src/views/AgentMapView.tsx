@@ -21,6 +21,147 @@ function winrateBar(winrate: number): string {
   return "bg-white/30";
 }
 
+function EmptyState({ enabled, error, hasProfiles, hasStats, loading }: Readonly<{
+  enabled: boolean; error: string; hasProfiles: boolean; hasStats: boolean; loading: boolean;
+}>) {
+  if (!enabled) {
+    return (
+      <p className="text-sm text-white/40 py-8 text-center">
+        Per-map stats are turned off. Enable the toggle above to collect them.
+      </p>
+    );
+  }
+  if (error) return <p className="text-sm text-riot-red py-8 text-center">{error}</p>;
+  if (!hasProfiles) {
+    return (
+      <p className="text-sm text-white/40 py-8 text-center">
+        No profiles with a VALORANT account yet. Sign in on the home page first.
+      </p>
+    );
+  }
+  if (!hasStats) {
+    return (
+      <p className="text-sm text-white/40 py-8 text-center">
+        {loading ? "Loading map data…" : "No map data for this profile yet. Hit Refresh."}
+      </p>
+    );
+  }
+  return null;
+}
+
+interface SummaryStats {
+  maps: number;
+  games: number;
+  winrate: number;
+  best: MapStat | null;
+}
+
+function SummaryCards({ summary }: Readonly<{ summary: SummaryStats }>) {
+  return (
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
+        <div className="text-[10px] uppercase tracking-wider text-white/35">Maps played</div>
+        <div className="text-lg font-bold text-white mt-0.5">{summary.maps}</div>
+      </div>
+      <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
+        <div className="text-[10px] uppercase tracking-wider text-white/35">Total games</div>
+        <div className="text-lg font-bold text-white mt-0.5">{summary.games}</div>
+      </div>
+      <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
+        <div className="text-[10px] uppercase tracking-wider text-white/35">Overall winrate</div>
+        <div className={`text-lg font-bold mt-0.5 ${winrateTone(summary.winrate)}`}>
+          {summary.winrate}%
+        </div>
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden mt-1.5">
+          <div className={`h-full ${winrateBar(summary.winrate)}`} style={{ width: `${summary.winrate}%` }} />
+        </div>
+      </div>
+      <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
+        <div className="text-[10px] uppercase tracking-wider text-white/35 flex items-center gap-1">
+          <Trophy size={10} /> Best map
+        </div>
+        <div className="text-sm font-bold text-white mt-1 truncate">
+          {summary.best ? summary.best.map : "—"}
+        </div>
+        <div className={`text-[10px] mt-0.5 ${winrateTone(summary.best?.winrate ?? 0)}`}>
+          {summary.best ? `${summary.best.winrate}% over ${summary.best.games} games` : "No games yet"}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AgentRow({ agent }: Readonly<{ agent: MapStat["agents"][number] }>) {
+  return (
+    <div className="flex items-center gap-2.5 py-1.5">
+      {agent.display_icon ? (
+        <img
+          src={agent.display_icon}
+          alt=""
+          className="w-7 h-7 rounded-md bg-white/5 object-cover shrink-0"
+        />
+      ) : (
+        <div className="w-7 h-7 rounded-md bg-white/5 shrink-0" />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-medium text-white truncate">{agent.agent}</div>
+        <div className="text-[10px] text-white/30">
+          {agent.role || "Unknown role"} · {agent.games}{" "}
+          {agent.games === 1 ? "game" : "games"}
+        </div>
+      </div>
+      <div className="text-[10px] text-white/30">ACS {agent.avg_score}</div>
+      <div className={`text-xs font-bold w-9 text-right ${winrateTone(agent.winrate)}`}>
+        {agent.winrate}%
+      </div>
+    </div>
+  );
+}
+
+function MapCard({ stat, index, splash }: Readonly<{ stat: MapStat; index: number; splash: string }>) {
+  return (
+    <article
+      className="view-card rounded-md bg-bg-card border border-white/10 overflow-hidden
+                 transition-[border-color,box-shadow] duration-200 ease-out
+                 hover:border-riot-red/40 hover:shadow-[0_0_20px_rgba(255,70,85,0.08)]"
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <div className="relative h-20 overflow-hidden">
+        {splash ? (
+          <img src={splash} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-white/[0.04] flex items-center justify-center">
+            <MapIcon size={18} className="text-white/20" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-bg-card/60 to-transparent" />
+        <div className="absolute bottom-1.5 left-3 right-3 flex items-end justify-between">
+          <h2 className="text-sm font-bold text-white drop-shadow">{stat.map}</h2>
+          <div className="text-[10px] text-white/50 font-medium">
+            {stat.games} {stat.games === 1 ? "game" : "games"} · ACS {stat.avg_score}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-3 pb-2.5 -mt-1">
+        <div className="flex items-center justify-between text-[11px] mb-1">
+          <span className="text-white/40">
+            {stat.wins}W / {stat.games - stat.wins}L
+          </span>
+          <span className={`font-bold ${winrateTone(stat.winrate)}`}>{stat.winrate}%</span>
+        </div>
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden mb-1.5">
+          <div className={`h-full ${winrateBar(stat.winrate)}`} style={{ width: `${stat.winrate}%` }} />
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {stat.agents.map((agent) => <AgentRow key={agent.agent} agent={agent} />)}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function AgentMapView() {
   const { call, onEvent } = useIPC();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -164,6 +305,7 @@ export default function AgentMapView() {
   }, [call, selected]);
 
   const eligible = profiles.filter((p) => Boolean(p.valorant_puuid));
+  const showMaps = enabled && !error && eligible.length > 0 && mapStats.length > 0;
 
   return (
     <div className="p-6 max-w-5xl">
@@ -212,52 +354,17 @@ export default function AgentMapView() {
         />
       </section>
 
-      {!enabled ? (
-        <p className="text-sm text-white/40 py-8 text-center">
-          Per-map stats are turned off. Enable the toggle above to collect them.
-        </p>
-      ) : error ? (
-        <p className="text-sm text-riot-red py-8 text-center">{error}</p>
-      ) : eligible.length === 0 ? (
-        <p className="text-sm text-white/40 py-8 text-center">
-          No profiles with a VALORANT account yet. Sign in on the home page first.
-        </p>
-      ) : mapStats.length === 0 ? (
-        <p className="text-sm text-white/40 py-8 text-center">
-          {loading ? "Loading map data…" : "No map data for this profile yet. Hit Refresh."}
-        </p>
-      ) : (
+      <EmptyState
+        enabled={enabled}
+        error={error}
+        hasProfiles={eligible.length > 0}
+        hasStats={mapStats.length > 0}
+        loading={loading}
+      />
+
+      {showMaps && (
         <>
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-white/35">Maps played</div>
-              <div className="text-lg font-bold text-white mt-0.5">{summary.maps}</div>
-            </div>
-            <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-white/35">Total games</div>
-              <div className="text-lg font-bold text-white mt-0.5">{summary.games}</div>
-            </div>
-            <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-white/35">Overall winrate</div>
-              <div className={`text-lg font-bold mt-0.5 ${winrateTone(summary.winrate)}`}>
-                {summary.winrate}%
-              </div>
-              <div className="h-1 rounded-full bg-white/10 overflow-hidden mt-1.5">
-                <div className={`h-full ${winrateBar(summary.winrate)}`} style={{ width: `${summary.winrate}%` }} />
-              </div>
-            </div>
-            <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-white/35 flex items-center gap-1">
-                <Trophy size={10} /> Best map
-              </div>
-              <div className="text-sm font-bold text-white mt-1 truncate">
-                {summary.best ? summary.best.map : "—"}
-              </div>
-              <div className={`text-[10px] mt-0.5 ${winrateTone(summary.best?.winrate ?? 0)}`}>
-                {summary.best ? `${summary.best.winrate}% over ${summary.best.games} games` : "No games yet"}
-              </div>
-            </div>
-          </section>
+          <SummaryCards summary={summary} />
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <div className="relative flex-1 min-w-[180px]">
@@ -292,75 +399,7 @@ export default function AgentMapView() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {visibleStats.map((stat, index) => (
-                <article
-                  key={stat.map}
-                  className="view-card rounded-md bg-bg-card border border-white/10 overflow-hidden
-                             transition-[border-color,box-shadow] duration-200 ease-out
-                             hover:border-riot-red/40 hover:shadow-[0_0_20px_rgba(255,70,85,0.08)]"
-                  style={{ animationDelay: `${index * 60}ms` }}
-                >
-                  <div className="relative h-20 overflow-hidden">
-                    {splashFor(stat.map) ? (
-                      <img
-                        src={splashFor(stat.map)}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-white/[0.04] flex items-center justify-center">
-                        <MapIcon size={18} className="text-white/20" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-bg-card/60 to-transparent" />
-                    <div className="absolute bottom-1.5 left-3 right-3 flex items-end justify-between">
-                      <h2 className="text-sm font-bold text-white drop-shadow">{stat.map}</h2>
-                      <div className="text-[10px] text-white/50 font-medium">
-                        {stat.games} {stat.games === 1 ? "game" : "games"} · ACS {stat.avg_score}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="px-3 pb-2.5 -mt-1">
-                    <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-white/40">
-                        {stat.wins}W / {stat.games - stat.wins}L
-                      </span>
-                      <span className={`font-bold ${winrateTone(stat.winrate)}`}>{stat.winrate}%</span>
-                    </div>
-                    <div className="h-1 rounded-full bg-white/10 overflow-hidden mb-1.5">
-                      <div className={`h-full ${winrateBar(stat.winrate)}`} style={{ width: `${stat.winrate}%` }} />
-                    </div>
-
-                    <div className="divide-y divide-white/5">
-                      {stat.agents.map((agent) => (
-                        <div key={agent.agent} className="flex items-center gap-2.5 py-1.5">
-                          {agent.display_icon ? (
-                            <img
-                              src={agent.display_icon}
-                              alt=""
-                              className="w-7 h-7 rounded-md bg-white/5 object-cover shrink-0"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-md bg-white/5 shrink-0" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-medium text-white truncate">{agent.agent}</div>
-                            <div className="text-[10px] text-white/30">
-                              {agent.role || "Unknown role"} · {agent.games}{" "}
-                              {agent.games === 1 ? "game" : "games"}
-                            </div>
-                          </div>
-                          <div className="text-[10px] text-white/30">ACS {agent.avg_score}</div>
-                          <div
-                            className={`text-xs font-bold w-9 text-right ${winrateTone(agent.winrate)}`}
-                          >
-                            {agent.winrate}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
+                <MapCard key={stat.map} stat={stat} index={index} splash={splashFor(stat.map)} />
               ))}
             </div>
           )}

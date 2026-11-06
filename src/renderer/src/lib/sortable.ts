@@ -45,8 +45,24 @@ const HYSTERESIS = 16;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damping = (k: number, zeta: number) => 2 * Math.sqrt(k) * zeta;
 
+interface SpringTarget {
+  tx: number; ty: number; ts: number;
+  kPos: number; cPos: number;
+  kS: number; cS: number;
+}
+
+function atRest(b: Body, isDrag: boolean): boolean {
+  if (isDrag) return false;
+  return Math.abs(b.x) < 0.25
+    && Math.abs(b.y) < 0.25
+    && Math.abs(b.vx) < 1.6
+    && Math.abs(b.vy) < 1.6
+    && Math.abs(b.s - 1) < 0.002
+    && Math.abs(b.vs) < 0.03;
+}
+
 export class SortableEngine {
-  private bodies = new Map<string, Body>();
+  private readonly bodies = new Map<string, Body>();
   private container: HTMLElement | null = null;
   private slot: HTMLElement | null = null;
   private scroller: HTMLElement | null = null;
@@ -187,8 +203,8 @@ export class SortableEngine {
   }
 
   private onMove = (e: PointerEvent) => {
-    const d = this.drag;
-    if (!d || e.pointerId !== d.pointerId) return;
+    if (e.pointerId !== this.drag?.pointerId) return;
+    const d = this.drag!;
     // The button was released while the pointer was outside the window, so
     // pointerup never reached us: finish the drag instead of letting the card
     // chase the cursor forever.
@@ -203,14 +219,12 @@ export class SortableEngine {
   };
 
   private onUp = (e: PointerEvent) => {
-    const d = this.drag;
-    if (!d || e.pointerId !== d.pointerId) return;
+    if (e.pointerId !== this.drag?.pointerId) return;
     this.finish(true);
   };
 
   private onCancel = (e: PointerEvent) => {
-    const d = this.drag;
-    if (!d || e.pointerId !== d.pointerId) return;
+    if (e.pointerId !== this.drag?.pointerId) return;
     this.finish(false);
   };
 
@@ -273,9 +287,13 @@ export class SortableEngine {
     if (this.slot) {
       this.slot.style.transition = "none";
       this.syncSlot();
-      void this.slot.offsetWidth; // commit the un-animated position before fading in
-      this.slot.style.transition = "";
-      this.slot.classList.add("is-on");
+      // Re-enable the transition on the next frame so the slot fades in from
+      // its freshly committed, un-animated position.
+      requestAnimationFrame(() => {
+        if (!this.slot) return;
+        this.slot.style.transition = "";
+        this.slot.classList.add("is-on");
+      });
     }
     this.handlers.onLift?.();
   }
@@ -335,7 +353,7 @@ export class SortableEngine {
     if (slots.length !== this.order.length) return;
     // Unlaid-out grid (hidden pane, display:none): every slot is at 0,0. Treat
     // that as "no geometry" instead of reordering everything to the first slot.
-    if (slots.length > 1 && slots[0].x === slots[slots.length - 1].x && slots[0].y === slots[slots.length - 1].y) return;
+    if (slots.length > 1 && slots[0].x === slots.at(-1)!.x && slots[0].y === slots.at(-1)!.y) return;
 
     // Where the lifted card's centre is right now (it is what "covers" the other cards).
     const cx = d.px - cr.left - d.gx + me.el.offsetWidth / 2;
@@ -386,55 +404,82 @@ export class SortableEngine {
     this.last = t;
     const d = this.drag?.active ? this.drag : null;
     let busy = !!d;
-
-    let cr: DOMRect | null = null;
-    if (d && this.container) {
-      this.autoScroll(dt);
-      cr = this.container.getBoundingClientRect();
-      this.hitTest(cr);
-    }
+    const cr = this.trackDrag(d, dt);
 
     for (const [id, b] of this.bodies) {
-      const isDrag = !!d && d.id === id;
-      if (b.idle && !isDrag && !b.lifted) continue;
-
-      let tx = 0, ty = 0, ts = 1;
-      let kPos = this.reduce ? 900 : 440, cPos = damping(kPos, this.reduce ? 1 : 0.8);
-      let kS = 520, cS = damping(kS, 0.72);
-      if (isDrag && d && cr) {
-        tx = d.px - cr.left - d.gx - b.lx;
-        ty = d.py - cr.top - d.gy - b.ly;
-        if (!this.reduce) ts = 1.045;
-        kPos = 950; cPos = damping(kPos, 0.84);
-      } else if (b.lifted && !this.reduce) {
-        // just dropped: a livelier landing
-        kPos = 400; cPos = damping(kPos, 0.66);
-      }
-      if (this.reduce) { kS = 900; cS = damping(kS, 1); }
-
-      const n = Math.max(1, Math.ceil(dt / (1 / 120)));
-      const h = dt / n;
-      for (let i = 0; i < n; i++) {
-        b.vx += (kPos * (tx - b.x) - cPos * b.vx) * h; b.x += b.vx * h;
-        b.vy += (kPos * (ty - b.y) - cPos * b.vy) * h; b.y += b.vy * h;
-        b.vs += (kS * (ts - b.s) - cS * b.vs) * h; b.s += b.vs * h;
-      }
-
-      const atRest = !isDrag
-        && Math.abs(b.x) < 0.25 && Math.abs(b.y) < 0.25 && Math.abs(b.vx) < 1.6 && Math.abs(b.vy) < 1.6
-        && Math.abs(b.s - 1) < 0.002 && Math.abs(b.vs) < 0.03;
-      if (atRest) {
-        b.x = b.y = b.vx = b.vy = b.vs = 0; b.s = 1;
-        b.idle = true;
-        b.el.style.transform = "";
-        if (b.lifted) { b.lifted = false; b.el.classList.remove("is-lifted"); b.el.style.transformOrigin = ""; }
-      } else {
-        busy = true;
-        b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) scale(${b.s.toFixed(4)})`;
-      }
+      if (this.stepBody(id, b, d, cr, dt)) busy = true;
     }
 
     if (busy) this.raf = requestAnimationFrame(this.tick);
     else this.last = 0;
   };
+
+  /** Scroll near the edges and return the container rect used for targets. */
+  private trackDrag(d: DragState | null, dt: number): DOMRect | null {
+    if (!d || !this.container) return null;
+    this.autoScroll(dt);
+    const cr = this.container.getBoundingClientRect();
+    this.hitTest(cr);
+    return cr;
+  }
+
+  private stepBody(id: string, b: Body, d: DragState | null, cr: DOMRect | null, dt: number): boolean {
+    const isDrag = d?.id === id;
+    if (b.idle && !isDrag && !b.lifted) return false;
+    this.integrate(b, dt, this.targetFor(b, isDrag, d, cr));
+    return this.settleBody(b, isDrag);
+  }
+
+  private targetFor(b: Body, isDrag: boolean, d: DragState | null, cr: DOMRect | null): SpringTarget {
+    let tx = 0, ty = 0, ts = 1;
+    let kPos = this.reduce ? 900 : 440;
+    let cPos = damping(kPos, this.reduce ? 1 : 0.8);
+    let kS = 520;
+    let cS = damping(kS, 0.72);
+    if (isDrag && d && cr) {
+      tx = d.px - cr.left - d.gx - b.lx;
+      ty = d.py - cr.top - d.gy - b.ly;
+      if (!this.reduce) ts = 1.045;
+      kPos = 950;
+      cPos = damping(kPos, 0.84);
+    } else if (b.lifted && !this.reduce) {
+      // just dropped: a livelier landing
+      kPos = 400;
+      cPos = damping(kPos, 0.66);
+    }
+    if (this.reduce) { kS = 900; cS = damping(kS, 1); }
+    return { tx, ty, ts, kPos, cPos, kS, cS };
+  }
+
+  private integrate(b: Body, dt: number, target: SpringTarget) {
+    const { tx, ty, ts, kPos, cPos, kS, cS } = target;
+    const n = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      b.vx += (kPos * (tx - b.x) - cPos * b.vx) * h;
+      b.x += b.vx * h;
+      b.vy += (kPos * (ty - b.y) - cPos * b.vy) * h;
+      b.y += b.vy * h;
+      b.vs += (kS * (ts - b.s) - cS * b.vs) * h;
+      b.s += b.vs * h;
+    }
+  }
+
+  /** Returns true while the body is still moving (and a frame is needed). */
+  private settleBody(b: Body, isDrag: boolean): boolean {
+    if (atRest(b, isDrag)) {
+      b.x = b.y = b.vx = b.vy = b.vs = 0;
+      b.s = 1;
+      b.idle = true;
+      b.el.style.transform = "";
+      if (b.lifted) {
+        b.lifted = false;
+        b.el.classList.remove("is-lifted");
+        b.el.style.transformOrigin = "";
+      }
+      return false;
+    }
+    b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) scale(${b.s.toFixed(4)})`;
+    return true;
+  }
 }

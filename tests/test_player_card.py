@@ -40,7 +40,7 @@ def make_tracker():
     agent database; the helpers under test only need ``_agent_meta`` to
     degrade gracefully, which it does when ``_agent_db`` is None.
     """
-    with mock.patch.object(vt.ValorantTracker, "__init__", lambda self: None):
+    with mock.patch.object(vt.ValorantTracker, "__init__", return_value=None):
         tracker = vt.ValorantTracker()
     tracker._agent_db = None
     return tracker

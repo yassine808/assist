@@ -30,9 +30,14 @@ Profile data model:
 
 import json
 import os
+import secrets
 import threading
 
 NAME_REQUIRED = "name is required"
+
+_EXPORT_MAGIC = b"RSX2"
+_EXPORT_SALT_BYTES = 16
+_LEGACY_EXPORT_SALT = b"riotswitcher-export-v1"
 
 
 class ProfileManager:
@@ -234,15 +239,14 @@ class ProfileManager:
                     raise ValueError("no matching profiles to export")
             payload = json.dumps(rows, indent=2, ensure_ascii=False).encode("utf-8")
 
-        # Derive key from passkey using PBKDF2.
-        # NOTE: The salt is intentionally fixed (not random) so that encrypted
-        # profiles can be decrypted across different sessions and machines.
-        # A random salt would break import/export round-trip compatibility.
-        salt = b"riotswitcher-export-v1"
+        # A fresh random salt per export keeps the derived key unpredictable.
+        # The salt travels in the header, so the file still decrypts on another
+        # machine or in a later session; legacy fixed-salt files remain readable.
+        salt = secrets.token_bytes(_EXPORT_SALT_BYTES)
         dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
         key = base64.urlsafe_b64encode(dk)
         fernet = Fernet(key)
-        return fernet.encrypt(payload)
+        return _EXPORT_MAGIC + salt + fernet.encrypt(payload)
 
     def import_profiles(self, passkey, encrypted_data, merge=True):
         """Import profiles from encrypted data.
@@ -262,14 +266,21 @@ class ProfileManager:
 
         from cryptography.fernet import Fernet, InvalidToken
 
-        # Derive same key (salt must match export_profiles exactly).
-        salt = b"riotswitcher-export-v1"
+        # New exports carry their salt after a magic header; older ones used a
+        # fixed salt and no header.
+        if encrypted_data.startswith(_EXPORT_MAGIC):
+            offset = len(_EXPORT_MAGIC)
+            salt = encrypted_data[offset:offset + _EXPORT_SALT_BYTES]
+            token = encrypted_data[offset + _EXPORT_SALT_BYTES:]
+        else:
+            salt = _LEGACY_EXPORT_SALT
+            token = encrypted_data
         dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
         key = base64.urlsafe_b64encode(dk)
         fernet = Fernet(key)
 
         try:
-            decrypted = fernet.decrypt(encrypted_data)
+            decrypted = fernet.decrypt(token)
         except InvalidToken:
             raise ValueError("Wrong passkey or corrupted data")
 

@@ -1,7 +1,7 @@
 import { app, net, protocol } from "electron";
-import { existsSync, readdirSync } from "fs";
-import { isAbsolute, join, relative } from "path";
-import { pathToFileURL } from "url";
+import { existsSync, readdirSync } from "node:fs";
+import { isAbsolute, join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 
 /**
  * Animated player cards are local APNG files shipped with the app, not URLs
@@ -40,7 +40,7 @@ function prettyName(file: string): string {
   return file
     .replace(/\.apng$/i, "")
     .replace(/_Mastery_Card_animated$/i, "")
-    .replace(/_/g, " ");
+    .replaceAll("_", " ");
 }
 
 export function listAnimatedCards(): AnimatedCard[] {

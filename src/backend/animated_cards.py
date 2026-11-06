@@ -13,7 +13,7 @@ helpers return an empty result and the caller falls back to a static card.
 """
 
 import os
-import random
+import secrets
 import urllib.parse
 
 ENV_DIR = "RIOTSWITCHER_ANIMATED_CARDS_DIR"
@@ -50,4 +50,4 @@ def random_card_url():
     urls = list_card_urls()
     if not urls:
         return ""
-    return random.choice(urls)
+    return secrets.choice(urls)

@@ -284,7 +284,7 @@ class RiotClientManager:
         """Queue a background taskkill for every Riot process."""
         self._enqueue("kill")
 
-    def kill_all_and_wait(self, timeout_s=8.0):
+    def kill_all_and_wait(self):
         """Stop the Riot Client and block until it is gone.
 
         The Add Account flow needs this: launching immediately after a

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Check, Copy, Palette, Trash2 } from "lucide-react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
@@ -29,12 +29,112 @@ function agentIconFor(vd: Profile["valorant_data"] | undefined): string {
 
 function StartIcon({ state }: Readonly<{ state: LaunchState }>) {
   return (
-    <svg className={`start-icon ${state === "launching" ? "spin" : ""}`} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg className={`start-icon ${state === "launching" ? "spin" : ""}`} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" focusable="false">
       <rect x="2.5" y="2.5" width="19" height="19" rx="3" />
       {state === "launched"
         ? <path className="check" d="M7 12.5l3.2 3.2L17 8.8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         : <path d="M12 6.5l5.5 5.5-5.5 5.5L6.5 12z" />}
     </svg>
+  );
+}
+
+function cardButton(
+  launchState: LaunchState,
+  running: boolean,
+  activeProfileName: string | null | undefined,
+  profileName: string
+): { className: string; label: string } {
+  if (launchState === "launching") return { className: "is-launching", label: "LAUNCHING" };
+  if (launchState === "launched") return { className: "is-launched", label: "LAUNCHED" };
+  if (running) return { className: "is-running", label: "RUNNING" };
+  const label = activeProfileName && activeProfileName !== profileName ? "SWITCH" : "START";
+  return { className: "is-idle", label };
+}
+
+function cardStatus(launchState: LaunchState, running: boolean): string {
+  if (launchState === "launching") return "LAUNCHING";
+  if (running || launchState === "launched") return "ACTIVE";
+  return "READY";
+}
+
+interface LobbyArtProps {
+  cardSrc: string;
+  artRef: RefObject<HTMLImageElement | null>;
+  artReady: boolean;
+  portrait: boolean;
+  onMeasure: (el: HTMLImageElement | null) => void;
+  onLoaded: (src: string) => void;
+  onModifyCard?: (p: Profile) => void;
+  onDelete: (p: Profile) => void;
+  profile: Profile;
+}
+
+function LobbyArt({ cardSrc, artRef, artReady, portrait, onMeasure, onLoaded, onModifyCard, onDelete, profile }: Readonly<LobbyArtProps>) {
+  let art;
+  if (cardSrc) {
+    art = (
+      <>
+        {!artReady && <span className="lobby-art-charge" aria-hidden />}
+        <img
+          ref={artRef}
+          src={cardSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className={`lobby-art${portrait ? " is-portrait" : ""}${artReady ? "" : " is-charging"}`}
+          onLoad={(e) => {
+            onMeasure(e.currentTarget);
+            onLoaded(cardSrc);
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+            onLoaded(cardSrc);
+          }}
+        />
+      </>
+    );
+  } else {
+    art = <div className="lobby-art lobby-art-empty" />;
+  }
+
+  return (
+    <div className="lobby-art-wrap">
+      {art}
+      <span className="lobby-scan" />
+      <div className="lobby-actions">
+        {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
+        <button className="danger" onClick={(e) => { e.stopPropagation(); onDelete(profile); }} title="Delete profile"><Trash2 size={12} /></button>
+      </div>
+    </div>
+  );
+}
+
+function LobbySub({ rankName, rr, agentIcon, wins, losses }: Readonly<{ rankName: string; rr: number; agentIcon: string; wins: number; losses: number }>) {
+  return (
+    <div className="lobby-sub">
+      <div>
+        {agentIcon && <img src={agentIcon} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+        <span>{rankName}{rr > 0 ? ` · ${rr} RR` : ""}</span>
+      </div>
+      <div className="lobby-wl"><b>{wins}W</b><i>{losses}L</i></div>
+    </div>
+  );
+}
+
+function RankEmblem({ rankIcon, rankName }: Readonly<{ rankIcon?: string; rankName: string }>) {
+  let emblem;
+  if (rankIcon) {
+    emblem = <img src={rankIcon} alt={rankName} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />;
+  } else {
+    emblem = <span className="rank-none" />;
+  }
+  return (
+    <div className="rank-emblem">
+      <span className="rank-halo" />
+      <span className="rank-ping" />
+      {emblem}
+    </div>
   );
 }
 
@@ -95,16 +195,8 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
   };
 
   const busy = launchState !== "idle";
-  let btnClass = "is-idle";
-  let label = activeProfileName && activeProfileName !== profile.profile_name ? "SWITCH" : "START";
-  if (launchState === "launching") { btnClass = "is-launching"; label = "LAUNCHING"; }
-  else if (launchState === "launched") { btnClass = "is-launched"; label = "LAUNCHED"; }
-  else if (running) { btnClass = "is-running"; label = "RUNNING"; }
-
-  let status = "READY";
-  if (launchState === "launching") status = "LAUNCHING";
-  else if (running || launchState === "launched") status = "ACTIVE";
-
+  const { className: btnClass, label } = cardButton(launchState, running, activeProfileName, profile.profile_name);
+  const status = cardStatus(launchState, running);
   const isMe = running || launchState === "launched";
 
   return (
@@ -148,35 +240,17 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
 
             <div className="lobby-topbar" />
 
-            <div className="lobby-art-wrap">
-              {cardSrc
-                ? <>
-                    {!artReady && <span className="lobby-art-charge" aria-hidden />}
-                    <img
-                      ref={artRef}
-                      src={cardSrc}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      draggable={false}
-                      className={`lobby-art${portrait ? " is-portrait" : ""}${artReady ? "" : " is-charging"}`}
-                      onLoad={(e) => {
-                        measureArt(e.currentTarget);
-                        setLoadedSrc(cardSrc);
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                        setLoadedSrc(cardSrc);
-                      }}
-                    />
-                  </>
-                : <div className="lobby-art lobby-art-empty" />}
-              <span className="lobby-scan" />
-              <div className="lobby-actions">
-                {onModifyCard && <button onClick={(e) => { e.stopPropagation(); onModifyCard(profile); }} title="Customize playercard"><Palette size={12} /></button>}
-                <button className="danger" onClick={(e) => { e.stopPropagation(); onDelete(profile); }} title="Delete profile"><Trash2 size={12} /></button>
-              </div>
-            </div>
+            <LobbyArt
+              cardSrc={cardSrc}
+              artRef={artRef}
+              artReady={artReady}
+              portrait={portrait}
+              onMeasure={measureArt}
+              onLoaded={setLoadedSrc}
+              onModifyCard={onModifyCard}
+              onDelete={onDelete}
+              profile={profile}
+            />
 
             {/* frame lines are drawn ABOVE the art, so the art shows behind the frame */}
             <svg className="lobby-outline lobby-frame" width="186" height="472" viewBox="0 0 186 472" aria-hidden>
@@ -199,21 +273,15 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
               </button>
             </div>
 
-            <div className="lobby-sub">
-              <div>
-                {agentIcon && <img src={agentIcon} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
-                <span>{rankName}{rr > 0 ? ` · ${rr} RR` : ""}</span>
-              </div>
-              <div className="lobby-wl"><b>{vd?.wins ?? 0}W</b><i>{vd?.losses ?? 0}L</i></div>
-            </div>
+            <LobbySub
+              rankName={rankName}
+              rr={rr}
+              agentIcon={agentIcon}
+              wins={vd?.wins ?? 0}
+              losses={vd?.losses ?? 0}
+            />
 
-            <div className="rank-emblem">
-              <span className="rank-halo" />
-              <span className="rank-ping" />
-              {vd?.rank_icon
-                ? <img src={vd.rank_icon} alt={rankName} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                : <span className="rank-none" />}
-            </div>
+            <RankEmblem rankIcon={vd?.rank_icon} rankName={rankName} />
             <i className="rank-dash" />
             <svg className="rank-mute" width="11" height="8" viewBox="0 0 11 8" aria-hidden><path d="M0 2.4h1.8L4.4.5v7L1.8 5.6H0z" fill="currentColor" /><path d="M6.3 2.6l3.2 2.8M9.5 2.6L6.3 5.4" stroke="currentColor" strokeWidth="0.9" /></svg>
           </div>

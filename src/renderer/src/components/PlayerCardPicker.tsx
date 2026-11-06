@@ -196,7 +196,7 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
               </span>
               {card.largeArt === currentCardUrl && (
                 <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-riot-red flex items-center justify-center">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </div>
@@ -211,20 +211,16 @@ export default function PlayerCardPicker({ profileName, currentCardUrl, onClose,
   return (
     <>
       <style>{keyframes}</style>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-        onClick={onClose}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClose(); }}
-        style={{ animation: "backdropFade 0.2s ease-out" }}
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <button
+          type="button"
+          aria-label="Close playercard picker"
+          className="absolute inset-0 bg-black/70 cursor-default"
+          onClick={onClose}
+          style={{ animation: "backdropFade 0.2s ease-out" }}
+        />
         <div
-          className="w-[680px] max-h-[80vh] modal-panel flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.stopPropagation()}
+          className="relative w-[680px] max-h-[80vh] modal-panel flex flex-col"
           style={{ animation: "modalFadeIn 0.25s ease-out" }}
         >
           {/* Header */}

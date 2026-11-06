@@ -126,6 +126,6 @@ def _decode_jwt_payload(token):
         return {}
     try:
         data = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except ValueError:
         return {}
     return data if isinstance(data, dict) else {}

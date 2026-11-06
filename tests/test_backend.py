@@ -76,8 +76,9 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
     def test_create_duplicate(self):
         pm = self._pm()
         pm.create(self._sample("X"))
+        duplicate = self._sample("X")
         with self.assertRaises(ValueError):
-            pm.create(self._sample("X"))
+            pm.create(duplicate)
 
     def test_create_missing_name(self):
         pm = self._pm()
@@ -226,7 +227,7 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
 
         restored = pm2.get("Card")
         self.assertEqual(card, restored["valorant_data"]["player_card_bg"])
-        self.assertEqual("user", restored["valorant_data"]["player_card_source"])
+        self.assertEqual(restored["valorant_data"]["player_card_source"], "user")
 
     def test_export_selected_profiles_only(self):
         pm = self._pm()

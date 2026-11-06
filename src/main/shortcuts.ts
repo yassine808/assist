@@ -13,19 +13,23 @@ import { join } from "node:path";
 const PROFILE_FLAG = "--profile";
 
 /** Characters Windows rejects in a file name, plus control characters. */
-const INVALID_FILE_CHARS = '<>:"/\\|?*';
+const INVALID_FILE_CHARS = String.raw`<>:"/\|?*`;
 
 export function sanitizeShortcutName(name: string): string {
-  const cleaned = Array.from(name)
+  const withoutInvalid = Array.from(name)
     .map((char) =>
-      char.charCodeAt(0) < 32 || INVALID_FILE_CHARS.includes(char) ? "_" : char
+      char.codePointAt(0)! < 32 || INVALID_FILE_CHARS.includes(char) ? "_" : char
     )
-    .join("")
-    // Windows drops trailing dots and spaces, which would silently rename the
-    // file and leave the "already exists" check looking at the wrong path.
-    .replace(/[. ]+$/g, "")
-    .slice(0, 80)
-    .trim();
+    .join("");
+  // Windows drops trailing dots and spaces, which would silently rename the
+  // file and leave the "already exists" check looking at the wrong path.
+  // Trailing character trimming is done without a regex so the check stays
+  // linear even for a pathologically long name.
+  let end = withoutInvalid.length;
+  while (end > 0 && (withoutInvalid[end - 1] === "." || withoutInvalid[end - 1] === " ")) {
+    end -= 1;
+  }
+  const cleaned = withoutInvalid.slice(0, end).slice(0, 80).trim();
   return cleaned || "Profile";
 }
 
@@ -42,7 +46,7 @@ export function profileLaunchArgs(name: string): string[] {
 /** Quote one argv element for the single `.lnk` arguments string. */
 function quoteArg(arg: string): string {
   if (!/[\s"]/.test(arg)) return arg;
-  return `"${arg.replace(/"/g, '\\"')}"`;
+  return `"${arg.replaceAll('"', String.raw`\"`)}"`;
 }
 
 export interface ShortcutResult {

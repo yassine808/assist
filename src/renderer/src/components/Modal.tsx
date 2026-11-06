@@ -25,7 +25,7 @@ const EXIT_MS = 260;
  */
 export default function Modal({ open, onClose, title, eyebrow, icon, tone = "default", width = 440, dismissible = true, children, footer }: Readonly<Props>) {
   const [mounted, setMounted] = useState(open);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (open) { setMounted(true); return; }
@@ -47,22 +47,26 @@ export default function Modal({ open, onClose, title, eyebrow, icon, tone = "def
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.stopPropagation(); onClose(); }
     };
+    const onDown = (e: MouseEvent) => {
+      if (!panelRef.current?.contains(e.target as Node)) onClose();
+    };
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("mousedown", onDown);
+    };
   }, [open, dismissible, onClose]);
 
   if (!mounted) return null;
 
   return createPortal(
-    <div
-      className={`rs-modal-backdrop ${open ? "is-open" : "is-closing"}`}
-      onMouseDown={(e) => { if (dismissible && e.target === e.currentTarget) onClose(); }}
-    >
-      <div
+    <div className={`rs-modal-backdrop ${open ? "is-open" : "is-closing"}`}>
+      <dialog
         ref={panelRef}
-        className={`rs-modal modal-panel tone-${tone}`}
+        open
+        className={`rs-modal modal-panel p-0 tone-${tone}`}
         style={{ ["--w" as string]: `${width}px` }}
-        role="dialog"
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
@@ -79,7 +83,7 @@ export default function Modal({ open, onClose, title, eyebrow, icon, tone = "def
         </header>
         <div className="rs-modal-body">{children}</div>
         {footer && <footer className="rs-modal-foot">{footer}</footer>}
-      </div>
+      </dialog>
     </div>,
     document.body
   );

@@ -220,7 +220,7 @@ export default function SettingsView() {
               step={0.01}
               value={scale}
               style={{ ["--fill" as string]: scaleFill }}
-              onChange={(e) => changeScale(parseFloat(e.target.value))}
+              onChange={(e) => changeScale(Number.parseFloat(e.target.value))}
               aria-label="Player card size"
             />
           </div>

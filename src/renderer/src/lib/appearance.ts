@@ -43,7 +43,7 @@ const CUSTOM_KEY = "rs_custom_color";
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function hexToRgb(hex: string): [number, number, number] {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  return [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16)];
 }
 
 /** Mix a colour into near-black: `amount` is how much of the colour survives. */
@@ -94,7 +94,7 @@ export function clampScale(v: number): number {
 export function getScale(): number {
   try {
     const raw = localStorage.getItem(SCALE_KEY);
-    if (raw !== null) return clampScale(parseFloat(raw));
+    if (raw !== null) return clampScale(Number.parseFloat(raw));
   } catch { /* ignore */ }
   return SCALE_DEFAULT;
 }

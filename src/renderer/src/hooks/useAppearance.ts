@@ -6,27 +6,27 @@ import {
 
 /** Reactive view of the appearance prefs. */
 export function useAppearance() {
-  const [theme, setThemeState] = useState(getTheme);
-  const [scale, setScaleState] = useState(getScale);
-  const [custom, setCustomState] = useState(getCustomColor);
+  const [theme, setTheme] = useState(getTheme);
+  const [scale, setScale] = useState(getScale);
+  const [custom, setCustom] = useState(getCustomColor);
 
   useEffect(() => {
     const onStorage = () => {
-      setThemeState(getTheme());
-      setScaleState(getScale());
-      setCustomState(getCustomColor());
+      setTheme(getTheme());
+      setScale(getScale());
+      setCustom(getCustomColor());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const setTheme = useCallback((id: string) => { storeTheme(id); setThemeState(id); }, []);
-  const setScale = useCallback((k: number) => { storeScale(k); setScaleState(getScale()); }, []);
-  const setCustom = useCallback((hex: string) => {
+  const changeTheme = useCallback((id: string) => { storeTheme(id); setTheme(id); }, []);
+  const changeScale = useCallback((k: number) => { storeScale(k); setScale(getScale()); }, []);
+  const changeCustom = useCallback((hex: string) => {
     storeCustom(hex);
-    setCustomState(getCustomColor());
-    setThemeState(getTheme());
+    setCustom(getCustomColor());
+    setTheme(getTheme());
   }, []);
 
-  return { theme, scale, custom, setTheme, setScale, setCustom };
+  return { theme, scale, custom, setTheme: changeTheme, setScale: changeScale, setCustom: changeCustom };
 }

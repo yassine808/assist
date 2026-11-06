@@ -53,7 +53,7 @@ export default function HomeView() {
     };
   }, [onEvent, load]);
 
-  const handleDelete = useCallback(async (p: Profile) => {
+  const handleDelete = useCallback((p: Profile) => {
     setDeleteError("");
     setConfirmDelete(p);
   }, []);

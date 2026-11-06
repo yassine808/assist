@@ -105,9 +105,9 @@ function setup(): void {
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        createAppWindow(python!, { onCloseToTray: () => undefined }).then(
-          (w) => (appWindow = w)
-        );
+        createAppWindow(python!, { onCloseToTray: () => undefined })
+          .then((w) => (appWindow = w))
+          .catch((err) => log.error("Failed to recreate the app window:", err));
       }
     });
   });
@@ -145,14 +145,14 @@ function setupIpc(): void {
   ipcMain.handle("update:install", () => quitAndInstall());
 
   ipcMain.handle("profile:createShortcut", (_event, name: unknown) =>
-    createProfileShortcut(String(name ?? ""))
+    createProfileShortcut(typeof name === "string" ? name : "")
   );
 
   // "Support the project" opens the project's sponsorship page in the user's
   // real browser. Only https is accepted so the renderer cannot use this as a
   // generic protocol launcher.
   ipcMain.handle("shell:openExternal", async (_event, url: unknown) => {
-    const target = String(url ?? "");
+    const target = typeof url === "string" ? url : "";
     if (!/^https:\/\//i.test(target)) {
       throw new Error("Only https links can be opened");
     }

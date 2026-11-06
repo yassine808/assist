@@ -55,6 +55,9 @@ function SortableItem({
       ref={setRef}
       className="sortable-item"
       style={{ order }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Reorder ${profile.profile_name}`}
       onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
       onDragStart={(e) => e.preventDefault()}
       onClickCapture={(e) => {
