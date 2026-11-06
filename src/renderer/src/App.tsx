@@ -5,6 +5,7 @@ import { ToastProvider } from "./components/Toast";
 import SettingsOverlay from "./components/SettingsOverlay";
 import HomeView from "./views/HomeView";
 import AgentMapView from "./views/AgentMapView";
+import { BeamsBackground } from "./components/ui/beams-background";
 
 /** A full-size scrolling page. Inactive pages stay mounted (state and layout kept) but are hidden. */
 function Pane({ active, children }: Readonly<{ active: boolean; children: ReactNode }>) {
@@ -48,7 +49,8 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div className="flex flex-col h-full">
+      <BeamsBackground />
+      <div className="flex flex-col h-full relative z-10">
         <TitleBar page={page} onNavigate={navigate} settingsOpen={settingsOpen} onToggleSettings={toggleSettings} />
         <main className="app-main">
           <Pane active={page === "profiles"}><HomeView /></Pane>

@@ -546,3 +546,10 @@ img { -webkit-user-drag: none; }
 
 /* title bar: three tabs now */
 .nav-tab-ind { width: 128px; }
+
+/* ── Beams background (behind the whole app; colour follows --glow) ── */
+.beams-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.beams-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.beams-bg-haze { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg-deep) 5%, transparent); animation: beams-haze 10s ease-in-out infinite; }
+@keyframes beams-haze { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .beams-bg-haze { animation: none; } }

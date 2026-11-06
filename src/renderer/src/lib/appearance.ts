@@ -31,7 +31,7 @@ export const THEMES: ThemeDef[] = [
   { id: "forest", name: "Forest", base: "#09130e", deep: "#060d09", panel: "#0d1a13", glow: "70, 170, 110" },
 ];
 
-export const DEFAULT_THEME = "midnight";
+export const DEFAULT_THEME = "ocean";
 export const SCALE_MIN = 0.82; // ≈ 70% of the default
 export const SCALE_MAX = 1.4;
 export const SCALE_DEFAULT = 1.17; // the card's original --lobby-k
