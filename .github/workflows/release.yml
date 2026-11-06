@@ -49,8 +49,10 @@ jobs:
 
       - name: Install Python dependencies
         # Quoted: the bare ":all:" contains a space-colon, which YAML reads as a
-        # nested mapping and rejects (same trap as ci.yml).
-        run: "python -m pip install --only-binary :all: -r requirements.txt pyinstaller==${{ env.PYINSTALLER_VERSION }}" # NOSONAR
+        # nested mapping and rejects (same trap as ci.yml). requirements-dev
+        # supplies pytest for the gate below; the release build itself only
+        # needs requirements.txt.
+        run: "python -m pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt pyinstaller==${{ env.PYINSTALLER_VERSION }}" # NOSONAR
 
       - name: Install Node dependencies
         run: npm ci
