@@ -469,17 +469,23 @@ class ValorantTracker:
         for match in payload:
             self._process_single_match(match, puuid, acc)
 
-        agent_games = acc.agent_games
-        agent_wins = acc.agent_wins
+        self._store_match_summary(data, acc)
+        self._resolve_player_card(data)
 
-        top_agent = self._compute_top_agent(agent_games)
-        agent_stats = self._build_agent_stats_list(agent_games, agent_wins)
+        self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
+        if self._on_update:
+            self._on_update(profile_name, data)
 
+    def _store_match_summary(self, data, acc):
+        """Fold the accumulated match statistics into the profile data."""
+        top_agent = self._compute_top_agent(acc.agent_games)
         data[self.KEY_TOP_AGENT] = top_agent
         data[self.KEY_AVG_COMBAT_SCORE] = (
             int(round(acc.score_sum / acc.score_count)) if acc.score_count > 0 else 0
         )
-        data[self.KEY_AGENT_STATS] = agent_stats
+        data[self.KEY_AGENT_STATS] = self._build_agent_stats_list(
+            acc.agent_games, acc.agent_wins
+        )
         data[self.KEY_RECENT_MATCHES] = acc.recent
         data[self.KEY_MAP_STATS] = (
             self._build_map_stats(acc) if self._per_map_enabled() else []
@@ -488,29 +494,32 @@ class ValorantTracker:
         tier = data.get(self.KEY_TIER, 0)
         if self._agent_db and tier:
             data[self.KEY_RANK_ICON] = self._agent_db.get_rank_large_icon(tier)
+        self._ensure_agent_images(data, top_agent)
 
-        if self._agent_db and top_agent:
-            agent_info = self._agent_db.get_agent(top_agent)
-            if agent_info:
-                self._apply_agent_images(data, agent_info)
-            else:
-                # Agent DB lookup failed — try to construct displayIcon from
-                # the UUID already present in agent_bg URL
-                display_icon = data.get(self.KEY_AGENT_DISPLAY_ICON, "")
-                if not display_icon:
-                    bg_url = data.get(self.KEY_AGENT_BG, "")
-                    if "/agents/" in bg_url:
-                        try:
-                            uuid = bg_url.split("/agents/")[1].split("/")[0]
-                            data[self.KEY_AGENT_DISPLAY_ICON] = f"https://media.valorant-api.com/agents/{uuid}/displayicon.png"
-                        except (IndexError, AttributeError):
-                            pass
+    def _ensure_agent_images(self, data, top_agent):
+        """Fill the agent display icon, falling back to the background URL."""
+        if not (self._agent_db and top_agent):
+            return
+        agent_info = self._agent_db.get_agent(top_agent)
+        if agent_info:
+            self._apply_agent_images(data, agent_info)
+        else:
+            self._apply_agent_icon_from_bg(data)
 
-        self._resolve_player_card(data)
-
-        self._profiles.update_valorant_data(profile_name, data, puuid, in_game_name, region)
-        if self._on_update:
-            self._on_update(profile_name, data)
+    def _apply_agent_icon_from_bg(self, data):
+        """Construct displayIcon from the UUID already present in agent_bg URL."""
+        if data.get(self.KEY_AGENT_DISPLAY_ICON):
+            return
+        bg_url = data.get(self.KEY_AGENT_BG, "")
+        if "/agents/" not in bg_url:
+            return
+        try:
+            uuid = bg_url.split("/agents/")[1].split("/")[0]
+            data[self.KEY_AGENT_DISPLAY_ICON] = (
+                f"https://media.valorant-api.com/agents/{uuid}/displayicon.png"
+            )
+        except (IndexError, AttributeError):
+            pass
 
     def _process_single_match(self, match, puuid, acc):
         """Fold one match into *acc* when the self-player entry is present."""
@@ -519,40 +528,49 @@ class ValorantTracker:
         metadata = match.get("metadata", {})
         map_name = str(metadata.get("map", "") or "")
 
-        players_obj = match.get("players", {})
-        all_players = []
-        if isinstance(players_obj, dict):
-            all_players = players_obj.get("all_players", [])
-        elif isinstance(players_obj, list):
-            all_players = players_obj
+        player = self._find_self_player(match, puuid)
+        if player is None:
+            return
 
-        for player in all_players:
+        agent_name = self._player_agent_name(player)
+        stats = player.get("stats", {}) if isinstance(player.get("stats"), dict) else {}
+        score = int(stats.get("score", 0) or 0)
+        kills = int(stats.get("kills", 0) or 0)
+        deaths = int(stats.get("deaths", 0) or 0)
+        assists = int(stats.get("assists", 0) or 0)
+
+        player_team = str(player.get("team", "") or "").lower()
+        result = self._determine_match_result(match, player_team)
+
+        acc.add(map_name, agent_name, result, score)
+        acc.append_recent({
+            "agent": agent_name,
+            "map": map_name,
+            "result": result,
+            "score": score,
+            "kills": kills,
+            "deaths": deaths,
+            "assists": assists,
+        })
+
+    @staticmethod
+    def _match_player_list(match):
+        """Return the player list from either API payload shape."""
+        players_obj = match.get("players", {})
+        if isinstance(players_obj, dict):
+            return players_obj.get("all_players", [])
+        if isinstance(players_obj, list):
+            return players_obj
+        return []
+
+    def _find_self_player(self, match, puuid):
+        """Return the player entry belonging to puuid, or None."""
+        for player in self._match_player_list(match):
             if not isinstance(player, dict):
                 continue
-            if str(player.get("puuid", "")).lower() != puuid:
-                continue
-
-            agent_name = self._player_agent_name(player)
-            stats = player.get("stats", {}) if isinstance(player.get("stats"), dict) else {}
-            score = int(stats.get("score", 0) or 0)
-            kills = int(stats.get("kills", 0) or 0)
-            deaths = int(stats.get("deaths", 0) or 0)
-            assists = int(stats.get("assists", 0) or 0)
-
-            player_team = str(player.get("team", "") or "").lower()
-            result = self._determine_match_result(match, player_team)
-
-            acc.add(map_name, agent_name, result, score)
-            acc.append_recent({
-                "agent": agent_name,
-                "map": map_name,
-                "result": result,
-                "score": score,
-                "kills": kills,
-                "deaths": deaths,
-                "assists": assists,
-            })
-            return
+            if str(player.get("puuid", "")).lower() == puuid:
+                return player
+        return None
 
     def _agent_meta(self, agent_name):
         """Best-effort display icon and role for an agent name."""
@@ -670,7 +688,7 @@ class ValorantTracker:
     @staticmethod
     def _determine_match_result(match, player_team):
         """Return 'win', 'loss', or 'draw' based on team scoreboard."""
-        if not player_team:
+        if player_team not in ("red", "blue"):
             return "draw"
         teams_score = match.get("teams", {})
         if not isinstance(teams_score, dict):
@@ -681,17 +699,10 @@ class ValorantTracker:
             return "draw"
         red_wins = int(red.get("rounds_won", 0) or 0)
         blue_wins = int(blue.get("rounds_won", 0) or 0)
-        if player_team == "red":
-            if red_wins > blue_wins:
-                return "win"
-            if blue_wins > red_wins:
-                return "loss"
-        elif player_team == "blue":
-            if blue_wins > red_wins:
-                return "win"
-            if red_wins > blue_wins:
-                return "loss"
-        return "draw"
+        if red_wins == blue_wins:
+            return "draw"
+        winner = "red" if red_wins > blue_wins else "blue"
+        return "win" if player_team == winner else "loss"
 
     @staticmethod
     def _rank_name_from_tier(tier):

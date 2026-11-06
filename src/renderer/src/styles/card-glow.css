@@ -34,7 +34,7 @@
 .lobby-card:not(.is-me) .lobby-signal { color: rgba(190, 215, 235, 0.55); }
 
 /* frame lines */
-.lobby-outline { position: absolute; inset: 0; overflow: visible; }
+.lobby-outline { position: absolute; inset: 0; overflow: visible; transition: filter 0.3s; }
 .lobby-frame { z-index: 2; pointer-events: none; }
 /* card body: starts where the art starts (y=29), so the gap under the white line (y 25.5 to 29) stays empty, no blue */
 .o-fill { fill: url(#lf-body); d: path("M7.5 33L11.25 29H173.75L177.5 33V342L92.5 441L7.5 342Z"); }
@@ -68,7 +68,7 @@
 /* tall portrait art: shown whole (never cropped), runs down behind the name plate, the V and the rank,
    and fades away gradually to its very last pixel */
 .lobby-art.is-portrait {
-  position: absolute; left: 0; top: 0; inset: 0 auto auto 0; display: block; width: 100%; height: auto; object-fit: fill; max-width: none;
+  position: absolute; inset: 0 auto auto 0; display: block; width: 100%; height: auto; object-fit: fill; max-width: none;
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 240px, rgba(0,0,0,.9) 262px, rgba(0,0,0,.8) 285px, rgba(0,0,0,.74) 300px, rgba(0,0,0,.63) 322px, rgba(0,0,0,.48) 345px, rgba(0,0,0,.31) 367px, rgba(0,0,0,.16) 387px, rgba(0,0,0,.06) 400px, transparent 100%);
   mask-image: linear-gradient(180deg, #000 0, #000 220px, rgba(0,0,0,.97) 240px, rgba(0,0,0,.9) 262px, rgba(0,0,0,.8) 285px, rgba(0,0,0,.74) 300px, rgba(0,0,0,.63) 322px, rgba(0,0,0,.48) 345px, rgba(0,0,0,.31) 367px, rgba(0,0,0,.16) 387px, rgba(0,0,0,.06) 400px, transparent 100%);
 }
@@ -121,13 +121,12 @@
 .lobby-card:hover .o-kite, .lobby-card:hover .o-bracket { stroke: rgba(235, 245, 255, 0.75); }
 .lobby-card:hover .wing { fill: #ffffff; filter: drop-shadow(0 0 7px rgba(240, 255, 225, 1)); }
 .lobby-card:hover .lobby-topbar { box-shadow: 0 0 12px rgba(224, 246, 248, 0.85); }
-.lobby-outline { transition: filter 0.3s; }
 
 .lobby-actions { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 4px; opacity: 0; transform: translateX(4px); transition: opacity 0.2s, transform 0.2s; z-index: 4; }
 .lobby-card:hover .lobby-actions, .lobby-actions:focus-within { opacity: 1; transform: none; }
 .lobby-actions button { width: 26px; height: 26px; display: grid; place-items: center; background: rgba(15, 25, 35, 0.72); border: 1px solid rgba(236, 232, 225, 0.2); color: rgba(236, 232, 225, 0.75); transition: background 0.15s, color 0.15s, border-color 0.15s; }
-.lobby-actions button:hover { background: rgba(236, 232, 225, 0.2); color: #fff; border-color: rgba(236, 232, 225, 0.5); }
-.lobby-actions button.danger:hover { background: rgba(255, 70, 85, 0.28); color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
+.lobby-actions button:hover { background: #3b424b; color: #fff; border-color: rgba(236, 232, 225, 0.5); }
+.lobby-actions button.danger:hover { background: #522631; color: #ff6b78; border-color: rgba(255, 70, 85, 0.6); }
 
 /* READY label, cream name plate (always, like the lobby), sub lines */
 .lobby-status { position: absolute; left: 0; width: 185px; top: 277px; z-index: 3; text-align: center; font: 700 11px/1 var(--lobby-font); letter-spacing: 0.04em; color: #eef5fa; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85); }
@@ -140,7 +139,7 @@
   color: rgba(31, 38, 34, 0.7); background: transparent;
   transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s, background 0.15s, color 0.15s; }
 .lobby-card:hover .lobby-copy, .lobby-copy:focus-visible, .lobby-copy.is-copied { width: 18px; margin-left: 0; opacity: 1; }
-.lobby-copy:hover { background: rgba(31, 38, 34, 0.14); color: #0f1923; }
+.lobby-copy:hover { background: #d0d2a3; color: #0f1923; }
 .lobby-copy.is-copied { color: #14783f; }
 .lobby-plate-name { font: 600 14px/1.4 var(--lobby-font); color: #1f2622; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 1px; }
 
@@ -189,8 +188,8 @@
 }
 .lobby-start.is-idle:hover::after { animation: sheen 0.7s ease-out 1; }
 
-.lobby-start.is-running { background: rgba(255, 70, 85, 0.12); border-color: rgba(255, 70, 85, 0.65); color: #ff8791; }
-.lobby-start.is-running:hover { background: rgba(255, 70, 85, 0.22); }
+.lobby-start.is-running { background: #2c1e29; border-color: rgba(255, 70, 85, 0.65); color: #ff8791; }
+.lobby-start.is-running:hover { background: #442530; }
 
 .lobby-start.is-launching,
 .lobby-start.is-launched {
@@ -207,13 +206,12 @@
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes launched-pop {
   0% { background: #fff; color: #0b1525; box-shadow: 0 0 40px rgba(255, 255, 255, 0.8); }
-  100% { }
 }
 .lobby-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 40%; background: linear-gradient(90deg, transparent, #8ab8f0, transparent); animation: bar-run 1.4s ease-in-out infinite; }
 @keyframes bar-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 @media (prefers-reduced-motion: reduce) {
   .lobby-inner, .rank-emblem img, .lobby-bar, .start-icon.spin path,
-  .lobby-card:hover .lobby-scan, .lobby-card:hover .lobby-art-wrap::after, .lobby-card:hover .rank-ping, .lobby-card:hover .lobby-plate::after { animation: none !important; }
-  .lobby-corner { transition: none; }
+  .lobby-card:hover .lobby-scan, .lobby-card:hover .lobby-art-wrap::after, .lobby-card:hover .rank-ping, .lobby-card:hover .lobby-plate::after { animation: none; }
+  .lobby-corner, .lobby-actions, .lobby-copy { transition: none; }
 }

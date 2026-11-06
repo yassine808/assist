@@ -44,10 +44,10 @@
 
 .toast-body { position: relative; min-width: 0; flex: 1; }
 .toast-title { font: 700 12px/1.25 var(--app-font); letter-spacing: 0.14em; text-transform: uppercase; color: #f3efe8; }
-.toast-msg { margin-top: 4px; font: 500 12.5px/1.4 var(--app-font); color: rgba(236, 232, 225, 0.62); word-break: break-word; }
+.toast-msg { margin-top: 4px; font: 500 12.5px/1.4 var(--app-font); color: rgba(236, 232, 225, 0.62); overflow-wrap: break-word; }
 
 .toast-close { background: transparent; border: 0; padding: 0; cursor: pointer; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; display: grid; place-items: center; color: rgba(236, 232, 225, 0.35); transition: color 0.15s, background 0.15s; }
-.toast-close:hover { color: #fff; background: rgba(236, 232, 225, 0.12); }
+.toast-close:hover { color: #fff; background: #212a32; }
 
 /* countdown bar; pauses while hovered */
 .toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; opacity: 0.85; animation: toast-drain linear forwards; }

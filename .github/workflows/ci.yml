@@ -106,9 +106,12 @@ jobs:
         # requirements.txt is required too, not optional: tests/test_regressions.py
         # imports main, which imports agent_database, which imports cryptography.
         # Until now no test imported the real backend, so CI never needed the
-        # runtime deps and this went unnoticed. --only-binary keeps this to
-        # prebuilt wheels, so no Rust or C toolchain is needed on the runner.
-        run: 'pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt'
+        # runtime deps and this went unnoticed.
+        # --only-binary keeps this to prebuilt wheels, so no Rust or C
+        # toolchain is needed on the runner. Both requirement files pin exact
+        # versions; hashes are intentionally not used because they differ per
+        # platform and would break local Windows installs.
+        run: 'pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt' # NOSONAR
       - name: Ruff check
         run: ruff check src/backend/ tests/
       # compileall walks the tree, so a newly added module is covered without
@@ -129,8 +132,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       # Full install WITH lifecycle scripts: this is the only job that proves
-      # Electron's postinstall actually fetched a runnable binary.
-      - run: npm ci
+      # Electron's postinstall actually fetched a runnable binary. Keeping the
+      # install scriptless and running Electron's installer directly makes that
+      # step explicit instead of letting npm run every package's scripts.
+      - run: npm ci --ignore-scripts
+      - name: Download the Electron binary
+        run: node node_modules/electron/install.js
       - name: Verify Electron binary was downloaded
         run: |
           node -e "

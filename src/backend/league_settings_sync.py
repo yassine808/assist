@@ -385,40 +385,65 @@ class LeagueSettingsSync:
                 self._copy_dir_recursive(src_sub, os.path.join(staging_dir, dirname))
                 files_present.append(dirname)
 
+    def _remove_existing_file(self, path):
+        """Strip the readonly flag and delete path when it is a file. Best effort."""
+        if not os.path.isfile(path):
+            return
+        self._set_file_readonly_windows(path, False)
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
     def _promote_staging_to_master(self, staging_dir, files_present):
         """Copy staged files into the master directory. Returns True on success."""
         copy_ok = True
         for fn in files_present:
             if fn in SHARED_FILES:
-                s_file = os.path.join(staging_dir, fn)
-                d_file = os.path.join(self.master_dir(), fn)
-                if os.path.isfile(d_file):
-                    self._set_file_readonly_windows(d_file, False)
-                    try:
-                        os.remove(d_file)
-                    except OSError:
-                        pass
-                try:
-                    shutil.copy2(s_file, d_file)
-                except OSError:
-                    copy_ok = False
+                copy_ok = self._promote_shared_file(staging_dir, fn) and copy_ok
             elif fn in SHARED_DIRS:
                 self._copy_dir_recursive(
                     os.path.join(staging_dir, fn),
                     os.path.join(self.master_dir(), fn),
                 )
-        meta_src = os.path.join(staging_dir, METADATA_FILENAME)
-        meta_dst = os.path.join(self.master_dir(), METADATA_FILENAME)
-        if os.path.isfile(meta_dst):
-            self._set_file_readonly_windows(meta_dst, False)
+        return self._promote_metadata(staging_dir) and copy_ok
+
+    def _promote_shared_file(self, staging_dir, filename):
+        """Replace one file in the master directory from the staging copy."""
+        dest = os.path.join(self.master_dir(), filename)
+        self._remove_existing_file(dest)
         try:
-            shutil.copy2(meta_src, meta_dst)
+            shutil.copy2(os.path.join(staging_dir, filename), dest)
         except OSError:
-            copy_ok = False
-        return copy_ok
+            return False
+        return True
+
+    def _promote_metadata(self, staging_dir):
+        """Replace the master metadata file from the staging copy."""
+        dest = os.path.join(self.master_dir(), METADATA_FILENAME)
+        self._remove_existing_file(dest)
+        try:
+            shutil.copy2(os.path.join(staging_dir, METADATA_FILENAME), dest)
+        except OSError:
+            return False
+        return True
 
     def copy_settings(self, source_dir, dest_dir):
         """Copy shared files/dirs from source_dir into dest_dir (merging dirs)."""
+        if not self._copy_settings_targets_ok(source_dir, dest_dir):
+            return False
+
+        any_copied = self._copy_shared_files(source_dir, dest_dir)
+
+        for dirname in SHARED_DIRS:
+            src_sub = os.path.join(source_dir, dirname)
+            if os.path.isdir(src_sub):
+                self._copy_dir_recursive(src_sub, os.path.join(dest_dir, dirname))
+
+        return any_copied
+
+    def _copy_settings_targets_ok(self, source_dir, dest_dir):
+        """Validate the copy endpoints and make sure dest_dir exists."""
         if not source_dir or not os.path.isdir(source_dir):
             return False
         if not dest_dir:
@@ -429,30 +454,22 @@ class LeagueSettingsSync:
             os.makedirs(dest_dir, exist_ok=True)
         except OSError:
             return False
+        return True
 
+    def _copy_shared_files(self, source_dir, dest_dir):
+        """Copy the shared files that exist in source_dir. Returns True if any did."""
         any_copied = False
         for filename in SHARED_FILES:
             src = os.path.join(source_dir, filename)
             if not os.path.isfile(src):
                 continue
             dst = os.path.join(dest_dir, filename)
-            if os.path.isfile(dst):
-                self._set_file_readonly_windows(dst, False)
-                try:
-                    os.remove(dst)
-                except OSError:
-                    pass
+            self._remove_existing_file(dst)
             try:
                 shutil.copy2(src, dst)
                 any_copied = True
             except OSError:
                 pass
-
-        for dirname in SHARED_DIRS:
-            src_sub = os.path.join(source_dir, dirname)
-            if os.path.isdir(src_sub):
-                self._copy_dir_recursive(src_sub, os.path.join(dest_dir, dirname))
-
         return any_copied
 
     # ------------------------------------------------------------------ #
@@ -506,14 +523,35 @@ class LeagueSettingsSync:
         with self._mutex:
             return self._apply_master_snapshot_to_league_unlocked(league_config_dir, enforce_readonly)
 
+    def _is_deploy_target_ok(self, league_config_dir):
+        """True when league_config_dir is an existing, safe deploy target."""
+        if not league_config_dir or not os.path.isdir(league_config_dir):
+            return False
+        return self._is_safe_path(league_config_dir, os.path.dirname(self._shared_dir))
+
+    def _prepare_snapshot_for_source(self, source_path, expected_dir_name, display_name):
+        """Return (metadata, error). error is None when the snapshot is usable."""
+        meta = self.get_snapshot_metadata()
+        snapshot_source_dir = str(meta.get("source_directory", "") or "")
+
+        if snapshot_source_dir != expected_dir_name or not self.has_valid_settings(self.master_dir()):
+            capture_res = self._capture_master_snapshot_unlocked(
+                source_path, expected_dir_name, display_name
+            )
+            if capture_res != CAPTURE_SUCCESS:
+                return meta, APPLY_SNAPSHOT_CORRUPT
+            meta = self.get_snapshot_metadata()
+
+        if str(meta.get("source_directory", "") or "") != expected_dir_name:
+            return meta, APPLY_HASH_MISMATCH
+        return meta, None
+
     def _apply_master_snapshot_to_league_unlocked(self, league_config_dir, enforce_readonly):
         sync_enabled = bool(self._config.get(CONFIG_KEY_ENABLED, False))
         if not sync_enabled:
             return APPLY_SYNC_DISABLED
 
-        if not league_config_dir or not os.path.isdir(league_config_dir):
-            return APPLY_DEPLOY_FAILED
-        if not self._is_safe_path(league_config_dir, os.path.dirname(self._shared_dir)):
+        if not self._is_deploy_target_ok(league_config_dir):
             return APPLY_DEPLOY_FAILED
 
         source_info = self.resolve_source_profile()
@@ -521,21 +559,11 @@ class LeagueSettingsSync:
             return APPLY_SOURCE_MISSING
 
         expected_dir_name = source_info["directory_name"]
-        source_path = source_info["profile_dir"]
-
-        meta = self.get_snapshot_metadata()
-        snapshot_source_dir = str(meta.get("source_directory", "") or "")
-
-        if snapshot_source_dir != expected_dir_name or not self.has_valid_settings(self.master_dir()):
-            capture_res = self._capture_master_snapshot_unlocked(
-                source_path, expected_dir_name, source_info["display_name"]
-            )
-            if capture_res != CAPTURE_SUCCESS:
-                return APPLY_SNAPSHOT_CORRUPT
-            meta = self.get_snapshot_metadata()
-
-        if str(meta.get("source_directory", "") or "") != expected_dir_name:
-            return APPLY_HASH_MISMATCH
+        meta, snapshot_error = self._prepare_snapshot_for_source(
+            source_info["profile_dir"], expected_dir_name, source_info["display_name"]
+        )
+        if snapshot_error:
+            return snapshot_error
 
         file_hashes = meta.get("file_hashes", {}) or {}
 

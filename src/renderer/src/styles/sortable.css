@@ -7,7 +7,7 @@
   z-index: 50;
   filter: drop-shadow(0 34px 30px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 26px rgba(130, 205, 255, 0.16));
 }
-body.is-sorting, body.is-sorting * { cursor: grabbing !important; }
+body.is-sorting, body.is-sorting * { cursor: grabbing; }
 /* only the lifted card reacts to the pointer while dragging (no hover scans on the others) */
 body.is-sorting .sortable-item:not(.is-lifted) { pointer-events: none; }
 
@@ -23,5 +23,5 @@ body.is-sorting .sortable-item:not(.is-lifted) { pointer-events: none; }
 @keyframes slot-pulse { 50% { border-color: rgba(190, 225, 240, 0.55); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sort-slot { transition: none; animation: none !important; }
+  .sort-slot, .sort-slot.is-on { transition: none; animation: none; }
 }

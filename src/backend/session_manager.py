@@ -185,29 +185,44 @@ class SessionManager:
         switched again. Runs once at start-up, is idempotent, and never
         touches a backup that is already sealed.
         """
-        sealed = 0
         with self._lock:
             if not os.path.isdir(self._root):
                 return 0
-            for entry in os.listdir(self._root):
-                profile_dir = os.path.join(self._root, entry)
-                if not os.path.isdir(profile_dir):
-                    continue
-                for file_def in FILES_TO_SWITCH:
-                    path = os.path.join(profile_dir, file_def["filename"])
-                    try:
-                        if file_def.get("is_dir") and os.path.isdir(path):
-                            if self._seal_path(path, path, is_dir=True):
-                                sealed += 1
-                        elif (
-                            os.path.isfile(path)
-                            and not self._is_sealed_file(path)
-                            and self._seal_path(path, path, is_dir=False)
-                        ):
-                            sealed += 1
-                    except OSError:
-                        continue
+            return self._seal_all_profiles()
+
+    def _seal_all_profiles(self):
+        """Walk the backup root and seal every profile it contains."""
+        sealed = 0
+        for entry in os.listdir(self._root):
+            profile_dir = os.path.join(self._root, entry)
+            if not os.path.isdir(profile_dir):
+                continue
+            sealed += self._seal_profile_backups(profile_dir)
         return sealed
+
+    def _seal_profile_backups(self, profile_dir):
+        """Seal the plaintext backups of one profile. Returns how many were sealed."""
+        sealed = 0
+        for file_def in FILES_TO_SWITCH:
+            sealed += self._seal_backup_if_plaintext(profile_dir, file_def)
+        return sealed
+
+    def _seal_backup_if_plaintext(self, profile_dir, file_def):
+        """Seal one backup when it is still plaintext. Returns 1 when sealed."""
+        path = os.path.join(profile_dir, file_def["filename"])
+        try:
+            if file_def.get("is_dir"):
+                if os.path.isdir(path) and self._seal_path(path, path, is_dir=True):
+                    return 1
+            elif (
+                os.path.isfile(path)
+                and not self._is_sealed_file(path)
+                and self._seal_path(path, path, is_dir=False)
+            ):
+                return 1
+        except OSError:
+            pass
+        return 0
 
     def _is_sealed_file(self, path):
         try:

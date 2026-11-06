@@ -226,7 +226,7 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
         pm2.import_profiles("s3cret", encrypted)
 
         restored = pm2.get("Card")
-        self.assertEqual(card, restored["valorant_data"]["player_card_bg"])
+        self.assertEqual(restored["valorant_data"]["player_card_bg"], card)
         self.assertEqual(restored["valorant_data"]["player_card_source"], "user")
 
     def test_export_selected_profiles_only(self):
