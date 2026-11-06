@@ -11,4 +11,4 @@
 # both. That drift is why this file exists: pick one version, use it everywhere.
 
 ruff==0.16.0
-pytest==8.4.2
+pytest==9.2.0
