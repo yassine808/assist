@@ -79,6 +79,12 @@ jobs:
       - name: Build the Python backend
         run: npm run build:py
 
+      - name: Build the Electron app
+        # `prebuild` runs build/embed-env.mjs, which seals the .env restored
+        # above into build/env.bin + the main-process shard. electron-builder
+        # then packs out/ from this step; without it the asar has no entry file.
+        run: npm run build
+
       - name: Build and publish
         run: npx electron-builder --win --publish always
         env:
