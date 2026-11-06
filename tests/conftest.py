@@ -43,7 +43,10 @@ def never_touch_real_riot_processes(monkeypatch):
     """
     import riot_processes
 
-    monkeypatch.setattr(riot_processes, "kill_all", lambda *args, **kwargs: None)
-    monkeypatch.setattr(riot_processes, "kill_and_wait", lambda *args, **kwargs: True)
+    # Return an empty handle list, not None: the real `kill_and_wait` waits on
+    # whatever `kill_all` returned, so it must be iterable. Stubbing
+    # `kill_and_wait` itself as well would hide the waiting logic from tests
+    # that assert on it.
+    monkeypatch.setattr(riot_processes, "kill_all", lambda *args, **kwargs: [])
     monkeypatch.setattr(riot_processes, "wait_until_all_dead", lambda *a, **k: True)
     monkeypatch.setattr(riot_processes, "wait_until_dead", lambda *a, **k: True)
