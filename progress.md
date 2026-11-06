@@ -1160,3 +1160,60 @@
   - `python -m compileall -q src/backend tests`: clean.
   - `npm run check:api-leaks`: clean. `npm run build`: succeeded.
 - Next: eyeball the new row in the running card; commit when Yassine says so.
+
+### 2026-11-06 — README refresh for 3.1.4
+
+- Goal: bring the user-facing README up to date with the current UI and replace
+  the stale v2.1 screenshots.
+- Done:
+  - `docs/screenshots/home-new.png` -> `home.png` (hero, current 3.1.4 UI with
+    the Profiles / Agent Map / Settings tabs); `settings-new.png` ->
+    `settings.png`; both `-new` captures removed.
+  - Quick-action table gained sign-out, appearance, launch product and game
+    sync rows.
+  - "What it does" now says Agent Map is a tab (not a separate window), adds
+    drag-to-reorder and Game Settings Sync.
+  - New "Make it yours" section (settings screenshot, 13 themes + custom,
+    70-120% card scale, launch product, sync, sounds/tray, support).
+  - New "Signing out" section for the door button and the quit-VALORANT
+    confirmation.
+  - Installer names corrected to `RiotSwitcher Setup x.y.z.exe` (matches
+    electron-builder output); added `check:api-leaks` to the dev commands.
+  - VALORANT statement scoped: files are never touched; VALORANT is only closed
+    after the user confirms the dialog.
+- Verified: every relative README link resolves (`LICENSE`,
+  `docs/screenshots/home.png`, `docs/screenshots/settings.png`,
+  `docs/ARCHITECTURE.md`); claims cross-checked in source (`SettingsView.tsx`,
+  `appearance.ts`, `playercard_store.py` 7-day refresh, `updater.ts` 4-hour
+  timer, `valorant_tracker.py` 120 s refresh). Not checked: the Language
+  dropdown is stored but has no i18n behind it, so the README leaves it out.
+- Next: `docs/screenshots/playercards.png` is still the old v2.1 capture and is
+  now unused; replace or delete it, then commit after Yassine's approval.
+
+### 2026-11-06 - Rich repo: README, community files, release pipeline
+
+- Goal: make the GitHub repo look complete and add real links for the latest
+  version, deployments and packages where possible.
+- Done:
+  - README expanded: 7 badges (release, downloads, CI, issues, stars, license,
+    platform), release/issue/doc quick links, collapsible contents, screenshots
+    table, QA layout and test gate, project layout tree, tech stack table, FAQ,
+    links table (releases, deployments, actions, issues, sponsor, architecture).
+  - `.github/FUNDING.yml` (Sponsor button), issue forms for bugs and features,
+    `config.yml` contact links, pull request template, `dependabot.yml` (npm,
+    pip, actions), `SECURITY.md`, `CONTRIBUTING.md`.
+  - `.github/workflows/release.yml`: tag `v*` (or manual dispatch) builds the
+    PyInstaller backend + Electron app on windows-latest, publishes the NSIS
+    installer, portable exe and `latest.yml`, uses the `release` environment so
+    the run shows up under Deployments, and uploads artifacts. Optional
+    `HENRIKDEV_API_KEY` secret is sealed through `build/embed-env.mjs`.
+  - Repo settings via `gh`: richer description, homepage = releases/latest,
+    15 topics, Discussions enabled.
+- Verified:
+  - `npx prettier --check ".github/**/*.{yml,yaml}"`: clean (fixed the
+    `--only-binary :all:` YAML trap by quoting the run block).
+  - `npm run format:check`: clean.
+  - All three workflows and the issue forms parse as YAML (PyYAML).
+  - README: 14 heading anchors resolve, every local link exists.
+- Next: push and (optionally) publish v3.1.4 so Releases + Deployments are not
+  empty; Packages has no natural registry for a desktop installer.

@@ -1,0 +1,95 @@
+name: Release
+
+# Building the Windows artifacts is the app's "deployment": the installer and
+# portable exe are published as a GitHub Release, and electron-builder also
+# writes latest.yml, which the in-app updater reads. Pushing a v* tag is the
+# normal trigger; workflow_dispatch exists to rebuild an existing tag.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  # Keep in step with the PyInstaller used for local builds (6.16.0).
+  PYINSTALLER_VERSION: "6.16.0"
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: windows-latest
+    environment:
+      name: release
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install Python dependencies
+        # Quoted: the bare ":all:" contains a space-colon, which YAML reads as a
+        # nested mapping and rejects (same trap as ci.yml).
+        run: "python -m pip install --only-binary :all: -r requirements.txt pyinstaller==${{ env.PYINSTALLER_VERSION }}" # NOSONAR
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      # The backend tests the tag already passed in CI, but the release build
+      # must not silently skip them if it is dispatched against an old tag.
+      - name: Run the gate
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run test
+          python -m pytest tests/ -q
+
+      - name: Restore the bundled API key
+        # build/embed-env.mjs seals .env into two artifacts (env.bin and the
+        # main-process shard). Without this the release would ship with no key
+        # and every install would fall back to the anonymous rate limit.
+        if: ${{ env.HENRIKDEV_API_KEY != '' }}
+        shell: bash
+        env:
+          HENRIKDEV_API_KEY: ${{ secrets.HENRIKDEV_API_KEY }}
+        run: echo "HENRIKDEV_API_KEY=$HENRIKDEV_API_KEY" > .env
+
+      - name: Build the Python backend
+        run: npm run build:py
+
+      - name: Build and publish
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No code-signing certificate is configured; make that explicit so
+          # electron-builder does not try to discover one on the runner.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RiotSwitcher-windows
+          path: |
+            release/*.exe
+            release/latest.yml
+          if-no-files-found: error

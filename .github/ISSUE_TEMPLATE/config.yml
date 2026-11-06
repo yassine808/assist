@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Latest release
+    url: https://github.com/yassine808/assist/releases/latest
+    about: Download the newest version before reporting a problem.
+  - name: Technical documentation
+    url: https://github.com/yassine808/assist/blob/main/docs/ARCHITECTURE.md
+    about: Architecture, IPC protocol and the full set of flows.
+  - name: Sponsor the project
+    url: https://github.com/sponsors/yassine808
+    about: RiotSwitcher is free; support is optional.
