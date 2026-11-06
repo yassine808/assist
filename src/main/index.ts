@@ -136,7 +136,11 @@ function setupIpc(): void {
   ipcMain.handle("window:toggleMaximize", (event) => {
     const win = senderWindow(event);
     if (!win) return;
-    if (win.isMaximized()) { win.unmaximize(); } else { win.maximize(); }
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
   });
 
   ipcMain.handle("app:version", () => app.getVersion());
@@ -145,34 +149,40 @@ function setupIpc(): void {
   ipcMain.handle("update:install", () => quitAndInstall());
 
   ipcMain.handle("profile:createShortcut", (_event, name: unknown) =>
-    createProfileShortcut(typeof name === "string" ? name : "")
+    createProfileShortcut(typeof name === "string" ? name : ""),
   );
 
   // "Support the project" opens the project's sponsorship page in the user's
-  // real browser. Only https is accepted so the renderer cannot use this as a
-  // generic protocol launcher.
+  // real browser. Only the project's own GitHub pages are accepted, so a
+  // compromised renderer cannot use this as a generic https launcher.
   ipcMain.handle("shell:openExternal", async (_event, url: unknown) => {
     const target = typeof url === "string" ? url : "";
-    if (!/^https:\/\//i.test(target)) {
-      throw new Error("Only https links can be opened");
+    let parsed: URL;
+    try {
+      parsed = new URL(target);
+    } catch {
+      throw new Error("Invalid URL");
     }
-    await shell.openExternal(target);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    const onProjectGithub =
+      parsed.protocol === "https:" &&
+      parsed.hostname === "github.com" &&
+      (path === "/sponsors/yassine808" || path.startsWith("/yassine808/"));
+    if (!onProjectGithub) {
+      throw new Error("Only the project's GitHub pages can be opened");
+    }
+    await shell.openExternal(parsed.toString());
   });
 
   // Animated player cards live on disk, next to the app.
   ipcMain.handle("cards:animated", () => listAnimatedCards());
 
-  ipcMain.handle(
-    "python:call",
-    async (_event, method: string, params: Record<string, unknown> = {}) => {
-      if (!python) throw new Error("Python backend not running");
-      return python.call(method, params);
-    }
-  );
+  ipcMain.handle("python:call", async (_event, method: string, params: Record<string, unknown> = {}) => {
+    if (!python) throw new Error("Python backend not running");
+    return python.call(method, params);
+  });
 
   python?.onEvent((event: string, params: unknown) => {
-    BrowserWindow.getAllWindows().forEach((win) =>
-      win.webContents.send("python:event", { event, params })
-    );
+    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send("python:event", { event, params }));
   });
 }

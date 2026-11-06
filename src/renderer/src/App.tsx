@@ -31,7 +31,8 @@ export default function App() {
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
-    void window.electronAPI?.call?.("get_config")
+    void window.electronAPI
+      ?.call?.("get_config")
       .then((cfg) => hydrateFromConfig(cfg as Record<string, unknown> | null))
       .catch(() => undefined);
   }, []);
@@ -40,9 +41,16 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-      if (e.key === "1") { e.preventDefault(); navigate("profiles"); }
-      else if (e.key === "2") { e.preventDefault(); navigate("agents"); }
-      else if (e.key === ",") { e.preventDefault(); toggleSettings(); }
+      if (e.key === "1") {
+        e.preventDefault();
+        navigate("profiles");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        navigate("agents");
+      } else if (e.key === ",") {
+        e.preventDefault();
+        toggleSettings();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -55,8 +63,14 @@ export default function App() {
         <div className="flex flex-col h-full relative z-10">
           <TitleBar page={page} onNavigate={navigate} settingsOpen={settingsOpen} onToggleSettings={toggleSettings} />
           <main className="app-main">
-            <Pane active={page === "profiles"}><HomeView /></Pane>
-            {visited.agents && <Pane active={page === "agents"}><AgentMapView /></Pane>}
+            <Pane active={page === "profiles"}>
+              <HomeView />
+            </Pane>
+            {visited.agents && (
+              <Pane active={page === "agents"}>
+                <AgentMapView />
+              </Pane>
+            )}
             <SettingsOverlay open={settingsOpen} onClose={closeSettings} />
           </main>
         </div>

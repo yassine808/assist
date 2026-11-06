@@ -27,20 +27,11 @@ beforeEach(() => {
     }
     return { ok: true };
   });
-  getAnimatedCards.mockResolvedValue([
-    { name: "Astra", url: "card://animated/Astra_Mastery_Card_animated.apng" },
-  ]);
+  getAnimatedCards.mockResolvedValue([{ name: "Astra", url: "card://animated/Astra_Mastery_Card_animated.apng" }]);
 });
 
 function renderPicker() {
-  return render(
-    <PlayerCardPicker
-      profileName="Alpha#EUW"
-      currentCardUrl=""
-      onClose={vi.fn()}
-      onApplied={vi.fn()}
-    />
-  );
+  return render(<PlayerCardPicker profileName="Alpha#EUW" currentCardUrl="" onClose={vi.fn()} onApplied={vi.fn()} />);
 }
 
 describe("PlayerCardPicker categories", () => {
@@ -60,10 +51,7 @@ describe("PlayerCardPicker categories", () => {
     renderPicker();
 
     const tabs = await screen.findAllByRole("button", { name: /^(Animated|Normal)/ });
-    expect(tabs.map((tab) => tab.textContent?.match(/^(Animated|Normal)/)?.[0])).toEqual([
-      "Animated",
-      "Normal",
-    ]);
+    expect(tabs.map((tab) => tab.textContent?.match(/^(Animated|Normal)/)?.[0])).toEqual(["Animated", "Normal"]);
   });
 
   it("counts both sources independently", async () => {
@@ -111,7 +99,7 @@ describe("PlayerCardPicker categories", () => {
       expect(call).toHaveBeenCalledWith("set_playercard", {
         name: "Alpha#EUW",
         card_url: "card://animated/Astra_Mastery_Card_animated.apng",
-      })
+      }),
     );
   });
 

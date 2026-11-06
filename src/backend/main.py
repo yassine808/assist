@@ -252,19 +252,26 @@ def _capture_session(name, sessions, profiles, config, install_dir_provider):
         # capturing when the client install has not been located yet.
         install_dir = ""
     try:
+        # A signed-out client still has this file, but with
+        # `authorization.riot-client: null`. Capturing that would create a
+        # profile whose only possible restore is an empty login screen.
+        if not sessions.live_has_login(install_dir):
+            return False
         if not sessions.save_session(directory_name, install_dir):
             return False
     except Exception:  # noqa: BLE001
         return False
-    backup_dir = sessions.profile_dir(directory_name)
-    try:
-        captured = os.path.isdir(backup_dir) and bool(os.listdir(backup_dir))
-    except OSError:
-        captured = False
-    if captured:
+    if sessions.session_has_login(directory_name):
         # The account that just got added is the one running right now.
         config.set("LastRunningProfile", name)
-    return captured
+        return True
+    # Partial or unusable backup: remove it so the UI never offers a profile
+    # that cannot sign in.
+    try:
+        sessions.delete_profile_dir(directory_name)
+    except Exception:  # noqa: BLE001
+        pass
+    return False
 
 
 
@@ -313,8 +320,18 @@ def _create_profile_with_capture(profiles, protocol, capture_session, params):
     later.
     """
     profile = profiles.create(params)
-    _seed_random_animated_card(profiles, protocol, profile.get("profile_name", ""))
-    capture_session(profile.get("profile_name", ""))
+    name = profile.get("profile_name", "")
+    # A profile without session files cannot be switched back to. Keep the
+    # store consistent instead of leaving an unusable card behind.
+    if capture_session(name) is False:
+        try:
+            profiles.delete(name)
+        except Exception:  # noqa: BLE001
+            pass
+        raise ValueError(
+            "No Riot Client login found. Sign in to the account first, then add it."
+        )
+    _seed_random_animated_card(profiles, protocol, name)
     return profile
 
 
@@ -355,9 +372,16 @@ def _capture_profile_session(name, sessions, profiles, config, riot):
 
 
 def _on_profile_created(profiles, protocol, tracker, sessions, config, riot, name):
+    """Capture the live login for a freshly detected profile.
+
+    Returns False when the session could not be captured, so the detector can
+    remove the profile instead of leaving one that only opens a login screen.
+    """
+    if not _capture_profile_session(name, sessions, profiles, config, riot):
+        return False
     _seed_random_animated_card(profiles, protocol, name)
-    _capture_profile_session(name, sessions, profiles, config, riot)
     tracker.refresh_profile(name)
+    return True
 
 
 def _league_config_dir(league):
@@ -514,8 +538,8 @@ def _build_handlers(ctx):
         ),
         "save_session": lambda p: helpers.swap_profile(p.get("name"), True),
         "restore_session": lambda p: helpers.swap_profile(p.get("name"), False),
-        "has_session": lambda p: os.path.isdir(
-            sessions.profile_dir(helpers.profile_dir_name(p.get("name")))
+        "has_session": lambda p: sessions.session_has_login(
+            helpers.profile_dir_name(p.get("name"))
         ),
         "league_find_dir": lambda p: league.find_league_dir(),
         "league_capture": lambda p: league.capture_master_snapshot(

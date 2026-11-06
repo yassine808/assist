@@ -55,7 +55,7 @@ export default function SettingsView() {
       setConfig((prev) => ({ ...prev, [key]: value }));
       void call("set_config", { key, value });
     },
-    [call]
+    [call],
   );
 
   // Appearance is applied instantly (and live in the other windows); the backend copy is debounced.
@@ -64,12 +64,18 @@ export default function SettingsView() {
       if (mirrorTimer.current) clearTimeout(mirrorTimer.current);
       mirrorTimer.current = setTimeout(() => void call("set_config", { key, value }), 250);
     },
-    [call]
+    [call],
   );
   const pickTheme = (id: string) => {
     setTheme(id);
     void call("set_config", { key: "BackgroundTheme", value: id });
-    toast.show({ id: "theme", kind: "info", title: "Theme changed", message: THEMES.find((t) => t.id === id)?.name, duration: 2200 });
+    toast.show({
+      id: "theme",
+      kind: "info",
+      title: "Theme changed",
+      message: THEMES.find((t) => t.id === id)?.name,
+      duration: 2200,
+    });
   };
   const changeScale = (k: number) => {
     setScale(k);
@@ -102,9 +108,12 @@ export default function SettingsView() {
     if (!sc) return;
     const y = sc.scrollTop + 110;
     let idx = 0;
-    secRefs.current.forEach((el, i) => { if (el && el.offsetTop <= y) idx = i; });
+    secRefs.current.forEach((el, i) => {
+      if (el && el.offsetTop <= y) idx = i;
+    });
     // scrolled all the way down: the last category is the one in view
-    if (sc.scrollHeight > sc.clientHeight && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2) idx = secRefs.current.length - 1;
+    if (sc.scrollHeight > sc.clientHeight && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2)
+      idx = secRefs.current.length - 1;
     setActiveIdx(idx);
   }, []);
 
@@ -114,10 +123,13 @@ export default function SettingsView() {
     settleTimer.current = setTimeout(computeActive, 140); // re-sync once a smooth scroll has stopped
   }, [computeActive]);
 
-  useEffect(() => () => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    if (scrollLockTimer.current) clearTimeout(scrollLockTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      if (scrollLockTimer.current) clearTimeout(scrollLockTimer.current);
+    },
+    [],
+  );
 
   // Every section must be able to reach the top of the panel, otherwise the last (short) ones can
   // never become "active". The spacer is exactly the extra room the last section needs.
@@ -140,14 +152,17 @@ export default function SettingsView() {
   }, [measureSpacer]);
 
   const goTo = (i: number) => {
-    const sc = scrollRef.current, el = secRefs.current[i];
+    const sc = scrollRef.current,
+      el = secRefs.current[i];
     setActiveIdx(i);
     if (!sc || !el) return;
     // Hold the scrollspy while the smooth scroll is in flight. A timer avoids
     // reading wall-clock time during a component render (React purity rule).
     scrollLocked.current = true;
     if (scrollLockTimer.current) clearTimeout(scrollLockTimer.current);
-    scrollLockTimer.current = setTimeout(() => { scrollLocked.current = false; }, 700);
+    scrollLockTimer.current = setTimeout(() => {
+      scrollLocked.current = false;
+    }, 700);
     const top = Math.max(0, el.offsetTop - 14);
     if (typeof sc.scrollTo === "function") sc.scrollTo({ top, behavior: "smooth" });
     else sc.scrollTop = top;
@@ -155,7 +170,10 @@ export default function SettingsView() {
 
   const cards = [
     {
-      id: "appearance", nav: "Appearance", icon: Palette, blurb: "Make the app yours: background colour and card size.",
+      id: "appearance",
+      nav: "Appearance",
+      icon: Palette,
+      blurb: "Make the app yours: background colour and card size.",
       title: "Appearance",
       rows: (
         <div className="py-2">
@@ -180,7 +198,10 @@ export default function SettingsView() {
             ))}
             <label
               className={`theme-swatch ${theme === CUSTOM_ID ? "is-on" : ""}`}
-              style={{ ["--sw-base" as string]: customDef.base, ["--sw-glow" as string]: `rgba(${customDef.glow}, 0.55)` }}
+              style={{
+                ["--sw-base" as string]: customDef.base,
+                ["--sw-glow" as string]: `rgba(${customDef.glow}, 0.55)`,
+              }}
               title="Pick any colour"
             >
               <span className="chip chip-custom" />
@@ -228,23 +249,29 @@ export default function SettingsView() {
       ),
     },
     {
-      id: "riot", nav: "Riot Client", icon: Rocket, blurb: "What happens when you press START.",
+      id: "riot",
+      nav: "Riot Client",
+      icon: Rocket,
+      blurb: "What happens when you press START.",
       title: "Riot Client",
       rows: (
-          <SettingDropdown
-            label="Launch Product"
-            description="Auto-launch VALORANT or only the Riot Client"
-            value={String(config.LaunchProduct ?? "valorant")}
-            options={[
-              { value: "valorant", label: "VALORANT" },
-              { value: "riot", label: "Riot Client" },
-            ]}
-            onChange={(v) => update("LaunchProduct", v)}
-          />
+        <SettingDropdown
+          label="Launch Product"
+          description="Auto-launch VALORANT or only the Riot Client"
+          value={String(config.LaunchProduct ?? "valorant")}
+          options={[
+            { value: "valorant", label: "VALORANT" },
+            { value: "riot", label: "Riot Client" },
+          ]}
+          onChange={(v) => update("LaunchProduct", v)}
+        />
       ),
     },
     {
-      id: "sync", nav: "Game Sync", icon: RefreshCw, blurb: "Keep your in-game settings identical across accounts.",
+      id: "sync",
+      nav: "Game Sync",
+      icon: RefreshCw,
+      blurb: "Keep your in-game settings identical across accounts.",
       title: "Game Settings Sync",
       rows: (
         <>
@@ -273,7 +300,10 @@ export default function SettingsView() {
       ),
     },
     {
-      id: "system", nav: "System", icon: SlidersHorizontal, blurb: "Tray behaviour, sounds and language.",
+      id: "system",
+      nav: "System",
+      icon: SlidersHorizontal,
+      blurb: "Tray behaviour, sounds and language.",
       title: "System",
       rows: (
         <>
@@ -310,15 +340,16 @@ export default function SettingsView() {
       ),
     },
     {
-      id: "updates", nav: "Updates", icon: Download, blurb: "Stay on the latest version.",
+      id: "updates",
+      nav: "Updates",
+      icon: Download,
+      blurb: "Stay on the latest version.",
       title: "Updates",
       rows: (
         <div className="py-2">
           <div className="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
             <span className="text-xs text-white/40">Installed version</span>
-            <span className="text-xs font-semibold text-white/75">
-              {appVersion ? `v${appVersion}` : "—"}
-            </span>
+            <span className="text-xs font-semibold text-white/75">{appVersion ? `v${appVersion}` : "—"}</span>
           </div>
           <div className="flex items-center justify-between">
             <div>
@@ -331,9 +362,7 @@ export default function SettingsView() {
                 {updateState === "error" && "Update check failed"}
                 {updateState === "idle" && "Auto-checks on startup"}
               </p>
-              <p className="text-white/40 text-xs">
-                Updates download and install automatically on restart
-              </p>
+              <p className="text-white/40 text-xs">Updates download and install automatically on restart</p>
             </div>
             <div className="flex gap-2">
               {(updateState === "idle" || updateState === "up-to-date" || updateState === "error") && (
@@ -367,7 +396,10 @@ export default function SettingsView() {
       ),
     },
     {
-      id: "support", nav: "Support", icon: Coffee, blurb: "RiotSwitcher is free and open source — support keeps it going.",
+      id: "support",
+      nav: "Support",
+      icon: Coffee,
+      blurb: "RiotSwitcher is free and open source — support keeps it going.",
       title: "Support the Project",
       rows: (
         <div className="py-2">
@@ -415,7 +447,9 @@ export default function SettingsView() {
             </button>
           ))}
         </div>
-        <div className="settings-nav-foot"><kbd>Esc</kbd> to close</div>
+        <div className="settings-nav-foot">
+          <kbd>Esc</kbd> to close
+        </div>
       </aside>
 
       <div className="settings-scroll" ref={scrollRef} onScroll={onScroll}>
@@ -424,7 +458,9 @@ export default function SettingsView() {
             <section
               key={card.id}
               id={`settings-${card.id}`}
-              ref={(el) => { secRefs.current[i] = el; }}
+              ref={(el) => {
+                secRefs.current[i] = el;
+              }}
               className={`set-sec ${i === activeIdx ? "is-on" : ""}`}
               style={{ ["--s" as string]: i }}
             >

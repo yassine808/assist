@@ -81,7 +81,7 @@ describe("HomeView playercard change", () => {
     fireEvent.click((await screen.findByAltText("New Card")).closest("button")!);
 
     await waitFor(() =>
-      expect(document.querySelector<HTMLImageElement>("img.lobby-art")?.getAttribute("src")).toBe(NEW_CARD)
+      expect(document.querySelector<HTMLImageElement>("img.lobby-art")?.getAttribute("src")).toBe(NEW_CARD),
     );
   });
 });

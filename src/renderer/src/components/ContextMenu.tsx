@@ -43,9 +43,7 @@ export function ContextMenu({ x, y, items, onSelect, onClose }: Readonly<Props>)
           key={item.id}
           onClick={() => onSelect(item.id)}
           className={`block w-full text-left px-3 py-1.5 text-xs transition-colors ${
-            item.danger
-              ? "text-riot-red hover:bg-riot-red/10"
-              : "text-white/80 hover:bg-white/5"
+            item.danger ? "text-riot-red hover:bg-riot-red/10" : "text-white/80 hover:bg-white/5"
           }`}
         >
           {item.label}

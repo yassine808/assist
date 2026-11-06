@@ -33,7 +33,13 @@ function renderCard(card: string) {
   const onLaunch = vi.fn();
   const onDelete = vi.fn();
   const utils = render(
-    <ProfileCard profile={makeProfile(card)} running={false} launchState="idle" onLaunch={onLaunch} onDelete={onDelete} />
+    <ProfileCard
+      profile={makeProfile(card)}
+      running={false}
+      launchState="idle"
+      onLaunch={onLaunch}
+      onDelete={onDelete}
+    />,
   );
   const art = () => utils.container.querySelector<HTMLImageElement>("img.lobby-art")!;
   return { ...utils, art, onLaunch, onDelete };
@@ -53,7 +59,13 @@ describe("ProfileCard playercard art", () => {
     expect(art().className).not.toContain("is-charging");
 
     rerender(
-      <ProfileCard profile={makeProfile(CARD_B)} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />
+      <ProfileCard
+        profile={makeProfile(CARD_B)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
     );
     expect(art().getAttribute("src")).toBe(CARD_B);
     expect(art().className).toContain("is-charging");
@@ -67,14 +79,22 @@ describe("ProfileCard playercard art", () => {
     fireEvent.load(art());
 
     rerender(
-      <ProfileCard profile={makeProfile(CARD_B)} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />
+      <ProfileCard
+        profile={makeProfile(CARD_B)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
     );
     fireEvent.load(art());
 
     // e.g. rank/RR refresh: same card, new object
     const updated = makeProfile(CARD_B);
     updated.valorant_data = { ...updated.valorant_data, rr: 80 } as Profile["valorant_data"];
-    rerender(<ProfileCard profile={updated} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />);
+    rerender(
+      <ProfileCard profile={updated} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />,
+    );
 
     expect(art().getAttribute("src")).toBe(CARD_B);
     expect(art().className).not.toContain("is-charging");
@@ -100,7 +120,13 @@ describe("ProfileCard playercard art", () => {
     expect(art().style.display).toBe("none");
 
     rerender(
-      <ProfileCard profile={makeProfile(CARD_B)} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />
+      <ProfileCard
+        profile={makeProfile(CARD_B)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
     );
     expect(art().style.display).toBe("");
 
@@ -120,7 +146,7 @@ describe("ProfileCard sign-out button", () => {
         onLaunch={vi.fn()}
         onDelete={vi.fn()}
         onSignOut={onSignOut}
-      />
+      />,
     );
     expect(container.querySelector(".lobby-signout")).toBeNull();
 
@@ -132,7 +158,7 @@ describe("ProfileCard sign-out button", () => {
         onLaunch={vi.fn()}
         onDelete={vi.fn()}
         onSignOut={onSignOut}
-      />
+      />,
     );
 
     const button = container.querySelector<HTMLButtonElement>(".lobby-signout");
@@ -152,12 +178,14 @@ describe("ProfileCard sign-out button", () => {
         onLaunch={vi.fn()}
         onDelete={vi.fn()}
         onSignOut={vi.fn()}
-      />
+      />,
     );
 
     const row = container.querySelector(".lobby-ctl");
     expect(row?.querySelector(".lobby-signout")).not.toBeNull();
     expect(row?.querySelector(".lobby-start")).not.toBeNull();
     expect(row?.querySelector(".lobby-start")?.textContent).toBe("RUNNING");
+    // The sign-out button must come after START, not before it.
+    expect(row?.lastElementChild?.classList.contains("lobby-signout")).toBe(true);
   });
 });

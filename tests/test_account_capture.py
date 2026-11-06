@@ -114,6 +114,27 @@ class CaptureSessionTests(_TempDirMixin):
 
         self.assertTrue(captured)
 
+    def test_signed_out_live_file_is_not_captured(self):
+        """A null Riot token must never become a saved profile."""
+        local = os.path.join(self.root, "local")
+        path = os.path.join(local, PRIVATE_SETTINGS)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("psl:\n  authorization:\n    riot-client: null\n")
+        pm = self._pm()
+        pm.create({"profile_name": "SignedOut"})
+        config = self._config()
+        sessions = self._sm()
+
+        with mock.patch.dict(os.environ, {"LOCALAPPDATA": local}):
+            captured = main._capture_session(
+                "SignedOut", sessions, pm, config, lambda: ""
+            )
+
+        self.assertFalse(captured)
+        self.assertFalse(os.path.isdir(sessions.profile_dir("SignedOut")))
+        self.assertEqual("", config.get("LastRunningProfile"))
+
     def test_blank_name_is_a_no_op(self):
         self.assertFalse(
             main._capture_session("", self._sm(), self._pm(), self._config(), lambda: "")
@@ -182,6 +203,22 @@ class DetectorWiringTests(_TempDirMixin):
 
         self.assertEqual(["NewAccount"], created)
         self.assertIsNotNone(detector.profiles.get("NewAccount"))
+
+    @mock.patch("account_detector.rad")
+    def test_finish_removes_the_profile_when_the_session_cannot_be_saved(self, mock_rad):
+        mock_rad.display_uid.return_value = "NoToken#EUW"
+        events = []
+        detector = AccountDetector(
+            profiles=self._pm(),
+            on_event=lambda name, data: events.append((name, data)),
+            on_profile_created=lambda _name: False,
+        )
+
+        detector._finish({"puuid": "abc", "riot_region": "eu"})
+
+        self.assertIsNone(detector.profiles.get("NoToken#EUW"))
+        self.assertEqual("error", events[-1][1]["status"])
+        self.assertNotIn("created", [data.get("status") for _name, data in events])
 
     @mock.patch("account_detector.rad")
     def test_auto_save_creates_the_profile_without_waiting_for_a_prompt(self, mock_rad):
@@ -262,6 +299,25 @@ class SwitchFlowTests(_TempDirMixin):
                 self.assertEqual('id_token: "account-one"\n', fh.read())
             self.assertEqual("One", config.get("LastRunningProfile"))
             riot.launch_client.assert_called_once()
+
+    def test_switch_refuses_a_profile_without_a_saved_login(self):
+        local = os.path.join(self.root, "local")
+        self._write_live(local, "account-one")
+        profiles = self._pm()
+        profiles.create({"profile_name": "Empty"})
+        sessions = self._sm()
+        config = self._config()
+
+        riot = mock.MagicMock()
+        riot.ensure_location.return_value = ""
+        orchestrator = LaunchOrchestrator(riot, sessions, profiles, config)
+
+        with mock.patch.dict(os.environ, {"LOCALAPPDATA": local}):
+            result = orchestrator.switch_to("Empty")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("no_session", result["code"])
+        riot.launch_client.assert_not_called()
 
     def test_switch_aborts_when_restore_fails(self):
         local = os.path.join(self.root, "local")

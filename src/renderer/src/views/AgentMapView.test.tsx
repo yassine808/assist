@@ -24,9 +24,7 @@ const PROFILE = {
         wins: 2,
         winrate: 100,
         avg_score: 250,
-        agents: [
-          { agent: "Jett", games: 2, wins: 2, winrate: 100, avg_score: 260, display_icon: "", role: "Duelist" },
-        ],
+        agents: [{ agent: "Jett", games: 2, wins: 2, winrate: 100, avg_score: 260, display_icon: "", role: "Duelist" }],
       },
       {
         map: "Haven",
@@ -34,9 +32,7 @@ const PROFILE = {
         wins: 1,
         winrate: 33,
         avg_score: 190,
-        agents: [
-          { agent: "Sage", games: 3, wins: 1, winrate: 33, avg_score: 190, display_icon: "", role: "Sentinel" },
-        ],
+        agents: [{ agent: "Sage", games: 3, wins: 1, winrate: 33, avg_score: 190, display_icon: "", role: "Sentinel" }],
       },
     ],
   },
@@ -80,8 +76,7 @@ describe("Agent Map summary and filters", () => {
   it("sorts maps by name on request", async () => {
     await renderView();
     // Default is "most played": Haven (3 games) comes before Ascent (2).
-    const headings = () =>
-      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    const headings = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(headings()).toEqual(["Haven", "Ascent"]);
 
     fireEvent.change(screen.getByLabelText("Sort maps"), { target: { value: "name" } });

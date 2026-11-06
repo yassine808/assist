@@ -1,7 +1,11 @@
 // Tiny WebAudio synth: no audio files needed. Toggle with sfx.setEnabled(false).
 let ctx: AudioContext | null = null;
 let enabled = (() => {
-  try { return localStorage.getItem("rs_sfx") !== "off"; } catch { return true; }
+  try {
+    return localStorage.getItem("rs_sfx") !== "off";
+  } catch {
+    return true;
+  }
 })();
 
 function ac(): AudioContext | null {
@@ -9,10 +13,17 @@ function ac(): AudioContext | null {
     ctx ??= new AudioContext();
     if (ctx.state === "suspended") void ctx.resume();
     return ctx;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
-interface ToneOpts { type?: OscillatorType; gain?: number; to?: number; delay?: number }
+interface ToneOpts {
+  type?: OscillatorType;
+  gain?: number;
+  to?: number;
+  delay?: number;
+}
 
 function tone(freq: number, dur: number, { type = "sine", gain = 0.05, to, delay = 0 }: ToneOpts = {}) {
   if (!enabled) return;
@@ -42,8 +53,8 @@ export const sfx = {
     tone(2200, 0.045, { type: "triangle", gain: 0.012, to: 2600 });
   },
   start() {
-    tone(110, 0.28, { gain: 0.16, to: 42 });                       // thump
-    tone(320, 0.22, { type: "sawtooth", gain: 0.02, to: 1100 });   // rising sweep
+    tone(110, 0.28, { gain: 0.16, to: 42 }); // thump
+    tone(320, 0.22, { type: "sawtooth", gain: 0.02, to: 1100 }); // rising sweep
   },
   launched() {
     tone(659, 0.35, { gain: 0.05 });
@@ -51,12 +62,23 @@ export const sfx = {
     tone(1480, 0.6, { gain: 0.02, delay: 0.18 });
   },
   // drag & drop
-  lift() { tone(520, 0.09, { type: "triangle", gain: 0.03, to: 760 }); },
-  tick() { tone(1500, 0.03, { type: "square", gain: 0.008, to: 1200 }); },
-  drop() { tone(180, 0.14, { gain: 0.07, to: 90 }); tone(900, 0.06, { type: "triangle", gain: 0.015, delay: 0.02 }); },
+  lift() {
+    tone(520, 0.09, { type: "triangle", gain: 0.03, to: 760 });
+  },
+  tick() {
+    tone(1500, 0.03, { type: "square", gain: 0.008, to: 1200 });
+  },
+  drop() {
+    tone(180, 0.14, { gain: 0.07, to: 90 });
+    tone(900, 0.06, { type: "triangle", gain: 0.015, delay: 0.02 });
+  },
   setEnabled(v: boolean) {
     enabled = v;
-    try { localStorage.setItem("rs_sfx", v ? "on" : "off"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem("rs_sfx", v ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
   },
   isEnabled: () => enabled,
 };

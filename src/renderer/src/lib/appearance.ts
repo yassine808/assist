@@ -43,7 +43,11 @@ const CUSTOM_KEY = "rs_custom_color";
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function hexToRgb(hex: string): [number, number, number] {
-  return [Number.parseInt(hex.slice(1, 3), 16), Number.parseInt(hex.slice(3, 5), 16), Number.parseInt(hex.slice(5, 7), 16)];
+  return [
+    Number.parseInt(hex.slice(1, 3), 16),
+    Number.parseInt(hex.slice(3, 5), 16),
+    Number.parseInt(hex.slice(5, 7), 16),
+  ];
 }
 
 /** Mix a colour into near-black: `amount` is how much of the colour survives. */
@@ -74,7 +78,9 @@ export function getCustomColor(): string {
   try {
     const v = localStorage.getItem(CUSTOM_KEY);
     if (isValidHex(v)) return v;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return DEFAULT_CUSTOM;
 }
 
@@ -82,7 +88,9 @@ export function getTheme(): string {
   try {
     const v = localStorage.getItem(THEME_KEY);
     if (v === CUSTOM_ID || (v && THEMES.some((t) => t.id === v))) return v;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return DEFAULT_THEME;
 }
 
@@ -95,12 +103,14 @@ export function getScale(): number {
   try {
     const raw = localStorage.getItem(SCALE_KEY);
     if (raw !== null) return clampScale(Number.parseFloat(raw));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return SCALE_DEFAULT;
 }
 
 export function applyTheme(id: string): void {
-  const t = id === CUSTOM_ID ? customTheme(getCustomColor()) : THEMES.find((x) => x.id === id) ?? THEMES[0];
+  const t = id === CUSTOM_ID ? customTheme(getCustomColor()) : (THEMES.find((x) => x.id === id) ?? THEMES[0]);
   const s = document.documentElement.style;
   s.setProperty("--bg-base", t.base);
   s.setProperty("--bg-deep", t.deep);
@@ -115,20 +125,32 @@ export function applyScale(k: number): void {
 }
 
 export function setTheme(id: string): void {
-  try { localStorage.setItem(THEME_KEY, id); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(THEME_KEY, id);
+  } catch {
+    /* ignore */
+  }
   applyTheme(id);
 }
 
 /** Pick a custom colour and switch to it. */
 export function setCustomColor(hex: string): void {
   if (!isValidHex(hex)) return;
-  try { localStorage.setItem(CUSTOM_KEY, hex); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(CUSTOM_KEY, hex);
+  } catch {
+    /* ignore */
+  }
   setTheme(CUSTOM_ID);
 }
 
 export function setScale(k: number): void {
   const v = clampScale(k);
-  try { localStorage.setItem(SCALE_KEY, String(v)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(SCALE_KEY, String(v));
+  } catch {
+    /* ignore */
+  }
   applyScale(v);
 }
 
@@ -148,12 +170,17 @@ export function hydrateFromConfig(cfg: Record<string, unknown> | null | undefine
     if (localStorage.getItem(CUSTOM_KEY) === null && isValidHex(cfg.CustomThemeColor)) {
       localStorage.setItem(CUSTOM_KEY, cfg.CustomThemeColor);
     }
-    if (localStorage.getItem(THEME_KEY) === null && typeof cfg.BackgroundTheme === "string"
-      && (cfg.BackgroundTheme === CUSTOM_ID || THEMES.some((t) => t.id === cfg.BackgroundTheme))) {
+    if (
+      localStorage.getItem(THEME_KEY) === null &&
+      typeof cfg.BackgroundTheme === "string" &&
+      (cfg.BackgroundTheme === CUSTOM_ID || THEMES.some((t) => t.id === cfg.BackgroundTheme))
+    ) {
       setTheme(cfg.BackgroundTheme);
     }
     if (localStorage.getItem(SCALE_KEY) === null && typeof cfg.PlayerCardScale === "number") {
       setScale(cfg.PlayerCardScale);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

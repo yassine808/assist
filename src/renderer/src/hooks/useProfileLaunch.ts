@@ -100,7 +100,7 @@ export function useProfileLaunch(): UseProfileLaunch {
         return { ok: false, error: String(e) };
       }
     },
-    [call, launchState]
+    [call, launchState],
   );
 
   return { launchState, launchingProfile, progress, launch };

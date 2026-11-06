@@ -80,6 +80,11 @@ FILE_TMP_SUFFIX = ".tmp"
 # files are left alone because they hold preferences, not the session.
 LIVE_LOGIN_FILES = ("private_settings", "sessions_dir")
 
+# A RiotGamesPrivateSettings.yaml without an id_token is not a login. The client
+# writes `riot-client: null` when it is signed out, and a backup of that file
+# restores to an empty login screen. Treat those as "no session" everywhere.
+_LOGIN_TOKEN_RE = re.compile(rb'id_token:\s*"[^"]+"')
+
 
 def sanitize_directory_name(name):
     """Produce a filesystem-safe directory name from a profile name.
@@ -107,6 +112,40 @@ class SessionManager:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def live_has_login(self, riot_install_dir):
+        """True when the live Riot Client settings carry an account token.
+
+        ``RiotGamesPrivateSettings.yaml`` is written even when the user is
+        signed out (`authorization.riot-client: null`). Capturing or saving in
+        that state produces a backup that can only ever open the login screen,
+        so callers use this to refuse the operation instead of overwriting a
+        good backup with an unusable one.
+        """
+        for file_def in FILES_TO_SWITCH:
+            if file_def["id"] != "private_settings":
+                continue
+            source = self._resolve_path(file_def, riot_install_dir)
+            return bool(source) and self._file_has_login(source)
+        return False
+
+    def session_has_login(self, directory_name):
+        """True when a profile's saved backup contains a usable Riot login."""
+        path = os.path.join(
+            self._profile_dir(directory_name), "RiotGamesPrivateSettings.yaml"
+        )
+        if not os.path.isfile(path):
+            return False
+        payload = self._read_backup(path)
+        return bool(payload) and bool(_LOGIN_TOKEN_RE.search(payload))
+
+    @staticmethod
+    def _file_has_login(path):
+        try:
+            with open(path, "rb") as handle:
+                return bool(_LOGIN_TOKEN_RE.search(handle.read()))
+        except OSError:
+            return False
 
     def save_session(self, directory_name, riot_install_dir):
         """Copy the current live Riot Client files into a profile's backup dir.

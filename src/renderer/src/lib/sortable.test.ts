@@ -14,7 +14,7 @@ import { SortableEngine, type SortableHandlers } from "./sortable";
 
 function pointerEvent(
   type: string,
-  opts: { x?: number; y?: number; buttons?: number; pointerId?: number } = {}
+  opts: { x?: number; y?: number; buttons?: number; pointerId?: number } = {},
 ): PointerEvent {
   const e = new MouseEvent(type, {
     clientX: opts.x ?? 0,

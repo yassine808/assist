@@ -139,7 +139,7 @@ class TestShutdownLeavesValorantRunning(unittest.TestCase):
                 mock.patch.object(launch_orchestrator.rp, "wait_until_dead", return_value=False):
             result = orchestrator.quit_valorant()
 
-        self.assertEqual(result["ok"], False)
+        self.assertFalse(result["ok"])
         self.assertIn("still running", result["error"])
 
 

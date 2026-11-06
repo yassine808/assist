@@ -91,7 +91,8 @@ export function initAutoUpdater(): void {
         message: `Riot Switcher v${info.version} has been downloaded.`,
         // autoInstallOnAppQuit is enabled, so "Later" only defers to the next
         // quit. Say so rather than implying the update is being declined.
-        detail: "Restart now to apply the update, or keep using the app — it will be installed the next time Riot Switcher closes.",
+        detail:
+          "Restart now to apply the update, or keep using the app — it will be installed the next time Riot Switcher closes.",
         buttons: ["Restart Now", "Later"],
         defaultId: 0,
         cancelId: 1,

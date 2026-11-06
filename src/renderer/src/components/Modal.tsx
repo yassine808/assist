@@ -23,12 +23,26 @@ const EXIT_MS = 260;
  * Shared dialog: blurred backdrop + panel that pops in and fades away, exactly like Settings.
  * Esc and an outside click close it; the element marked `data-autofocus` gets focus on open.
  */
-export default function Modal({ open, onClose, title, eyebrow, icon, tone = "default", width = 440, dismissible = true, children, footer }: Readonly<Props>) {
+export default function Modal({
+  open,
+  onClose,
+  title,
+  eyebrow,
+  icon,
+  tone = "default",
+  width = 440,
+  dismissible = true,
+  children,
+  footer,
+}: Readonly<Props>) {
   const [mounted, setMounted] = useState(open);
   const panelRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    if (open) { setMounted(true); return; }
+    if (open) {
+      setMounted(true);
+      return;
+    }
     const t = setTimeout(() => setMounted(false), EXIT_MS);
     return () => clearTimeout(t);
   }, [open]);
@@ -45,7 +59,10 @@ export default function Modal({ open, onClose, title, eyebrow, icon, tone = "def
   useEffect(() => {
     if (!open || !dismissible) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
     };
     const onDown = (e: MouseEvent) => {
       if (!panelRef.current?.contains(e.target as Node)) onClose();
@@ -77,7 +94,14 @@ export default function Modal({ open, onClose, title, eyebrow, icon, tone = "def
             {eyebrow && <div className="rs-modal-eyebrow">{eyebrow}</div>}
             <h2 className="rs-modal-title">{title}</h2>
           </div>
-          <button type="button" className="rs-modal-x" onClick={onClose} disabled={!dismissible} aria-label="Close" title="Close (Esc)">
+          <button
+            type="button"
+            className="rs-modal-x"
+            onClick={onClose}
+            disabled={!dismissible}
+            aria-label="Close"
+            title="Close (Esc)"
+          >
             <X size={15} />
           </button>
         </header>
@@ -85,6 +109,6 @@ export default function Modal({ open, onClose, title, eyebrow, icon, tone = "def
         {footer && <footer className="rs-modal-foot">{footer}</footer>}
       </dialog>
     </div>,
-    document.body
+    document.body,
   );
 }

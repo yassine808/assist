@@ -27,13 +27,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: [
-      "out/**",
-      "dist/**",
-      "release/**",
-      "build/**",
-      "node_modules/**",
-      "src/backend/**",
-    ],
-  }
+    ignores: ["out/**", "dist/**", "release/**", "build/**", "node_modules/**", "src/backend/**"],
+  },
 );

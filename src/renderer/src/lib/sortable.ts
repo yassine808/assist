@@ -12,9 +12,14 @@
 
 interface Body {
   el: HTMLElement;
-  x: number; y: number; vx: number; vy: number;
-  s: number; vs: number;
-  lx: number; ly: number; // layout position (offsetLeft/Top, unaffected by transforms)
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  s: number;
+  vs: number;
+  lx: number;
+  ly: number; // layout position (offsetLeft/Top, unaffected by transforms)
   hasLayout: boolean;
   idle: boolean;
   lifted: boolean;
@@ -23,9 +28,12 @@ interface Body {
 interface DragState {
   id: string;
   pointerId: number;
-  sx: number; sy: number; // where the press started
-  px: number; py: number; // latest pointer (client coords)
-  gx: number; gy: number; // grab point inside the item
+  sx: number;
+  sy: number; // where the press started
+  px: number;
+  py: number; // latest pointer (client coords)
+  gx: number;
+  gy: number; // grab point inside the item
   active: boolean;
   startOrder: string[];
 }
@@ -46,19 +54,25 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const damping = (k: number, zeta: number) => 2 * Math.sqrt(k) * zeta;
 
 interface SpringTarget {
-  tx: number; ty: number; ts: number;
-  kPos: number; cPos: number;
-  kS: number; cS: number;
+  tx: number;
+  ty: number;
+  ts: number;
+  kPos: number;
+  cPos: number;
+  kS: number;
+  cS: number;
 }
 
 function atRest(b: Body, isDrag: boolean): boolean {
   if (isDrag) return false;
-  return Math.abs(b.x) < 0.25
-    && Math.abs(b.y) < 0.25
-    && Math.abs(b.vx) < 1.6
-    && Math.abs(b.vy) < 1.6
-    && Math.abs(b.s - 1) < 0.002
-    && Math.abs(b.vs) < 0.03;
+  return (
+    Math.abs(b.x) < 0.25 &&
+    Math.abs(b.y) < 0.25 &&
+    Math.abs(b.vx) < 1.6 &&
+    Math.abs(b.vy) < 1.6 &&
+    Math.abs(b.s - 1) < 0.002 &&
+    Math.abs(b.vs) < 0.03
+  );
 }
 
 export class SortableEngine {
@@ -76,18 +90,31 @@ export class SortableEngine {
   private reduce = false;
   private captured: HTMLElement | null = null;
 
-  setHandlers(h: SortableHandlers) { this.handlers = h; }
-  setEnabled(v: boolean) { this.enabled = v; }
-  setOrder(names: string[]) { if (!this.drag?.active) this.order = names; }
+  setHandlers(h: SortableHandlers) {
+    this.handlers = h;
+  }
+  setEnabled(v: boolean) {
+    this.enabled = v;
+  }
+  setOrder(names: string[]) {
+    if (!this.drag?.active) this.order = names;
+  }
 
   attach(container: HTMLElement | null, slot: HTMLElement | null) {
     this.container = container;
     this.slot = slot;
     this.scroller = null;
-    try { this.reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { this.reduce = false; }
+    try {
+      this.reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      this.reduce = false;
+    }
     for (let n: HTMLElement | null = container; n; n = n.parentElement) {
       const oy = getComputedStyle(n).overflowY;
-      if (n !== container && (oy === "auto" || oy === "scroll")) { this.scroller = n; break; }
+      if (n !== container && (oy === "auto" || oy === "scroll")) {
+        this.scroller = n;
+        break;
+      }
     }
   }
 
@@ -106,8 +133,18 @@ export class SortableEngine {
       // instead of dropping a lift that is still in flight and leaving the old
       // node stuck with `is-lifted` and a stale transform.
       const body: Body = {
-        el, x: cur.x, y: cur.y, vx: cur.vx, vy: cur.vy, s: cur.s, vs: cur.vs,
-        lx: cur.lx, ly: cur.ly, hasLayout: cur.hasLayout, idle: cur.idle, lifted: cur.lifted,
+        el,
+        x: cur.x,
+        y: cur.y,
+        vx: cur.vx,
+        vy: cur.vy,
+        s: cur.s,
+        vs: cur.vs,
+        lx: cur.lx,
+        ly: cur.ly,
+        hasLayout: cur.hasLayout,
+        idle: cur.idle,
+        lifted: cur.lifted,
       };
       if (cur.lifted) {
         el.classList.add("is-lifted");
@@ -119,7 +156,20 @@ export class SortableEngine {
       if (!body.idle || body.lifted) this.kick();
       return;
     }
-    this.bodies.set(id, { el, x: 0, y: 0, vx: 0, vy: 0, s: 1, vs: 0, lx: 0, ly: 0, hasLayout: false, idle: true, lifted: false });
+    this.bodies.set(id, {
+      el,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      s: 1,
+      vs: 0,
+      lx: 0,
+      ly: 0,
+      hasLayout: false,
+      idle: true,
+      lifted: false,
+    });
   }
 
   /** Clear the drag chrome a body may still carry on its element. */
@@ -132,13 +182,20 @@ export class SortableEngine {
   /** Call after any DOM/layout change (order, resize, scale). Existing items glide to their new slots. */
   layoutChanged() {
     for (const b of this.bodies.values()) {
-      const nx = b.el.offsetLeft, ny = b.el.offsetTop;
-      if (!b.hasLayout) { b.lx = nx; b.ly = ny; b.hasLayout = true; continue; }
+      const nx = b.el.offsetLeft,
+        ny = b.el.offsetTop;
+      if (!b.hasLayout) {
+        b.lx = nx;
+        b.ly = ny;
+        b.hasLayout = true;
+        continue;
+      }
       if (nx !== b.lx || ny !== b.ly) {
         // keep the visual position; the spring will carry the item the rest of the way
         b.x += b.lx - nx;
         b.y += b.ly - ny;
-        b.lx = nx; b.ly = ny;
+        b.lx = nx;
+        b.ly = ny;
         b.idle = false;
       }
     }
@@ -160,7 +217,18 @@ export class SortableEngine {
     // no-op and kept the stuck card following the cursor. Clear it first.
     if (this.drag) this.finish(false);
     if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [data-no-drag]")) return;
-    this.drag = { id, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, px: e.clientX, py: e.clientY, gx: 0, gy: 0, active: false, startOrder: [...this.order] };
+    this.drag = {
+      id,
+      pointerId: e.pointerId,
+      sx: e.clientX,
+      sy: e.clientY,
+      px: e.clientX,
+      py: e.clientY,
+      gx: 0,
+      gy: 0,
+      active: false,
+      startOrder: [...this.order],
+    };
     window.addEventListener("pointermove", this.onMove);
     window.addEventListener("pointerup", this.onUp);
     window.addEventListener("pointercancel", this.onCancel);
@@ -213,7 +281,8 @@ export class SortableEngine {
       else this.cancelPending();
       return;
     }
-    d.px = e.clientX; d.py = e.clientY;
+    d.px = e.clientX;
+    d.py = e.clientY;
     if (!d.active && Math.hypot(d.px - d.sx, d.py - d.sy) > THRESHOLD) this.activate();
     if (d.active) this.kick();
   };
@@ -253,7 +322,11 @@ export class SortableEngine {
     this.drag = null;
     if (d) {
       if (this.captured) {
-        try { this.captured.releasePointerCapture(d.pointerId); } catch { /* element may be gone */ }
+        try {
+          this.captured.releasePointerCapture(d.pointerId);
+        } catch {
+          /* element may be gone */
+        }
         this.captured = null;
       }
       this.order = [...d.startOrder];
@@ -265,7 +338,11 @@ export class SortableEngine {
   private activate() {
     const d = this.drag!;
     const b = this.bodies.get(d.id);
-    if (!b) { this.drag = null; this.detach(); return; }
+    if (!b) {
+      this.drag = null;
+      this.detach();
+      return;
+    }
     const r = b.el.getBoundingClientRect();
     d.gx = d.sx - r.left;
     d.gy = d.sy - r.top;
@@ -305,13 +382,19 @@ export class SortableEngine {
     if (!d) return;
     if (!d.active) return; // a plain click / double click: leave it alone
     if (this.captured) {
-      try { this.captured.releasePointerCapture(d.pointerId); } catch { /* element may be gone */ }
+      try {
+        this.captured.releasePointerCapture(d.pointerId);
+      } catch {
+        /* element may be gone */
+      }
       this.captured = null;
     }
     document.body.classList.remove("is-sorting");
     this.slot?.classList.remove("is-on");
     this.suppress = true;
-    setTimeout(() => { this.suppress = false; }, 60);
+    setTimeout(() => {
+      this.suppress = false;
+    }, 60);
     if (commit) {
       const names = [...this.order];
       this.handlers.onDrop?.();
@@ -364,17 +447,25 @@ export class SortableEngine {
     // for this comparison.
     const mcx = me.lx + me.el.offsetWidth / 2;
     const mcy = me.ly + me.el.offsetHeight / 2;
-    let curSlot = 0, curSlotDist = Infinity;
+    let curSlot = 0,
+      curSlotDist = Infinity;
     slots.forEach((s, i) => {
       const dist = Math.hypot(mcx - s.x, mcy - s.y);
-      if (dist < curSlotDist) { curSlotDist = dist; curSlot = i; }
+      if (dist < curSlotDist) {
+        curSlotDist = dist;
+        curSlot = i;
+      }
     });
 
-    let best = curSlot, bestDist = Infinity;
+    let best = curSlot,
+      bestDist = Infinity;
     const curDist = Math.hypot(cx - slots[curSlot].x, cy - slots[curSlot].y);
     slots.forEach((s, i) => {
       const dist = Math.hypot(cx - s.x, cy - s.y);
-      if (dist < bestDist) { bestDist = dist; best = i; }
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
     });
     if (best === curSlot || bestDist > curDist - HYSTERESIS) return;
 
@@ -387,11 +478,13 @@ export class SortableEngine {
   }
 
   private autoScroll(dt: number) {
-    const sc = this.scroller, d = this.drag;
+    const sc = this.scroller,
+      d = this.drag;
     if (!sc || !d) return;
     const r = sc.getBoundingClientRect();
     const zone = 90;
-    const top = d.py - r.top, bottom = r.bottom - d.py;
+    const top = d.py - r.top,
+      bottom = r.bottom - d.py;
     let v = 0;
     if (top < zone) v = -(1 - clamp(top, 0, zone) / zone);
     else if (bottom < zone) v = 1 - clamp(bottom, 0, zone) / zone;
@@ -431,7 +524,9 @@ export class SortableEngine {
   }
 
   private targetFor(b: Body, isDrag: boolean, d: DragState | null, cr: DOMRect | null): SpringTarget {
-    let tx = 0, ty = 0, ts = 1;
+    let tx = 0,
+      ty = 0,
+      ts = 1;
     let kPos = this.reduce ? 900 : 440;
     let cPos = damping(kPos, this.reduce ? 1 : 0.8);
     let kS = 520;
@@ -447,7 +542,10 @@ export class SortableEngine {
       kPos = 400;
       cPos = damping(kPos, 0.66);
     }
-    if (this.reduce) { kS = 900; cS = damping(kS, 1); }
+    if (this.reduce) {
+      kS = 900;
+      cS = damping(kS, 1);
+    }
     return { tx, ty, ts, kPos, cPos, kS, cS };
   }
 

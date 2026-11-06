@@ -28,12 +28,7 @@ describe("ProfileGrid launch wiring", () => {
   it("calls the single onLaunch with the clicked profile name", () => {
     const onLaunch = vi.fn();
     render(
-      <ProfileGrid
-        profiles={[makeProfile("Alpha#EUW")]}
-        loading={false}
-        onLaunch={onLaunch}
-        onDelete={vi.fn()}
-      />
+      <ProfileGrid profiles={[makeProfile("Alpha#EUW")]} loading={false} onLaunch={onLaunch} onDelete={vi.fn()} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /start/i }));
@@ -52,7 +47,7 @@ describe("ProfileGrid launch wiring", () => {
         launchingProfile="Alpha#EUW"
         onLaunch={onLaunch}
         onDelete={vi.fn()}
-      />
+      />,
     );
 
     const button = screen.getByRole("button", { name: /launching/i }) as HTMLButtonElement;
@@ -72,7 +67,7 @@ describe("ProfileGrid launch wiring", () => {
         launchingProfile="Alpha#EUW"
         onLaunch={onLaunch}
         onDelete={vi.fn()}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /^start$/i }));

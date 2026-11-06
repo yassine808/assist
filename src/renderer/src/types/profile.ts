@@ -7,7 +7,7 @@ export interface AgentStat {
 export interface RecentMatch {
   agent: string;
   map: string;
-  result: 'win' | 'loss' | 'draw';
+  result: "win" | "loss" | "draw";
   score: number;
   kills: number;
   deaths: number;

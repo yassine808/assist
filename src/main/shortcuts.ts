@@ -17,9 +17,7 @@ const INVALID_FILE_CHARS = String.raw`<>:"/\|?*`;
 
 export function sanitizeShortcutName(name: string): string {
   const withoutInvalid = Array.from(name)
-    .map((char) =>
-      char.codePointAt(0)! < 32 || INVALID_FILE_CHARS.includes(char) ? "_" : char
-    )
+    .map((char) => (char.codePointAt(0)! < 32 || INVALID_FILE_CHARS.includes(char) ? "_" : char))
     .join("");
   // Windows drops trailing dots and spaces, which would silently rename the
   // file and leave the "already exists" check looking at the wrong path.

@@ -51,6 +51,18 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run lint
 
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run format:check
+
   test:
     name: Unit Tests (Vitest)
     runs-on: ubuntu-latest
@@ -111,7 +123,7 @@ jobs:
         # toolchain is needed on the runner. Both requirement files pin exact
         # versions; hashes are intentionally not used because they differ per
         # platform and would break local Windows installs.
-        run: 'pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt' # NOSONAR
+        run: "pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt" # NOSONAR
       - name: Ruff check
         run: ruff check src/backend/ tests/
       # compileall walks the tree, so a newly added module is covered without
@@ -124,7 +136,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test, audit, api-leak, python]
+    needs: [typecheck, lint, prettier, test, audit, api-leak, python]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

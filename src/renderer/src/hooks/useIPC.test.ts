@@ -45,8 +45,8 @@ describe("useIPC referential stability", () => {
 
   it("does not re-subscribe to the backend event stream on re-render", async () => {
     const { useIPC } = await import("./useIPC");
-    const onEventSpy = (window as unknown as { electronAPI: { onEvent: ReturnType<typeof vi.fn> } })
-      .electronAPI.onEvent;
+    const onEventSpy = (window as unknown as { electronAPI: { onEvent: ReturnType<typeof vi.fn> } }).electronAPI
+      .onEvent;
 
     const { rerender } = renderHook(() => useIPC());
     rerender();

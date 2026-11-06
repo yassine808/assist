@@ -26,7 +26,7 @@ describe("app activity", () => {
     render(
       <AppActiveProvider>
         <Probe />
-      </AppActiveProvider>
+      </AppActiveProvider>,
     );
 
     expect(screen.getByTestId("active").textContent).toBe("true");
@@ -43,7 +43,7 @@ describe("app activity", () => {
     render(
       <AppActiveProvider>
         <Probe />
-      </AppActiveProvider>
+      </AppActiveProvider>,
     );
 
     expect(screen.getByTestId("active").textContent).toBe("true");

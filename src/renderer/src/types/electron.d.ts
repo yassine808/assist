@@ -1,6 +1,6 @@
 export {};
 
-declare module '*.css' {}
+declare module "*.css" {}
 
 declare global {
   interface Window {
@@ -10,14 +10,12 @@ declare global {
       toggleMaximize: () => Promise<void>;
       getVersion: () => Promise<string>;
       call: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
-      onEvent: (
-        callback: (data: { event: string; params: unknown }) => void
-      ) => () => void;
+      onEvent: (callback: (data: { event: string; params: unknown }) => void) => () => void;
       checkUpdate: () => Promise<void>;
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
       onUpdateStatus: (
-        callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void
+        callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void,
       ) => () => void;
       getAnimatedCards: () => Promise<{ name: string; url: string }[]>;
       createProfileShortcut: (name: string) => Promise<{ ok: boolean; path: string }>;

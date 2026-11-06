@@ -71,12 +71,7 @@ export function handleCardProtocol(): void {
     // Reject traversal, sibling-folder prefix matches, non-APNGs and misses.
     // Returning 404 instead of letting `net.fetch` throw keeps a broken card
     // from surfacing as an unhandled rejection in the main process.
-    if (
-      inside.startsWith("..") ||
-      isAbsolute(inside) ||
-      !full.toLowerCase().endsWith(".apng") ||
-      !existsSync(full)
-    ) {
+    if (inside.startsWith("..") || isAbsolute(inside) || !full.toLowerCase().endsWith(".apng") || !existsSync(full)) {
       return new Response("Not found", { status: 404 });
     }
     return net.fetch(pathToFileURL(full).toString());

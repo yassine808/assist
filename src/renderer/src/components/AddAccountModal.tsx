@@ -12,12 +12,12 @@ interface AddAccountModalProps {
 }
 
 type ModalPhase =
-  | "checking"       // checking for an existing live session
-  | "opening"        // opening a fresh Riot Client for a new login
-  | "waiting"        // waiting for login
-  | "already_added"  // detected account is already saved
-  | "created"        // profile created successfully
-  | "error";         // something went wrong
+  | "checking" // checking for an existing live session
+  | "opening" // opening a fresh Riot Client for a new login
+  | "waiting" // waiting for login
+  | "already_added" // detected account is already saved
+  | "created" // profile created successfully
+  | "error"; // something went wrong
 
 interface CaptureResult {
   added: boolean;
@@ -40,26 +40,56 @@ const PHASE_FROM_STATUS: Partial<Record<string, ModalPhase>> = {
 };
 
 function stepFor(status: string | undefined, clientReady: boolean): ReactNode {
-  if (clientReady) return <><b className="aa-accent">Riot Client</b> ready</>;
-  if (status === "closing") return <>Closing <b className="aa-accent">Riot Client</b>&hellip;</>;
-  return <>Opening <b className="aa-accent">Riot Client</b>&hellip;</>;
+  if (clientReady)
+    return (
+      <>
+        <b className="aa-accent">Riot Client</b> ready
+      </>
+    );
+  if (status === "closing")
+    return (
+      <>
+        Closing <b className="aa-accent">Riot Client</b>&hellip;
+      </>
+    );
+  return (
+    <>
+      Opening <b className="aa-accent">Riot Client</b>&hellip;
+    </>
+  );
 }
 
 function ModalFooter({
-  finished, failed, onClose, onDone, onRetry,
+  finished,
+  failed,
+  onClose,
+  onDone,
+  onRetry,
 }: Readonly<{ finished: boolean; failed: boolean; onClose: () => void; onDone: () => void; onRetry: () => void }>) {
   if (finished) {
-    return <button type="button" data-autofocus onClick={onDone} className="btn-primary h-10 px-8 text-[11px]"><Check size={14} strokeWidth={3} /> Done</button>;
+    return (
+      <button type="button" data-autofocus onClick={onDone} className="btn-primary h-10 px-8 text-[11px]">
+        <Check size={14} strokeWidth={3} /> Done
+      </button>
+    );
   }
   if (failed) {
     return (
       <>
-        <button type="button" onClick={onClose} className="btn-ghost h-10 px-5 text-[11px]">Close</button>
-        <button type="button" data-autofocus onClick={onRetry} className="btn-primary h-10 px-6 text-[11px]">Try again</button>
+        <button type="button" onClick={onClose} className="btn-ghost h-10 px-5 text-[11px]">
+          Close
+        </button>
+        <button type="button" data-autofocus onClick={onRetry} className="btn-primary h-10 px-6 text-[11px]">
+          Try again
+        </button>
       </>
     );
   }
-  return <button type="button" onClick={onClose} className="btn-ghost h-10 px-5 text-[11px]">Cancel</button>;
+  return (
+    <button type="button" onClick={onClose} className="btn-ghost h-10 px-5 text-[11px]">
+      Cancel
+    </button>
+  );
 }
 
 export default function AddAccountModal({ open, onClose, onAccountAdded }: Readonly<AddAccountModalProps>) {
@@ -125,7 +155,8 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
   }, [onAccountAdded, onClose]);
 
   const name = createdName || progress?.profile_name || progress?.display || "Account";
-  const waitingForLogin = effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added";
+  const waitingForLogin =
+    effectivePhase === "opening" || effectivePhase === "waiting" || effectivePhase === "already_added";
   const finished = effectivePhase === "created";
   const failed = effectivePhase === "error";
   const clientReady = effectivePhase === "waiting";
@@ -167,7 +198,9 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
     >
       {effectivePhase === "checking" && (
         <div className="aa-center">
-          <span className="aa-ring"><span className="spinner-icon" /></span>
+          <span className="aa-ring">
+            <span className="spinner-icon" />
+          </span>
           <p className="aa-headline">Checking for a signed-in account…</p>
           <p className="rs-text-sm">If you are already logged in to Riot, it will be saved right away.</p>
         </div>
@@ -202,11 +235,18 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
           <div className="aa-signin-caption">
             <span className="aa-signin-caption-label">
               <span className="aa-signin-caption-tick" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M5 12.5l4.2 4.2L19 7.5" />
                 </svg>
-              </span>
-              {" "}Stay signed in:
+              </span>{" "}
+              Stay signed in:
             </span>
             <span className="aa-signin-caption-text">
               Tick it before you finish the login. The account is saved automatically.
@@ -216,7 +256,17 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
             <span className={`aa-signin-step ${clientReady ? "is-done" : "is-active"}`}>
               <span className="aa-step-ico">
                 {clientReady ? (
-                  <svg className="aa-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                  <svg
+                    className="aa-ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
                     <path className="aa-draw" d="M4 12.5l5 5L20 6.5" />
                   </svg>
                 ) : (
@@ -227,7 +277,16 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
             </span>
             <span className={`aa-signin-step aa-listening ${clientReady ? "is-active" : ""}`}>
               <span className="aa-step-ico">
-                <svg className="aa-ico aa-ico-radar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false">
+                <svg
+                  className="aa-ico aa-ico-radar"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   <circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" />
                   <path d="M7.9 16.1a5.8 5.8 0 0 1 0-8.2" />
                   <path d="M16.1 7.9a5.8 5.8 0 0 1 0 8.2" />
@@ -235,8 +294,8 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
                   <path d="M18.9 5.1a9.8 9.8 0 0 1 0 13.8" opacity=".5" />
                 </svg>
                 <span className="aa-ico-ping" aria-hidden="true" />
-              </span>
-              {" "}Waiting for login
+              </span>{" "}
+              Waiting for login
             </span>
           </div>
         </div>
@@ -244,8 +303,26 @@ export default function AddAccountModal({ open, onClose, onAccountAdded }: Reado
 
       {finished && (
         <div className="aa-center">
-          <span className="aa-success"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path className="toast-check" d="M5 12.5l4.2 4.2L19 7.5" /></svg></span>
-          <div className="del-chip is-ok" title={name}><span className="del-chip-dot" /><span className="del-chip-name">{name}</span></div>
+          <span className="aa-success">
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path className="toast-check" d="M5 12.5l4.2 4.2L19 7.5" />
+            </svg>
+          </span>
+          <div className="del-chip is-ok" title={name}>
+            <span className="del-chip-dot" />
+            <span className="del-chip-name">{name}</span>
+          </div>
           <p className="rs-text-sm">is ready. Pick it from the list and press START to switch.</p>
         </div>
       )}

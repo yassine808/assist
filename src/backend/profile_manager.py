@@ -35,9 +35,18 @@ import threading
 
 NAME_REQUIRED = "name is required"
 
-_EXPORT_MAGIC = b"RSX2"
+# Export format versions. Each version pins its own KDF cost: a file written by
+# an older build must keep decrypting, while every new export uses the current
+# (higher) cost. The KDF parameters are part of the format, not a secret.
+_EXPORT_MAGIC = b"RSX3"
+_LEGACY_V2_MAGIC = b"RSX2"
 _EXPORT_SALT_BYTES = 16
+_EXPORT_ITERATIONS = 600_000
+_LEGACY_V2_ITERATIONS = 480_000
 _LEGACY_EXPORT_SALT = b"riotswitcher-export-v1"
+# Import files are profile metadata only. Anything larger than this is malformed
+# (or an attempt to exhaust memory) and is rejected before decryption.
+_MAX_EXPORT_BYTES = 8 * 1024 * 1024
 
 
 class ProfileManager:
@@ -242,8 +251,12 @@ class ProfileManager:
         # A fresh random salt per export keeps the derived key unpredictable.
         # The salt travels in the header, so the file still decrypts on another
         # machine or in a later session; legacy fixed-salt files remain readable.
+        # Only the profile metadata is exported: session backups never leave the
+        # DPAPI store on this machine.
         salt = secrets.token_bytes(_EXPORT_SALT_BYTES)
-        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
+        dk = hashlib.pbkdf2_hmac(
+            "sha256", passkey.encode("utf-8"), salt, _EXPORT_ITERATIONS
+        )
         key = base64.urlsafe_b64encode(dk)
         fernet = Fernet(key)
         return _EXPORT_MAGIC + salt + fernet.encrypt(payload)
@@ -266,16 +279,32 @@ class ProfileManager:
 
         from cryptography.fernet import Fernet, InvalidToken
 
-        # New exports carry their salt after a magic header; older ones used a
-        # fixed salt and no header.
+        if not isinstance(encrypted_data, (bytes, bytearray)):
+            raise ValueError("Invalid profile data format")
+        encrypted_data = bytes(encrypted_data)
+        if len(encrypted_data) > _MAX_EXPORT_BYTES:
+            raise ValueError("Export file is too large")
+
+        # Newest format carries a random salt and the current KDF cost; the V2
+        # format carries the same header at the older cost; legacy files used a
+        # fixed salt and no header. All three stay readable.
         if encrypted_data.startswith(_EXPORT_MAGIC):
             offset = len(_EXPORT_MAGIC)
             salt = encrypted_data[offset:offset + _EXPORT_SALT_BYTES]
             token = encrypted_data[offset + _EXPORT_SALT_BYTES:]
+            iterations = _EXPORT_ITERATIONS
+        elif encrypted_data.startswith(_LEGACY_V2_MAGIC):
+            offset = len(_LEGACY_V2_MAGIC)
+            salt = encrypted_data[offset:offset + _EXPORT_SALT_BYTES]
+            token = encrypted_data[offset + _EXPORT_SALT_BYTES:]
+            iterations = _LEGACY_V2_ITERATIONS
         else:
             salt = _LEGACY_EXPORT_SALT
             token = encrypted_data
-        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, 480_000)
+            iterations = _LEGACY_V2_ITERATIONS
+        if len(salt) != _EXPORT_SALT_BYTES:
+            raise ValueError("Wrong passkey or corrupted data")
+        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, iterations)
         key = base64.urlsafe_b64encode(dk)
         fernet = Fernet(key)
 

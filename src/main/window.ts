@@ -34,9 +34,7 @@ const MIN_WINDOW_WIDTH = 1060;
 // single-instance lock. Force it visible after this long.
 const SHOW_FALLBACK_MS = 5000;
 
-async function readTrayConfig(
-  python: PythonBridge
-): Promise<{ closeToTray: boolean; minimizeToTray: boolean }> {
+async function readTrayConfig(python: PythonBridge): Promise<{ closeToTray: boolean; minimizeToTray: boolean }> {
   try {
     const cfg = (await python.call("get_config")) as Record<string, unknown> | null;
     return {
@@ -48,10 +46,7 @@ async function readTrayConfig(
   }
 }
 
-export async function createAppWindow(
-  python: PythonBridge,
-  callbacks: WindowCallbacks
-): Promise<AppWindow> {
+export async function createAppWindow(python: PythonBridge, callbacks: WindowCallbacks): Promise<AppWindow> {
   const win = new BrowserWindow({
     width: 1100,
     height: 790,
@@ -65,7 +60,30 @@ export async function createAppWindow(
       preload: join(__dirname, "../preload/preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
+  });
+
+  // The renderer is a local app shell. It must never navigate away from its own
+  // page or open a second Electron window because of remote content.
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-attach-webview", (event) => event.preventDefault());
+  win.webContents.on("will-navigate", (event, target) => {
+    const current = win.webContents.getURL();
+    const devUrl = process.env.ELECTRON_RENDERER_URL;
+    let devOrigin = "";
+    let targetOrigin = "";
+    try {
+      devOrigin = devUrl ? new URL(devUrl).origin : "";
+      targetOrigin = new URL(target).origin;
+    } catch {
+      // A malformed target cannot match an allowed origin.
+    }
+    if (target === current || (devOrigin !== "" && targetOrigin === devOrigin)) return;
+    event.preventDefault();
+    log.warn("Blocked renderer navigation to", target);
   });
 
   // Attach before loading: with a warm renderer the event can fire before an

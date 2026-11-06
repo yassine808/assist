@@ -40,17 +40,11 @@ describe("profile desktop shortcuts", () => {
   });
 
   it("builds the shortcut in the Desktop folder", () => {
-    expect(profileShortcutPath("Main", desktop)).toBe(
-      "C:\\Users\\Test\\Desktop\\RiotSwitcher - Main.lnk"
-    );
+    expect(profileShortcutPath("Main", desktop)).toBe("C:\\Users\\Test\\Desktop\\RiotSwitcher - Main.lnk");
   });
 
   it("passes the app path as well as the profile when running from source", () => {
-    expect(profileLaunchArgs("Main")).toEqual([
-      "D:\\Projects\\Assist",
-      "--profile",
-      "Main",
-    ]);
+    expect(profileLaunchArgs("Main")).toEqual(["D:\\Projects\\Assist", "--profile", "Main"]);
   });
 
   it("reads both --profile forms from argv", () => {
@@ -73,7 +67,7 @@ describe("profile desktop shortcuts", () => {
         target: process.execPath,
         args: 'D:\\Projects\\Assist --profile "Main Account"',
         description: "Launch Main Account with RiotSwitcher",
-      })
+      }),
     );
   });
 

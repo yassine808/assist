@@ -30,7 +30,9 @@ function devCspPlugin(): Plugin {
     name: "dev-csp-unsafe-inline",
     apply: "serve",
     transformIndexHtml(html) {
-      return html.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'");
+      return html
+        .replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
+        .replace("connect-src 'self'", "connect-src 'self' ws: http: https:");
     },
   };
 }

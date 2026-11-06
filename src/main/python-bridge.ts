@@ -28,7 +28,10 @@ function loadEnvKey(): string {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) continue;
       if (trimmed.startsWith("HENRIKDEV_API_KEY=")) {
-        return trimmed.slice("HENRIKDEV_API_KEY=".length).trim().replace(/^["']|["']$/g, "");
+        return trimmed
+          .slice("HENRIKDEV_API_KEY=".length)
+          .trim()
+          .replace(/^["']|["']$/g, "");
       }
     }
   } catch {
@@ -65,9 +68,7 @@ export class PythonBridge extends EventEmitter {
     } else {
       const appPath = app.getAppPath();
       const candidate = join(appPath, "src/backend/main.py");
-      const scriptPath = process.env.RIOTSWITCHER_BACKEND
-        ? process.env.RIOTSWITCHER_BACKEND
-        : candidate;
+      const scriptPath = process.env.RIOTSWITCHER_BACKEND ? process.env.RIOTSWITCHER_BACKEND : candidate;
 
       command = "python";
       args = [scriptPath];

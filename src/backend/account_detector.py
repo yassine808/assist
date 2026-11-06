@@ -256,16 +256,33 @@ class AccountDetector:
             self._emit("account_detection_progress", {"status": "error", "message": f"Failed to create profile: {exc}"})
             return
 
+        # Capture the session before announcing success. A callback that reports
+        # False means the tokens could not be saved, so the profile is removed
+        # instead of leaving a card that only opens a login screen.
+        captured = True
+        if self._on_profile_created:
+            try:
+                captured = self._on_profile_created(name)
+            except Exception:  # noqa: BLE001
+                captured = False
+
+        if captured is False:
+            try:
+                self.profiles.delete(name)
+            except Exception:  # noqa: BLE001
+                pass
+            self._emit("account_detection_progress", {
+                "status": "error",
+                "message": (
+                    "Could not save the Riot login. Keep the client signed in, "
+                    "then try Add Account again."
+                ),
+            })
+            return
+
         self._emit("account_detection_progress", {
             "status": "created",
             "message": "Profile created!",
             "profile_name": name,
         })
         self._emit("profile_created", profile)
-
-        # Trigger valorant data refresh so the card shows rank/stats immediately.
-        if self._on_profile_created:
-            try:
-                self._on_profile_created(name)
-            except Exception:  # noqa: BLE001
-                pass

@@ -11,21 +11,15 @@ interface SettingDropdownProps {
   onChange: (value: string) => void;
 }
 
-export function SettingDropdown({
-  label,
-  description,
-  value,
-  options,
-  onChange,
-}: Readonly<SettingDropdownProps>) {
+export function SettingDropdown({ label, description, value, options, onChange }: Readonly<SettingDropdownProps>) {
   return (
-    <label className="flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-md
-                      transition-colors duration-150 hover:bg-white/[0.03]">
+    <label
+      className="flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-md
+                      transition-colors duration-150 hover:bg-white/[0.03]"
+    >
       <div>
         <div className="text-sm font-medium text-white">{label}</div>
-        {description && (
-          <div className="text-xs text-white/40 mt-0.5">{description}</div>
-        )}
+        {description && <div className="text-xs text-white/40 mt-0.5">{description}</div>}
       </div>
       <select
         value={value}

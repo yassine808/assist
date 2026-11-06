@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+release/
+build/
+coverage/
+data/
+.pytest_cache/
+.ruff_cache/
+official playercards/
+package-lock.json
+*.exe
+*.apng
+*.png
+*.ico
+*.log

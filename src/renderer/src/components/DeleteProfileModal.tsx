@@ -14,7 +14,9 @@ interface Props {
 export default function DeleteProfileModal({ profile, busy, error, onCancel, onConfirm }: Readonly<Props>) {
   // keep the name on screen while the dialog fades away
   const [shown, setShown] = useState<Profile | null>(profile);
-  useEffect(() => { if (profile) setShown(profile); }, [profile]);
+  useEffect(() => {
+    if (profile) setShown(profile);
+  }, [profile]);
 
   return (
     <Modal
@@ -28,7 +30,13 @@ export default function DeleteProfileModal({ profile, busy, error, onCancel, onC
       width={420}
       footer={
         <>
-          <button type="button" data-autofocus onClick={onCancel} disabled={busy} className="btn-ghost h-10 px-5 text-[11px]">
+          <button
+            type="button"
+            data-autofocus
+            onClick={onCancel}
+            disabled={busy}
+            className="btn-ghost h-10 px-5 text-[11px]"
+          >
             Cancel
           </button>
           <button type="button" onClick={onConfirm} disabled={busy} className="btn-primary h-10 px-6 text-[11px]">
@@ -43,7 +51,8 @@ export default function DeleteProfileModal({ profile, busy, error, onCancel, onC
         <span className="del-chip-name">{shown?.profile_name}</span>
       </div>
       <p className="rs-text">
-        This profile and its saved Riot session will be <b>permanently removed</b>. To use the account again you will have to sign in and add it back.
+        This profile and its saved Riot session will be <b>permanently removed</b>. To use the account again you will
+        have to sign in and add it back.
       </p>
       {error && <p className="rs-error">{error}</p>}
     </Modal>

@@ -74,13 +74,16 @@ export function useAccountDetection(): UseAccountDetection {
     setProgress(null);
   }, [call]);
 
-  const confirmSave = useCallback(async (accept: boolean) => {
-    try {
-      await call("confirm_account_save", { accept });
-    } catch {
-      /* ignore */
-    }
-  }, [call]);
+  const confirmSave = useCallback(
+    async (accept: boolean) => {
+      try {
+        await call("confirm_account_save", { accept });
+      } catch {
+        /* ignore */
+      }
+    },
+    [call],
+  );
 
   return { active, progress, start, stop, confirmSave };
 }

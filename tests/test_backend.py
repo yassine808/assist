@@ -283,6 +283,19 @@ class TestProfileManager(_TempDirMixin, unittest.TestCase):
         with self.assertRaises(ValueError):
             pm.import_profiles("", b"fake")
 
+    def test_export_uses_the_current_versioned_format(self):
+        pm = self._pm()
+        pm.create(self._sample("Versioned"))
+        encrypted = pm.export_profiles("s3cret")
+        self.assertTrue(encrypted.startswith(b"RSX3"))
+        pm2 = self._pm("versioned.json")
+        self.assertEqual(pm2.import_profiles("s3cret", encrypted)["imported"], 1)
+
+    def test_import_rejects_an_oversized_file(self):
+        pm = self._pm()
+        with self.assertRaises(ValueError):
+            pm.import_profiles("s3cret", b"x" * (8 * 1024 * 1024 + 1))
+
     def test_import_merge(self):
         # Source has "Existing" and "Extra" — target already has "Existing"
         pm = self._pm()

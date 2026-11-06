@@ -21,8 +21,18 @@ function winrateBar(winrate: number): string {
   return "bg-white/30";
 }
 
-function EmptyState({ enabled, error, hasProfiles, hasStats, loading }: Readonly<{
-  enabled: boolean; error: string; hasProfiles: boolean; hasStats: boolean; loading: boolean;
+function EmptyState({
+  enabled,
+  error,
+  hasProfiles,
+  hasStats,
+  loading,
+}: Readonly<{
+  enabled: boolean;
+  error: string;
+  hasProfiles: boolean;
+  hasStats: boolean;
+  loading: boolean;
 }>) {
   if (!enabled) {
     return (
@@ -69,9 +79,7 @@ function SummaryCards({ summary }: Readonly<{ summary: SummaryStats }>) {
       </div>
       <div className="view-card rounded-md bg-bg-card border border-white/10 px-3 py-2.5">
         <div className="text-[10px] uppercase tracking-wider text-white/35">Overall winrate</div>
-        <div className={`text-lg font-bold mt-0.5 ${winrateTone(summary.winrate)}`}>
-          {summary.winrate}%
-        </div>
+        <div className={`text-lg font-bold mt-0.5 ${winrateTone(summary.winrate)}`}>{summary.winrate}%</div>
         <div className="h-1 rounded-full bg-white/10 overflow-hidden mt-1.5">
           <div className={`h-full ${winrateBar(summary.winrate)}`} style={{ width: `${summary.winrate}%` }} />
         </div>
@@ -80,9 +88,7 @@ function SummaryCards({ summary }: Readonly<{ summary: SummaryStats }>) {
         <div className="text-[10px] uppercase tracking-wider text-white/35 flex items-center gap-1">
           <Trophy size={10} /> Best map
         </div>
-        <div className="text-sm font-bold text-white mt-1 truncate">
-          {summary.best ? summary.best.map : "—"}
-        </div>
+        <div className="text-sm font-bold text-white mt-1 truncate">{summary.best ? summary.best.map : "—"}</div>
         <div className={`text-[10px] mt-0.5 ${winrateTone(summary.best?.winrate ?? 0)}`}>
           {summary.best ? `${summary.best.winrate}% over ${summary.best.games} games` : "No games yet"}
         </div>
@@ -95,25 +101,18 @@ function AgentRow({ agent }: Readonly<{ agent: MapStat["agents"][number] }>) {
   return (
     <div className="flex items-center gap-2.5 py-1.5">
       {agent.display_icon ? (
-        <img
-          src={agent.display_icon}
-          alt=""
-          className="w-7 h-7 rounded-md bg-white/5 object-cover shrink-0"
-        />
+        <img src={agent.display_icon} alt="" className="w-7 h-7 rounded-md bg-white/5 object-cover shrink-0" />
       ) : (
         <div className="w-7 h-7 rounded-md bg-white/5 shrink-0" />
       )}
       <div className="min-w-0 flex-1">
         <div className="text-xs font-medium text-white truncate">{agent.agent}</div>
         <div className="text-[10px] text-white/30">
-          {agent.role || "Unknown role"} · {agent.games}{" "}
-          {agent.games === 1 ? "game" : "games"}
+          {agent.role || "Unknown role"} · {agent.games} {agent.games === 1 ? "game" : "games"}
         </div>
       </div>
       <div className="text-[10px] text-white/30">ACS {agent.avg_score}</div>
-      <div className={`text-xs font-bold w-9 text-right ${winrateTone(agent.winrate)}`}>
-        {agent.winrate}%
-      </div>
+      <div className={`text-xs font-bold w-9 text-right ${winrateTone(agent.winrate)}`}>{agent.winrate}%</div>
     </div>
   );
 }
@@ -155,7 +154,9 @@ function MapCard({ stat, index, splash }: Readonly<{ stat: MapStat; index: numbe
         </div>
 
         <div className="divide-y divide-white/5">
-          {stat.agents.map((agent) => <AgentRow key={agent.agent} agent={agent} />)}
+          {stat.agents.map((agent) => (
+            <AgentRow key={agent.agent} agent={agent} />
+          ))}
         </div>
       </div>
     </article>
@@ -190,9 +191,7 @@ export default function AgentMapView() {
           // only ever select one of those or the select shows no match.
           const usable = list.filter((x) => Boolean(x.valorant_puuid));
           if (prev && usable.some((x) => x.profile_name === prev)) return prev;
-          const withData = usable.find(
-            (x) => (x.valorant_data?.map_stats?.length ?? 0) > 0
-          );
+          const withData = usable.find((x) => (x.valorant_data?.map_stats?.length ?? 0) > 0);
           return withData?.profile_name ?? usable[0]?.profile_name ?? "";
         });
         setLoading(false);
@@ -205,14 +204,11 @@ export default function AgentMapView() {
       });
   }, [call]);
 
-  const profile = useMemo(
-    () => profiles.find((p) => p.profile_name === selected),
-    [profiles, selected]
-  );
+  const profile = useMemo(() => profiles.find((p) => p.profile_name === selected), [profiles, selected]);
 
   const mapStats: MapStat[] = useMemo(
-    () => (enabled ? profile?.valorant_data?.map_stats ?? [] : []),
-    [enabled, profile]
+    () => (enabled ? (profile?.valorant_data?.map_stats ?? []) : []),
+    [enabled, profile],
   );
 
   const summary = useMemo(() => {
@@ -220,11 +216,7 @@ export default function AgentMapView() {
     const wins = mapStats.reduce((sum, stat) => sum + stat.wins, 0);
     let best: MapStat | null = null;
     for (const stat of mapStats) {
-      if (
-        !best ||
-        stat.winrate > best.winrate ||
-        (stat.winrate === best.winrate && stat.games > best.games)
-      ) {
+      if (!best || stat.winrate > best.winrate || (stat.winrate === best.winrate && stat.games > best.games)) {
         best = stat;
       }
     }
@@ -249,9 +241,7 @@ export default function AgentMapView() {
         agents = agents.filter((agent) => agent.agent.toLowerCase().includes(needle));
         if (agents.length === 0) continue;
       }
-      agents = [...agents].sort(
-        (a, b) => b.games - a.games || b.winrate - a.winrate || a.agent.localeCompare(b.agent)
-      );
+      agents = [...agents].sort((a, b) => b.games - a.games || b.winrate - a.winrate || a.agent.localeCompare(b.agent));
       filtered.push(agents === stat.agents ? stat : { ...stat, agents });
     }
     filtered.sort((a, b) => {
@@ -262,10 +252,7 @@ export default function AgentMapView() {
     return filtered;
   }, [mapStats, query, sort]);
 
-  const splashFor = useCallback(
-    (mapName: string) => maps.find((m) => m.name === mapName)?.splash ?? "",
-    [maps]
-  );
+  const splashFor = useCallback((mapName: string) => maps.find((m) => m.name === mapName)?.splash ?? "", [maps]);
 
   const loadProfiles = useCallback(async () => {
     const list = (await call<Profile[]>("get_profiles")) ?? [];
@@ -293,7 +280,7 @@ export default function AgentMapView() {
           .finally(() => setRefreshing(false));
       }
     },
-    [call, selected]
+    [call, selected],
   );
 
   const handleRefresh = useCallback(() => {
@@ -312,9 +299,7 @@ export default function AgentMapView() {
       <div className="flex items-start justify-between gap-4 mb-5">
         <div>
           <h1 className="page-title">Agent Map</h1>
-          <p className="text-xs text-white/40 mt-1">
-            Per-map agent winrates from your recent competitive matches
-          </p>
+          <p className="text-xs text-white/40 mt-1">Per-map agent winrates from your recent competitive matches</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -343,9 +328,11 @@ export default function AgentMapView() {
         </div>
       </div>
 
-      <section className="view-card rounded-md bg-bg-card border border-white/10 p-4 mb-4
+      <section
+        className="view-card rounded-md bg-bg-card border border-white/10 p-4 mb-4
                          transition-[border-color,box-shadow] duration-200 ease-out
-                         hover:border-riot-red/40">
+                         hover:border-riot-red/40"
+      >
         <SettingToggle
           label="Per-Map Agent Stats"
           description="Break down every agent by map instead of pooling all matches together"
@@ -393,9 +380,7 @@ export default function AgentMapView() {
           </div>
 
           {visibleStats.length === 0 ? (
-            <p className="text-sm text-white/40 py-8 text-center">
-              No maps or agents match “{query.trim()}”.
-            </p>
+            <p className="text-sm text-white/40 py-8 text-center">No maps or agents match “{query.trim()}”.</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {visibleStats.map((stat, index) => (

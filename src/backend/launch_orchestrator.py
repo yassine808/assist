@@ -83,6 +83,12 @@ class LaunchOrchestrator:
         """Save the currently-active profile's session if switching away. Returns (ok, error)."""
         if not current_active or current_active == profile_name:
             return True, ""
+        # Never overwrite a good backup with a signed-out settings file. The
+        # client keeps RiotGamesPrivateSettings.yaml after sign-out, with a
+        # null token, which would otherwise destroy the saved login.
+        if not self.sessions.live_has_login(install_dir):
+            self._emit("save", "warning", "No live Riot login to save")
+            return True, ""
         self._emit("save", "started", f"Saving session for {current_active}")
         cur_dir = self._profile_dir_name(current_active)
         saved = self.sessions.save_session(cur_dir, install_dir)
@@ -131,6 +137,16 @@ class LaunchOrchestrator:
         install_dir = self._install_dir()
         target_dir = self._profile_dir_name(profile_name)
         current_active = str(self.config.get("LastRunningProfile", "") or "")
+
+        # Refuse before touching the running client: a profile with no usable
+        # saved token can only restore an empty login screen.
+        if not self.sessions.session_has_login(target_dir):
+            message = (
+                "This profile has no saved Riot login. Delete it and add the "
+                "account again while signed in."
+            )
+            self._emit("restore", "failed", message)
+            return {"ok": False, "step": "restore", "error": message, "code": "no_session"}
 
         try:
             ok, error, code = self._kill_riot_processes()

@@ -6,13 +6,7 @@ interface SettingToggleProps {
   onChange: (value: boolean) => void;
 }
 
-export function SettingToggle({
-  label,
-  description,
-  checked,
-  disabled,
-  onChange,
-}: Readonly<SettingToggleProps>) {
+export function SettingToggle({ label, description, checked, disabled, onChange }: Readonly<SettingToggleProps>) {
   return (
     <label
       className={`flex items-center justify-between gap-4 py-3 -mx-2 px-2 rounded-md
@@ -21,9 +15,7 @@ export function SettingToggle({
     >
       <div>
         <div className="text-sm font-medium text-white">{label}</div>
-        {description && (
-          <div className="text-xs text-white/40 mt-0.5">{description}</div>
-        )}
+        {description && <div className="text-xs text-white/40 mt-0.5">{description}</div>}
       </div>
       <button
         type="button"

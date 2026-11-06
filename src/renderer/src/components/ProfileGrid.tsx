@@ -48,26 +48,26 @@ function SortableItem({
 }: Readonly<SortableItemProps>) {
   // Stable per card: a new callback identity would make React detach and
   // reattach the node, wiping the card's spring state mid-drag.
-  const setRef = useCallback(
-    (el: HTMLDivElement | null) => engine.register(name, el),
-    [engine, name]
-  );
+  const setRef = useCallback((el: HTMLDivElement | null) => engine.register(name, el), [engine, name]);
 
-  // The drag container carries the button contract (role, tabIndex, keyboard
-  // handling), but it cannot be a native <button>: the card inside has its own
-  // buttons and nested native buttons are invalid HTML.
+  // The drag container cannot be a native <button>: the card inside has its own
+  // buttons and nested native buttons are invalid HTML. It is a labelled group
+  // that only handles Alt+Arrow reordering, not activation.
   return (
     <div
       ref={setRef}
       className="sortable-item"
       style={{ order }}
-      role="button"
+      role="group"
       tabIndex={0}
       aria-label={`Reorder ${profile.profile_name}`}
       onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
       onDragStart={(e) => e.preventDefault()}
       onClickCapture={(e) => {
-        if (engine.consumeSuppressedClick()) { e.stopPropagation(); e.preventDefault(); }
+        if (engine.consumeSuppressedClick()) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
       }}
       onKeyDown={(e) => {
         if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
@@ -113,18 +113,14 @@ export default function ProfileGrid({
   // The DOM order never changes (moving nodes would replay every card's intro animation);
   // the visual order is applied with CSS `order`. State, not a ref, because this
   // list is rendered; keep existing members first and append newly added ones.
-  const [domNames, setDomNames] = useState<string[]>(() =>
-    profiles.map((profile) => profile.profile_name)
-  );
+  const [domNames, setDomNames] = useState<string[]>(() => profiles.map((profile) => profile.profile_name));
   useEffect(() => {
     setDomNames((current) => {
       const next = [
         ...current.filter((name) => dataNames.includes(name)),
         ...dataNames.filter((name) => !current.includes(name)),
       ];
-      return next.length === current.length && next.every((name, i) => name === current[i])
-        ? current
-        : next;
+      return next.length === current.length && next.every((name, i) => name === current[i]) ? current : next;
     });
   }, [dataNames]);
 

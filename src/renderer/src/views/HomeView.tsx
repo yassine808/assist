@@ -101,7 +101,12 @@ export default function HomeView() {
   useEffect(() => {
     if (!progress) return;
     if (progress.status === "failed") {
-      toast.show({ id: "launch", kind: "error", title: "Launch failed", message: progress.message || "Something went wrong" });
+      toast.show({
+        id: "launch",
+        kind: "error",
+        title: "Launch failed",
+        message: progress.message || "Something went wrong",
+      });
     } else if (launchState === "launching") {
       toast.update("launch", { message: progress.message });
     }
@@ -119,7 +124,7 @@ export default function HomeView() {
         setPendingValorant({ kind: "launch", name });
       }
     },
-    [launch, toast]
+    [launch, toast],
   );
 
   // Exit the Riot Client and clear the live login. The profile itself is kept,
@@ -144,7 +149,7 @@ export default function HomeView() {
         toast.show({ kind: "error", title: "Sign out failed", message: String(e) });
       }
     },
-    [call, load, toast]
+    [call, load, toast],
   );
 
   const doQuitValorant = useCallback(async () => {
@@ -186,7 +191,7 @@ export default function HomeView() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [call, load]
+    [call, load],
   );
 
   const handleModifyCard = useCallback((p: Profile) => {
@@ -202,10 +207,7 @@ export default function HomeView() {
         </h1>
         <div className="flex items-center gap-2.5">
           {(loading || profiles.length > 0) && (
-            <button
-              onClick={() => setShowAddAccount(true)}
-              className="btn-primary h-8 px-4 text-[10px]"
-            >
+            <button onClick={() => setShowAddAccount(true)} className="btn-primary h-8 px-4 text-[10px]">
               <Plus size={14} strokeWidth={3} /> Add Account
             </button>
           )}
@@ -233,8 +235,8 @@ export default function HomeView() {
             </button>
           </div>
           <p className="empty-hint">
-            Sign in to your Riot account once and RiotSwitcher will <b>save it</b>.
-            After that you can <b>switch</b> between accounts in a single click.
+            Sign in to your Riot account once and RiotSwitcher will <b>save it</b>. After that you can <b>switch</b>{" "}
+            between accounts in a single click.
           </p>
         </div>
       )}
@@ -253,7 +255,10 @@ export default function HomeView() {
         error={quitError}
         action={pendingValorant?.kind ?? "launch"}
         profileName={pendingValorant?.name ?? ""}
-        onCancel={() => { setPendingValorant(null); setQuitError(""); }}
+        onCancel={() => {
+          setPendingValorant(null);
+          setQuitError("");
+        }}
         onConfirm={() => void doQuitValorant()}
       />
 

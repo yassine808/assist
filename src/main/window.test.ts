@@ -10,6 +10,12 @@ const { FakeWindow } = vi.hoisted(() => {
     private handlers = new Map<string, ((...args: unknown[]) => void)[]>();
     loadURLCalls: string[] = [];
     loadFileCalls: { path: string; options?: unknown }[] = [];
+    url = "";
+    webContents = {
+      setWindowOpenHandler: vi.fn(),
+      on: vi.fn(),
+      getURL: () => this.url,
+    };
 
     constructor(options: Record<string, unknown>) {
       this.options = options;
@@ -38,9 +44,11 @@ const { FakeWindow } = vi.hoisted(() => {
     }
     loadURL(url: string) {
       this.loadURLCalls.push(url);
+      this.url = url;
     }
     loadFile(path: string, options?: unknown) {
       this.loadFileCalls.push({ path, options });
+      this.url = `file:///${path.replace(/\\/g, "/")}`;
     }
     lastClosePrevented = false;
     close() {
@@ -89,6 +97,17 @@ describe("app window close-to-tray", () => {
     expect(options.frame).toBe(false);
   });
 
+  it("keeps the renderer sandboxed and navigation locked to the app", async () => {
+    await createAppWindow(fakePython() as never, { onCloseToTray: vi.fn() });
+    const win = FakeWindow.instances[0]!;
+    const prefs = win.options.webPreferences as Record<string, unknown>;
+    expect(prefs.sandbox).toBe(true);
+    expect(prefs.contextIsolation).toBe(true);
+    expect(prefs.nodeIntegration).toBe(false);
+    expect(win.webContents.setWindowOpenHandler).toHaveBeenCalledOnce();
+    expect(win.webContents.on).toHaveBeenCalledWith("will-navigate", expect.any(Function));
+  });
+
   it("uses the app icon for the window and taskbar", async () => {
     await createAppWindow(fakePython() as never, { onCloseToTray: vi.fn() });
     const options = FakeWindow.instances[0]!.options;
@@ -108,10 +127,9 @@ describe("app window close-to-tray", () => {
 
   it("lets the window close when CloseToTray is off", async () => {
     const onCloseToTray = vi.fn();
-    const { win } = await createAppWindow(
-      fakePython({ CloseToTray: false, MinimizeToTray: false }) as never,
-      { onCloseToTray }
-    );
+    const { win } = await createAppWindow(fakePython({ CloseToTray: false, MinimizeToTray: false }) as never, {
+      onCloseToTray,
+    });
     const event = closeEvent();
 
     win.emit("close", event);
@@ -144,10 +162,9 @@ describe("app window close-to-tray", () => {
 
   it("minimizes to the tray when MinimizeToTray is on", async () => {
     const onCloseToTray = vi.fn();
-    const { win } = await createAppWindow(
-      fakePython({ CloseToTray: true, MinimizeToTray: true }) as never,
-      { onCloseToTray }
-    );
+    const { win } = await createAppWindow(fakePython({ CloseToTray: true, MinimizeToTray: true }) as never, {
+      onCloseToTray,
+    });
 
     win.emit("minimize");
 

@@ -25,14 +25,16 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,70,85,0.5) 20%, rgba(255,70,85,0.9) 50%, rgba(255,70,85,0.5) 80%, transparent 100%)',
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,70,85,0.5) 20%, rgba(255,70,85,0.9) 50%, rgba(255,70,85,0.5) 80%, transparent 100%)",
           }}
         />
         <div
           className="absolute inset-0 opacity-0 group-hover/title:opacity-100 transition-opacity duration-500"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,70,85,0.8) 30%, rgba(255,150,50,0.6) 50%, rgba(255,70,85,0.8) 70%, transparent 100%)',
-            filter: 'blur(2px)',
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,70,85,0.8) 30%, rgba(255,150,50,0.6) 50%, rgba(255,70,85,0.8) 70%, transparent 100%)",
+            filter: "blur(2px)",
           }}
         />
       </div>
@@ -44,13 +46,15 @@ export function TitleBar({ page, onNavigate, settingsOpen, onToggleSettings }: R
           <path d="M240 98H316L436 173L316 248H240L360 173Z" fill="#ffffff" />
           <path d="M272 414H196L76 339L196 264H272L152 339Z" fill="#9A9A9A" />
         </svg>
-        <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">
-          RIOTSWITCHER
-        </span>
+        <span className="text-[12px] font-bold tracking-[0.22em] text-white/85 select-none">RIOTSWITCHER</span>
       </div>
 
       {/* Centre: page navigation */}
-      <nav className="no-drag nav-tabs absolute left-1/2 -translate-x-1/2 h-full" aria-label="Pages" style={{ ["--tab" as string]: idx }}>
+      <nav
+        className="no-drag nav-tabs absolute left-1/2 -translate-x-1/2 h-full"
+        aria-label="Pages"
+        style={{ ["--tab" as string]: idx }}
+      >
         {TABS.map((t) => (
           <button
             key={t.id}
