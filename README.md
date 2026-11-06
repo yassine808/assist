@@ -3,6 +3,7 @@
 [![Latest release](https://img.shields.io/github/v/release/yassine808/assist?label=download&sort=semver&color=ff4655)](https://github.com/yassine808/assist/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/yassine808/assist/total?color=ff4655)](https://github.com/yassine808/assist/releases)
 [![CI](https://github.com/yassine808/assist/actions/workflows/ci.yml/badge.svg)](https://github.com/yassine808/assist/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/yassine808/assist/branch/main/graph/badge.svg)](https://app.codecov.io/gh/yassine808/assist)
 [![Issues](https://img.shields.io/github/issues/yassine808/assist?color=ff4655)](https://github.com/yassine808/assist/issues)
 [![Stars](https://img.shields.io/github/stars/yassine808/assist?color=ff4655)](https://github.com/yassine808/assist/stargazers)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
