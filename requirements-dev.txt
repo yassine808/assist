@@ -10,5 +10,5 @@
 # two late imports in tests/test_regressions.py, and no source layout satisfies
 # both. That drift is why this file exists: pick one version, use it everywhere.
 
-ruff==0.16.0
+ruff==0.17.3
 pytest==8.4.2
