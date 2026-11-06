@@ -1117,3 +1117,21 @@
   - `npm run check:api-leaks`: clean.
   - `npm run build`: succeeded.
 - Next: push the branch.
+
+### 2026-11-06 - Merge sonarcube into main, ship 3.1.2 artifacts
+
+- Goal: fast-forward `main` to `sonarcube`, bump the release, and build new
+  Windows artifacts with Yassine as author.
+- Done:
+  - Fast-forwarded `main` `bcc2124` -> `083cd73` and pushed it.
+  - Bumped `package.json` / `package-lock.json` to 3.1.2.
+  - `npm run dist` rebuilt the Python backend, `win-unpacked`, NSIS installer
+    and portable exe.
+- Verified:
+  - `release\RiotSwitcher Setup 3.1.2.exe` (197.6 MB) and
+    `release\RiotSwitcher-3.1.2-portable.exe` (185.4 MB) exist.
+  - `release\win-unpacked\resources` has `env.bin`, `python\main.exe`, and all
+    30 animated APNGs; `release\latest.yml` reports 3.1.2.
+  - `RiotSwitcher.exe` version info: FileVersion 3.1.2, CompanyName `Yassine`,
+    copyright `Copyright c 2026 RiotSwitcher Contributors`.
+- Next: none.
