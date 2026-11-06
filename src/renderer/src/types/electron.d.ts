@@ -18,6 +18,7 @@ declare global {
         callback: (data: { state: string; version?: string; message?: string; percent?: number }) => void,
       ) => () => void;
       getAnimatedCards: () => Promise<{ name: string; url: string }[]>;
+      copyText: (text: string) => Promise<void>;
       createProfileShortcut: (name: string) => Promise<{ ok: boolean; path: string }>;
       openExternal: (url: string) => Promise<void>;
     };

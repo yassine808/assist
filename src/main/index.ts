@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent, session, shell } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, IpcMainInvokeEvent, session, shell } from "electron";
 import log from "electron-log";
 import { PythonBridge } from "./python-bridge";
 import { appIconPath, createAppTray } from "./tray";
@@ -181,6 +181,16 @@ function setupIpc(): void {
 
   // Animated player cards live on disk, next to the app.
   ipcMain.handle("cards:animated", () => listAnimatedCards());
+
+  // Copying a username goes through the main process on purpose: every web
+  // permission is denied above, which also rejects navigator.clipboard.writeText
+  // ("Write permission denied"), so the renderer button could never copy.
+  ipcMain.handle("clipboard:writeText", (_event, text: unknown) => {
+    if (typeof text !== "string" || text.length === 0) {
+      throw new Error("Nothing to copy");
+    }
+    clipboard.writeText(text);
+  });
 
   ipcMain.handle("python:call", async (_event, method: string, params: Record<string, unknown> = {}) => {
     if (!python) throw new Error("Python backend not running");

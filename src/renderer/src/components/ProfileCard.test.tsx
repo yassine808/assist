@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import ProfileCard from "./ProfileCard";
 import type { Profile } from "../types/profile";
 
@@ -245,5 +245,63 @@ describe("ProfileCard launch button", () => {
       expect(container.querySelector(".lobby-signout")).toBeNull();
       unmount();
     }
+  });
+});
+
+describe("ProfileCard copy username", () => {
+  // Regression: every web permission is denied in the real app, so
+  // navigator.clipboard.writeText rejected with "Write permission denied" and
+  // the icon never changed. The bridge writes the clipboard from main instead.
+  afterEach(() => {
+    delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+  });
+
+  function copyButton(container: HTMLElement) {
+    return container.querySelector<HTMLButtonElement>(".lobby-copy")!;
+  }
+
+  it("copies through the main-process bridge and confirms", async () => {
+    const copyText = vi.fn(async () => undefined);
+    (window as unknown as { electronAPI: unknown }).electronAPI = { copyText };
+    const { container } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(copyButton(container).getAttribute("aria-label")).toBe("Copy username");
+    fireEvent.click(copyButton(container));
+
+    await waitFor(() => expect(copyText).toHaveBeenCalledWith("Alpha#EUW"));
+    await waitFor(() => expect(copyButton(container).classList.contains("is-copied")).toBe(true));
+  });
+
+  it("stays honest when the write fails instead of pretending it copied", async () => {
+    const writeText = vi.fn(async () => {
+      throw new Error("Write permission denied.");
+    });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    (window as unknown as { electronAPI: unknown }).electronAPI = {};
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(copyButton(container));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Alpha#EUW"));
+    expect(copyButton(container).classList.contains("is-copied")).toBe(false);
+    expect(consoleError).toHaveBeenCalled();
   });
 });

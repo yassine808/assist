@@ -84,4 +84,39 @@ describe("HomeView playercard change", () => {
       expect(document.querySelector<HTMLImageElement>("img.lobby-art")?.getAttribute("src")).toBe(NEW_CARD),
     );
   });
+
+  it("keeps the profiles toolbar pinned and frosts it only once the grid is underneath", async () => {
+    const pane = document.createElement("div");
+    pane.className = "view-pane";
+    // jsdom has no layout, so drive the scroll position the pane exposes.
+    let top = 0;
+    Object.defineProperty(pane, "scrollTop", {
+      configurable: true,
+      get: () => top,
+      set: (v: number) => {
+        top = v;
+      },
+    });
+    document.body.appendChild(pane);
+
+    render(<HomeView />, { container: pane });
+    const head = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>("header.profiles-head");
+      expect(el).not.toBeNull();
+      return el!;
+    });
+
+    // At rest the page keeps its flat look.
+    expect(head.classList.contains("is-stuck")).toBe(false);
+
+    top = 180;
+    fireEvent.scroll(pane);
+    expect(head.classList.contains("is-stuck")).toBe(true);
+
+    top = 0;
+    fireEvent.scroll(pane);
+    expect(head.classList.contains("is-stuck")).toBe(false);
+
+    pane.remove();
+  });
 });

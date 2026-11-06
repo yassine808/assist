@@ -172,21 +172,27 @@ def kill_all(names=None):
     """Force-kill every known (or given) process with taskkill /F /T.
 
     Spawns one taskkill per process name for fastest parallel termination.
-    Each taskkill is non-blocking (Popen) so all kills fire simultaneously.
+    Each taskkill is non-blocking (Popen) so all kills fire simultaneously;
+    the handles are returned so a caller that is about to relaunch something
+    can wait for them (see `kill_and_wait`).
     """
     names = names or PROCESS_NAMES
+    procs = []
     if not names:
-        return
+        return procs
     for process_name in names:
         try:
-            subprocess.Popen(
-                ["taskkill", "/F", "/T", "/IM", process_name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+            procs.append(
+                subprocess.Popen(
+                    ["taskkill", "/F", "/T", "/IM", process_name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
             )
         except OSError:
             pass
+    return procs
 
 
 def kill_names(names):
@@ -237,6 +243,32 @@ def wait_until_dead(names, timeout_s=KILL_TIMEOUT_S):
     return False
 
 
+def kill_and_wait(names, timeout_s=KILL_TIMEOUT_S):
+    """Force-kill the given processes and return once the kills have landed.
+
+    Waiting for the target names to disappear is not enough on its own.
+    `taskkill` is spawned asynchronously, so when nothing is running
+    `wait_until_dead` returns at once - while the taskkill processes have not
+    even executed yet. They then enumerate the process table a moment later,
+    find the replacement the caller has just spawned, and kill it too. That
+    is what made "launch profile" spawn a Riot Client whose launcher log
+    stopped ~16 ms in, right after "Lock file was not detected", with no
+    window and no error. Waiting for every taskkill to exit closes that
+    window before the caller relaunches the client.
+    """
+    procs = kill_all(names)
+    deadline = time.monotonic() + timeout_s
+    for proc in procs:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        try:
+            proc.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            return False
+    return wait_until_dead(names, timeout_s)
+
+
 def shutdown_stop():
     """Stop the Riot Client only. Used when the app itself is closing.
 
@@ -245,8 +277,7 @@ def shutdown_stop():
     not a request to close the game. `kill_all` stays reserved for an explicit
     profile switch, which really does need the client tree gone.
     """
-    kill_riot_client()
-    return wait_until_dead(RIOT_CLIENT_PROCESSES)
+    return kill_and_wait(RIOT_CLIENT_PROCESSES)
 
 
 def terminate_valorant():
@@ -256,5 +287,4 @@ def terminate_valorant():
     the game is up, and only the dialog's confirm button reaches it. Vanguard
     is not in `VALORANT_PROCESSES` and is never killed here.
     """
-    kill_all(VALORANT_PROCESSES)
-    return wait_until_dead(VALORANT_PROCESSES)
+    return kill_and_wait(VALORANT_PROCESSES)

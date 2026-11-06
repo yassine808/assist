@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Local animated player cards (APNG) shipped with the app
   getAnimatedCards: () => ipcRenderer.invoke("cards:animated"),
 
+  // Copy text (usernames) — the renderer has no web clipboard permission
+  copyText: (text: string) => ipcRenderer.invoke("clipboard:writeText", text),
+
   // Desktop shortcut that starts a profile directly
   createProfileShortcut: (name: string) => ipcRenderer.invoke("profile:createShortcut", name),
 

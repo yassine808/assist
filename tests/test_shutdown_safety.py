@@ -27,7 +27,7 @@ from launch_orchestrator import LaunchOrchestrator  # noqa: E402
 
 class TestShutdownLeavesValorantRunning(unittest.TestCase):
     def test_shutdown_stop_only_targets_the_riot_client(self):
-        with mock.patch.object(rp, "kill_all") as kill_all, \
+        with mock.patch.object(rp, "kill_all", return_value=[]) as kill_all, \
                 mock.patch.object(rp, "wait_until_dead", return_value=True):
             rp.shutdown_stop()
 
@@ -120,7 +120,7 @@ class TestShutdownLeavesValorantRunning(unittest.TestCase):
         orchestrator = LaunchOrchestrator(
             mock.MagicMock(), mock.MagicMock(), mock.MagicMock(), mock.MagicMock()
         )
-        with mock.patch.object(launch_orchestrator.rp, "kill_all") as kill_all, \
+        with mock.patch.object(launch_orchestrator.rp, "kill_all", return_value=[]) as kill_all, \
                 mock.patch.object(launch_orchestrator.rp, "wait_until_dead", return_value=True):
             self.assertEqual(orchestrator.quit_valorant(), {"ok": True})
 

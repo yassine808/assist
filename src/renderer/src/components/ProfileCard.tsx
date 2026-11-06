@@ -264,12 +264,21 @@ export default function ProfileCard({
     onLaunch(profile.profile_name);
   };
 
-  const copy = (e: React.MouseEvent) => {
+  // The renderer denies every web permission (see src/main/index.ts), so
+  // navigator.clipboard.writeText rejects with "Write permission denied" there.
+  // The bridge writes the real OS clipboard from the main process; the web API
+  // stays only as a fallback for tests and a plain browser.
+  const copy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    void navigator.clipboard.writeText(profile.profile_name).then(() => {
+    try {
+      const bridge = window.electronAPI as Partial<Window["electronAPI"]> | undefined;
+      if (bridge?.copyText) await bridge.copyText(profile.profile_name);
+      else await navigator.clipboard.writeText(profile.profile_name);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    } catch (err) {
+      console.error("copy username failed", err);
+    }
   };
 
   const busy = launchState !== "idle";

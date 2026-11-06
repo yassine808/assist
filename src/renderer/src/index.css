@@ -306,10 +306,12 @@ img {
   letter-spacing: 0.06em;
 }
 .page-title.is-compact .count-pill {
-  height: 19px;
-  min-width: 22px;
-  margin-left: 8px;
-  font-size: 10px;
+  /* same height as the 21px title text, so the number reads as part of the word */
+  height: 21px;
+  min-width: 25px;
+  margin-left: 9px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 .page-sub {
   font-size: 13px;
@@ -332,6 +334,30 @@ img {
   background: #182128;
   border: 1px solid var(--line);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+
+/* Overview toolbar: pinned to the top of the profiles pane while the card grid
+   scrolls under it. The negative margins cancel the page's own spacing
+   (`pt-4` / `px-9` on the HomeView wrapper) so the bar is full-bleed, then the
+   same values come back as padding; the grid below ends up exactly where it
+   was. It only frosts once something is underneath, so the top of the page
+   keeps its flat gradient look. */
+.profiles-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: -1rem -2.25rem 1rem;
+  padding: 1rem 2.25rem 0.75rem;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 0.22s ease,
+    border-color 0.22s ease;
+}
+.profiles-head.is-stuck {
+  border-bottom-color: rgba(190, 225, 240, 0.08);
+  background-color: color-mix(in srgb, var(--bg-base) 88%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  backdrop-filter: blur(14px) saturate(1.12);
 }
 
 /* ── Buttons: angular like VALORANT's own UI ── */

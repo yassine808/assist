@@ -25,9 +25,7 @@
   height: calc(472px * var(--lobby-k));
   cursor: default;
   user-select: none;
-  transition:
-    filter 0.35s ease,
-    translate 0.3s ease;
+  transition: filter 0.35s ease;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.42));
 }
 /* hover never moves the card: it lights up instead (see the hover block below) */
@@ -36,9 +34,6 @@
 }
 .lobby-card.is-busy {
   filter: drop-shadow(0 0 16px rgba(90, 150, 230, 0.4));
-}
-.lobby-card.is-me {
-  translate: 0 -10px;
 }
 
 .lobby-stage {

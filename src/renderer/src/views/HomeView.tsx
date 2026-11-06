@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
@@ -198,9 +198,23 @@ export default function HomeView() {
     setEditingCard(p);
   }, []);
 
+  // The toolbar itself is sticky (CSS); this only tags it once the grid is
+  // actually sliding underneath, so the frosted backdrop appears on scroll and
+  // the page stays flat at the top.
+  const headRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const head = headRef.current;
+    const pane = head?.closest(".view-pane");
+    if (!head || !pane) return;
+    const sync = () => head.classList.toggle("is-stuck", pane.scrollTop > 4);
+    sync();
+    pane.addEventListener("scroll", sync, { passive: true });
+    return () => pane.removeEventListener("scroll", sync);
+  }, []);
+
   return (
     <div className="px-9 pt-4 pb-10">
-      <header className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+      <header ref={headRef} className="profiles-head flex items-center justify-between">
         <h1 className="page-title is-compact">
           Profiles
           {!loading && <span className="count-pill">{profiles.length}</span>}

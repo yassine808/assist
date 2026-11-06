@@ -44,5 +44,6 @@ def never_touch_real_riot_processes(monkeypatch):
     import riot_processes
 
     monkeypatch.setattr(riot_processes, "kill_all", lambda *args, **kwargs: None)
+    monkeypatch.setattr(riot_processes, "kill_and_wait", lambda *args, **kwargs: True)
     monkeypatch.setattr(riot_processes, "wait_until_all_dead", lambda *a, **k: True)
     monkeypatch.setattr(riot_processes, "wait_until_dead", lambda *a, **k: True)
