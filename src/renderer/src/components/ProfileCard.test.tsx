@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import ProfileCard from "./ProfileCard";
-import { AppActiveProvider } from "../hooks/useAppActive";
 import type { Profile } from "../types/profile";
 
 /**
@@ -44,6 +43,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   document.documentElement.classList.remove("app-inactive");
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
 });
 
 describe("ProfileCard playercard art", () => {
@@ -80,20 +80,18 @@ describe("ProfileCard playercard art", () => {
     expect(art().className).not.toContain("is-charging");
   });
 
-  it("swaps an APNG for a still while the window is inactive", () => {
-    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
-    const { container } = render(
-      <AppActiveProvider>
-        <ProfileCard profile={makeProfile(CARD_A)} running={false} launchState="idle" onLaunch={vi.fn()} onDelete={vi.fn()} />
-      </AppActiveProvider>
-    );
-    const art = container.querySelector<HTMLImageElement>("img.lobby-art")!;
+  it("keeps the playercard art visible when the app is not focused", () => {
+    // Pausing animations must never swap or blank the card art: only CSS
+    // timelines and the beams canvas stop while the window is covered.
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    const { art } = renderCard(CARD_A);
 
-    expect(art.getAttribute("src")).toMatch(/^data:image\/gif;base64,/);
+    expect(art().getAttribute("src")).toBe(CARD_A);
 
-    hasFocus.mockReturnValue(true);
-    fireEvent.focus(window);
-    expect(art.getAttribute("src")).toBe(CARD_A);
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    fireEvent.blur(window);
+
+    expect(art().getAttribute("src")).toBe(CARD_A);
   });
 
   it("un-hides the art when a failed card is replaced by a good one", () => {

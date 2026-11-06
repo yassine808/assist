@@ -1,14 +1,16 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 /**
- * Whether the window is actually in front of the user.
+ * Whether the window is actually on screen.
  *
- * `document.hidden` only covers minimise / tray-hide. A window that is merely
- * covered by another app (for example a fullscreen game) is still "visible" to
- * the page but receives a window-level `blur`, so both signals are required.
+ * `document.visibilityState` is the occlusion-aware signal: Chromium turns the
+ * page hidden when the window is minimised, hidden to tray, or completely
+ * covered by another window. Merely losing focus (another app is open beside
+ * the window) keeps it `visible`, so animations are not paused just because the
+ * user clicked elsewhere.
  */
 function windowIsActive(): boolean {
-  return document.visibilityState === "visible" && document.hasFocus();
+  return document.visibilityState === "visible";
 }
 
 const AppActiveContext = createContext(true);
@@ -18,15 +20,11 @@ export function AppActiveProvider({ children }: Readonly<{ children: ReactNode }
 
   useEffect(() => {
     const sync = () => setActive(windowIsActive());
-    window.addEventListener("focus", sync);
-    window.addEventListener("blur", sync);
     window.addEventListener("pageshow", sync);
     window.addEventListener("pagehide", sync);
     document.addEventListener("visibilitychange", sync);
     sync();
     return () => {
-      window.removeEventListener("focus", sync);
-      window.removeEventListener("blur", sync);
       window.removeEventListener("pageshow", sync);
       window.removeEventListener("pagehide", sync);
       document.removeEventListener("visibilitychange", sync);

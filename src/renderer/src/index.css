@@ -39,9 +39,10 @@ html {
   background: var(--bg-base);
 }
 
-/* The window is covered by another app (or minimised): freeze every CSS
-   timeline. Chromium can keep compositor animations running for an occluded
-   window; pausing them removes that work until the user comes back. */
+/* The window is hidden or covered by another app: freeze every CSS timeline.
+   Chromium can keep compositor animations running for an occluded window;
+   pausing them removes that work until the user comes back. Losing focus while
+   the window is still on screen must not pause anything. */
 html.app-inactive,
 html.app-inactive *,
 html.app-inactive *::before,

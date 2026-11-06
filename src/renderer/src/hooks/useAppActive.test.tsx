@@ -7,15 +7,21 @@ function Probe() {
   return <span data-testid="active">{String(active)}</span>;
 }
 
+function setVisibility(state: DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  fireEvent(document, new Event("visibilitychange"));
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   document.documentElement.classList.remove("app-inactive");
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
 });
 
 describe("app activity", () => {
-  it("pauses when the window loses focus and resumes when it returns", () => {
-    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  it("keeps running when the window merely loses focus", () => {
+    setVisibility("visible");
     render(
       <AppActiveProvider>
         <Probe />
@@ -23,16 +29,30 @@ describe("app activity", () => {
     );
 
     expect(screen.getByTestId("active").textContent).toBe("true");
-    expect(document.documentElement.classList.contains("app-inactive")).toBe(false);
 
-    hasFocus.mockReturnValue(false);
+    // Another app is focused but the RiotSwitcher window is still on screen.
     fireEvent.blur(window);
+
+    expect(screen.getByTestId("active").textContent).toBe("true");
+    expect(document.documentElement.classList.contains("app-inactive")).toBe(false);
+  });
+
+  it("pauses only when the window is hidden or completely covered", () => {
+    setVisibility("visible");
+    render(
+      <AppActiveProvider>
+        <Probe />
+      </AppActiveProvider>
+    );
+
+    expect(screen.getByTestId("active").textContent).toBe("true");
+
+    setVisibility("hidden");
 
     expect(screen.getByTestId("active").textContent).toBe("false");
     expect(document.documentElement.classList.contains("app-inactive")).toBe(true);
 
-    hasFocus.mockReturnValue(true);
-    fireEvent.focus(window);
+    setVisibility("visible");
 
     expect(screen.getByTestId("active").textContent).toBe("true");
     expect(document.documentElement.classList.contains("app-inactive")).toBe(false);
