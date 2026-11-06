@@ -85,13 +85,33 @@ jobs:
         # then packs out/ from this step; without it the asar has no entry file.
         run: npm run build
 
-      - name: Build and publish
-        run: npx electron-builder --win --publish always
+      - name: Package the app
+        # Publish is handled by the next step: electron-builder's own publisher
+        # creates one release per target, which races and splits the assets
+        # across two drafts on the same tag.
+        run: npx electron-builder --win --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No code-signing certificate is configured; make that explicit so
           # electron-builder does not try to discover one on the runner.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.event.inputs.tag || github.ref_name }}"
+          $files = @(Get-ChildItem release -File |
+            Where-Object { $_.Name -match '\.(exe|blockmap)$' -or $_.Name -eq 'latest.yml' } |
+            ForEach-Object { $_.FullName })
+          if ($files.Count -eq 0) { throw "no release artifacts in release/" }
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @files --clobber
+            gh release edit $tag --draft=false
+          } else {
+            gh release create $tag @files --title "RiotSwitcher $tag" --generate-notes
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

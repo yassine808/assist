@@ -73,7 +73,7 @@ your own machine.
 Grab the latest installer from the
 **[releases page](https://github.com/yassine808/assist/releases/latest)**.
 
-- **`RiotSwitcher Setup x.y.z.exe`** — normal install (recommended)
+- **`RiotSwitcher-Setup-x.y.z.exe`** — normal install (recommended)
 - **`RiotSwitcher-x.y.z-portable.exe`** — run without installing
 
 Windows 10/11, x64. The builds are not code-signed, so SmartScreen may ask for

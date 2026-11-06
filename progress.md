@@ -1217,3 +1217,37 @@
   - README: 14 heading anchors resolve, every local link exists.
 - Next: push and (optionally) publish v3.1.4 so Releases + Deployments are not
   empty; Packages has no natural registry for a desktop installer.
+
+### 2026-11-06 - Publish 3.1.4, WinGet submission, release pipeline fixes
+
+- Goal: publish the current build and make Releases/Deployments/Packages real.
+- Done:
+  - Committed and pushed the docs/community work, the 3.1.4 bump, and the
+    `HENRIKDEV_API_KEY` repository secret.
+  - Fixed the release workflow twice: it needed `requirements-dev.txt` (pytest)
+    for its gate, and it never ran `npm run build`, so electron-builder packed
+    an asar with no `out/main/index.js` and no `build/env.bin`.
+  - Replaced electron-builder's own publisher with a single `gh release`
+    step: `--publish always` created one release per target and split the
+    assets across two drafts on the same tag (the draft kept the exes, the
+    stray one held only the blockmap).
+  - Published v3.1.4: `RiotSwitcher-Setup-3.1.4.exe` (208 MB) and
+    `RiotSwitcher-3.1.4-portable.exe` (195 MB), plus `latest.yml`; release
+    retitled, notes written, marked latest.
+  - Deployments environment `release` now records the run (latest status
+    `success`).
+  - README installer name corrected to the published
+    `RiotSwitcher-Setup-x.y.z.exe` (electron-builder 26.18 converts spaces to
+    dashes).
+  - WinGet: manifest written under `packaging/winget/manifests/y/Yassine808/`
+    (3.1.4), `winget validate` passed, fork + branch pushed and PR opened:
+    https://github.com/microsoft/winget-pkgs/pull/472360
+- Verified:
+  - `gh release view v3.1.4`: published, latest, both exes + latest.yml,
+    asset SHA-256 matches the manifest (`0824D420...B75B76`).
+  - `gh api .../deployments/0/statuses`: `success`.
+  - PR 472360: `OPEN`, `MERGEABLE`.
+  - `npm run format:check` clean; `winget validate`: "Manifest validation
+    succeeded."
+- Next: wait for winget-pkgs moderation; after merge add the `winget install
+  Yassine808.RiotSwitcher` line to the README.
