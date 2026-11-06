@@ -34,7 +34,7 @@
 - [ ] Optimise: replace the per-name `tasklist` process polling with one
       Toolhelp32 snapshot; measure startup, idle CPU and bundle size
 - [ ] Optimise: stop packing `lucide-react` (32 MB) into `app.asar`
-- [ ] Optimise: convert the 30 animated cards from APNG to animated WebP
+- [x] Optimise: convert the 30 animated cards from APNG to animated WebP
       (76 MB -> 9 MB, decision by Yassine on 2026-11-06)
 - [ ] Harden: atomic config writes, tar link rejection, permission denial,
       `windowsHide` on the backend spawn, spellcheck off
@@ -1304,3 +1304,38 @@
 - Next: swap the WebP assets in and teach `playercards.ts` +
   `animated_cards.py` about `.webp` (with a legacy `.apng` fallback), rebuild,
   then write the signing/submission docs.
+
+### 2026-11-06 - Animated cards shipped as WebP (APNG swap)
+
+- Goal: finish the APNG -> animated WebP move that the trial run only measured:
+  ship the WebP files, keep saved profiles working, and rebuild.
+- Done:
+  - Converted all 30 cards at q90, method=6 with the one-off
+    `convert_cards.py` (Pillow): 76.2 MB -> 9.1 MB, frame count and durations
+    kept, alpha kept. SHA-256 of every output matches the copy now in
+    `official playercards/AgentMastery/Animated/` (30/30 identical).
+  - Replaced the 30 `.apng` files with the 30 `.webp` ones in
+    `official playercards/AgentMastery/Animated/`.
+  - `src/main/playercards.ts`: WebP is the shipped format
+    (`CARD_EXTENSIONS = [".webp", ".apng"]`), and `resolveCardPath` serves the
+    `.webp` sibling when a profile still asks for a legacy `.apng` URL instead
+    of 404ing. Traversal rules unchanged.
+  - `src/backend/animated_cards.py`: lists both extensions so a new profile
+    can still start with an animated card; docstring updated.
+  - `electron-builder.yml` `extraResources` filter accepts `*.webp` and
+    `*.apng`.
+  - Tests updated: `src/main/playercards.test.ts` (legacy `.apng` URL resolves
+    to WebP, traversal still rejected), `tests/test_animated_cards.py` (mixed
+    extensions), plus the renderer fixtures that carried `.apng` URLs.
+- Verified:
+  - `npm run typecheck`, `npm run lint`: clean.
+  - `npm run test`: 16 files, 68 tests passed.
+  - `python -m pytest tests/test_animated_cards.py tests/test_backend.py -q`:
+    91 passed.
+  - `npm run build`: succeeded; `out/main/index.js` carries
+    `CARD_EXTENSIONS = [".webp", ".apng"]` and the `.webp` fallback.
+  - `npx electron-builder --dir`: `release/win-unpacked/resources/playercards/
+    animated` now holds 30 `.webp` and 0 `.apng` (8.68 MB total, was ~76 MB);
+    `app.asar` 3.06 MB.
+- Next: write the signing/submission docs; the pre-signing gate is otherwise
+  green.
