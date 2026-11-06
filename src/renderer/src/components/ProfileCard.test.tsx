@@ -108,3 +108,56 @@ describe("ProfileCard playercard art", () => {
     expect(art().className).not.toContain("is-charging");
   });
 });
+
+describe("ProfileCard sign-out button", () => {
+  it("only offers sign-out while the profile is running", () => {
+    const onSignOut = vi.fn();
+    const { container, rerender } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running={false}
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+        onSignOut={onSignOut}
+      />
+    );
+    expect(container.querySelector(".lobby-signout")).toBeNull();
+
+    rerender(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+        onSignOut={onSignOut}
+      />
+    );
+
+    const button = container.querySelector<HTMLButtonElement>(".lobby-signout");
+    expect(button).not.toBeNull();
+    expect(button!.getAttribute("aria-label")).toContain("sign out");
+
+    fireEvent.click(button!);
+    expect(onSignOut).toHaveBeenCalledWith("Alpha#EUW");
+  });
+
+  it("keeps the RUNNING button next to it", () => {
+    const { container } = render(
+      <ProfileCard
+        profile={makeProfile(CARD_A)}
+        running
+        launchState="idle"
+        onLaunch={vi.fn()}
+        onDelete={vi.fn()}
+        onSignOut={vi.fn()}
+      />
+    );
+
+    const row = container.querySelector(".lobby-ctl");
+    expect(row?.querySelector(".lobby-signout")).not.toBeNull();
+    expect(row?.querySelector(".lobby-start")).not.toBeNull();
+    expect(row?.querySelector(".lobby-start")?.textContent).toBe("RUNNING");
+  });
+});

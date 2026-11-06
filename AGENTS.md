@@ -66,12 +66,19 @@ Full pre-commit gate: `typecheck`, `lint`, `test`, `test:py`, `ruff`,
   never touch Vanguard, memory, or game traffic.
 - `tests/test_file_safety.py` enforces this. A change that adds a game path
   write must be rejected, not accommodated.
-- The app never terminates `VALORANT.exe` / `ValorantWin64Shipping.exe`, and
-  never touches Vanguard. Exit stops nothing; a profile switch restarts only the
-  Riot Client and is refused with "Close VALORANT before switching accounts"
-  while the game is running. `tests/test_shutdown_safety.py` enforces this, and
-  `tests/conftest.py` disarms `riot_processes.kill_all` for the whole suite so a
-  test can never `taskkill` a real running game.
+- The app never terminates `VALORANT.exe` / `ValorantWin64Shipping.exe` on its
+  own, and never touches Vanguard. Exit stops nothing; a profile switch and a
+  sign-out restart only the Riot Client and are refused while the game is
+  running, returning `code: "valorant_running"` so the UI can ask "Quit
+  VALORANT?". Only that confirmation reaches `riot_processes.terminate_valorant`,
+  which targets the game's two processes and nothing else.
+  `tests/test_shutdown_safety.py` enforces both halves, and `tests/conftest.py`
+  disarms `riot_processes.kill_all` for the whole suite so a test can never
+  `taskkill` a real running game.
+- Sign-out (`sign_out_profile`) stops the Riot Client and deletes only the live
+  login files under `%LOCALAPPDATA%\Riot Games\Riot Client\Data`
+  (`session_manager.LIVE_LOGIN_FILES`). The per-profile backup is kept, so
+  switching back signs in again.
 - League settings sync (`league_settings_sync.py`) is the only module allowed
   to touch League config, and only when `SyncGameSettings` is on (default off).
 

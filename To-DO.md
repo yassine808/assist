@@ -30,4 +30,4 @@
 - [x] fix app doesn't wanna exit (exiting null)
 - [x] export should carry the saved playercard for profiles aswell
 
--[] instead of "Close VALORANT before switching accounts" show a windows with a question "quit valorant" or no, just like delete confirmation
+- [x] instead of "Close VALORANT before switching accounts" show a windows with a question "quit valorant" or no, just like delete confirmation

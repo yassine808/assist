@@ -16,6 +16,9 @@ through a listener callback that the backend fans out as IPC events.
 import riot_processes as rp
 from riot_client import RiotClientError
 
+# Machine-readable reason the UI turns into the "Quit VALORANT?" dialog.
+VALORANT_RUNNING = "valorant_running"
+
 
 class LaunchOrchestrator:
     def __init__(self, riot, sessions, profiles, config, league=None):
@@ -59,21 +62,22 @@ class LaunchOrchestrator:
         """Stop the Riot Client before a switch. Never touches VALORANT.
 
         The game is not ours to close: if VALORANT is running the switch is
-        refused with a clear message instead of killing anything. Otherwise
-        only the Riot Client tree is stopped, which is what holds the session
-        files the switch has to replace.
+        refused and the result carries ``VALORANT_RUNNING`` so the UI can offer
+        the "Quit VALORANT?" dialog. Only an explicit confirmation from that
+        dialog reaches ``quit_valorant``; otherwise only the Riot Client tree is
+        stopped, which is what holds the session files the switch replaces.
         """
         running = [name for name in rp.VALORANT_PROCESSES if rp.is_running(name)]
         if running:
             self._emit("kill", "failed", "Close VALORANT before switching accounts")
-            return False, "Close VALORANT before switching accounts"
+            return False, "Close VALORANT before switching accounts", VALORANT_RUNNING
 
         self._emit("kill", "started", "Stopping Riot Client")
         if not rp.shutdown_stop():
             self._emit("kill", "failed", "Timed out waiting for processes to exit")
-            return False, "Timeout waiting for Riot processes to exit"
+            return False, "Timeout waiting for Riot processes to exit", "timeout"
         self._emit("kill", "done", "Riot Client stopped")
-        return True, ""
+        return True, "", ""
 
     def _save_current_session(self, current_active, profile_name, install_dir):
         """Save the currently-active profile's session if switching away. Returns (ok, error)."""
@@ -129,9 +133,9 @@ class LaunchOrchestrator:
         current_active = str(self.config.get("LastRunningProfile", "") or "")
 
         try:
-            ok, error = self._kill_riot_processes()
+            ok, error, code = self._kill_riot_processes()
             if not ok:
-                return {"ok": False, "step": "kill", "error": error}
+                return {"ok": False, "step": "kill", "error": error, "code": code}
 
             ok, error = self._save_current_session(current_active, profile_name, install_dir)
             if not ok:
@@ -161,6 +165,52 @@ class LaunchOrchestrator:
         self._emit("stop", "started", "Stopping Riot Client")
         rp.shutdown_stop()
         self._emit("stop", "done", "Riot Client stopped")
+        return {"ok": True}
+
+    def quit_valorant(self):
+        """Close the game, after the user confirmed the "Quit VALORANT?" dialog.
+
+        Reached only from that confirmation: a switch and a sign-out refuse
+        while the game is running and hand back ``VALORANT_RUNNING`` instead of
+        closing anything on their own. Vanguard is left alone.
+        """
+        self._emit("quit", "started", "Closing VALORANT")
+        if not rp.terminate_valorant():
+            self._emit("quit", "failed", "VALORANT is still running")
+            return {"ok": False, "error": "VALORANT is still running"}
+        self._emit("quit", "done", "VALORANT closed")
+        return {"ok": True}
+
+    def sign_out(self, profile_name):
+        """Exit the Riot Client and drop the live login, keeping the profile.
+
+        The saved profile is untouched: its encrypted session backup stays, so
+        switching back to it signs in again. What is removed is the *live*
+        login under LOCALAPPDATA, which is why the next client start shows the
+        login screen instead of the account that was just signed out.
+        """
+        ok, error, code = self._kill_riot_processes()
+        if not ok:
+            return {"ok": False, "step": "kill", "error": error, "code": code}
+
+        try:
+            install_dir = self._install_dir()
+        except RiotClientError:
+            # Only the LOCALAPPDATA login files are cleared, so an unknown
+            # install location does not block signing out.
+            install_dir = ""
+
+        # Refresh the backup before the live files go away, so switching back
+        # to this profile still logs in with the newest tokens.
+        current_active = str(self.config.get("LastRunningProfile", "") or "")
+        self._save_current_session(current_active, "", install_dir)
+
+        self._emit("signout", "started", f"Signing out of {profile_name or 'the running account'}")
+        if not self.sessions.clear_live_session(install_dir):
+            self._emit("signout", "failed", "Could not clear the Riot Client session")
+            return {"ok": False, "step": "signout", "error": "Could not clear the Riot Client session"}
+        self.config.set("LastRunningProfile", "")
+        self._emit("signout", "done", "Signed out")
         return {"ok": True}
 
     def _league_config_dir(self):

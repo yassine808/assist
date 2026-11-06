@@ -6,8 +6,11 @@ never stalls other requests; call them through the job worker.
 
 Uses taskkill /F /T (force + tree kill) per process for fastest termination.
 
-VALORANT is never terminated by this module. `VALORANT_PROCESSES` is used only
-to detect the game so a profile switch can be refused while it is running.
+VALORANT is never terminated by a switch or by app shutdown. `VALORANT_PROCESSES`
+is otherwise used only to detect the game so a switch can be refused while it is
+running; the single exception is `terminate_valorant`, which the UI calls only
+after the user answers "Quit VALORANT?" in the confirmation dialog. Vanguard is
+never targeted by anything in this module.
 """
 
 import subprocess
@@ -133,3 +136,14 @@ def shutdown_stop():
     """
     kill_riot_client()
     return wait_until_dead(RIOT_CLIENT_PROCESSES)
+
+
+def terminate_valorant():
+    """Close the game after the user confirmed the "Quit VALORANT?" prompt.
+
+    Nothing calls this on its own: a switch and a sign-out both refuse while
+    the game is up, and only the dialog's confirm button reaches it. Vanguard
+    is not in `VALORANT_PROCESSES` and is never killed here.
+    """
+    kill_all(VALORANT_PROCESSES)
+    return wait_until_dead(VALORANT_PROCESSES)

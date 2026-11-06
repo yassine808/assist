@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { Check, Copy, Palette, Trash2 } from "lucide-react";
+import { Check, Copy, LogOut, Palette, Trash2 } from "lucide-react";
 import { Profile, VALORANT_TIER_NAMES } from "../types/profile";
 import { rankColor } from "../lib/ranks";
 import { sfx } from "../lib/sfx";
@@ -15,6 +15,8 @@ interface ProfileCardProps {
   onLaunch: (name: string) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
+  /** Exit the Riot Client and sign out of the live account; the profile stays. */
+  onSignOut?: (name: string) => void;
 }
 
 function agentIconFor(vd: Profile["valorant_data"] | undefined): string {
@@ -138,7 +140,7 @@ function RankEmblem({ rankIcon, rankName }: Readonly<{ rankIcon?: string; rankNa
   );
 }
 
-export default function ProfileCard({ profile, running, activeProfileName, launchState, index = 0, onLaunch, onDelete, onModifyCard }: Readonly<ProfileCardProps>) {
+export default function ProfileCard({ profile, running, activeProfileName, launchState, index = 0, onLaunch, onDelete, onModifyCard, onSignOut }: Readonly<ProfileCardProps>) {
   const vd = profile.valorant_data;
   const tier = vd?.tier ?? 0;
   const rr = vd?.rr ?? 0;
@@ -288,11 +290,27 @@ export default function ProfileCard({ profile, running, activeProfileName, launc
         </div>
       </div>
 
-      <button className={`lobby-start ${btnClass}`} onClick={play} disabled={busy} onMouseEnter={sfx.hover}>
-        <span className="lobby-start-label">{label}</span>
-        {busy && <StartIcon state={launchState} />}
-        {launchState === "launching" && <span className="lobby-bar" />}
-      </button>
+      <div className="lobby-ctl">
+        {running && onSignOut && (
+          <button
+            type="button"
+            className="lobby-signout"
+            title="Exit Riot Client and sign out"
+            aria-label={`Exit Riot Client and sign out of ${profile.profile_name}`}
+            onClick={() => {
+              sfx.tick();
+              onSignOut(profile.profile_name);
+            }}
+          >
+            <LogOut size={16} strokeWidth={2.2} />
+          </button>
+        )}
+        <button className={`lobby-start ${btnClass}`} onClick={play} disabled={busy} onMouseEnter={sfx.hover}>
+          <span className="lobby-start-label">{label}</span>
+          {busy && <StartIcon state={launchState} />}
+          {launchState === "launching" && <span className="lobby-bar" />}
+        </button>
+      </div>
     </div>
   );
 }

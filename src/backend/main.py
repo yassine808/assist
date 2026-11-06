@@ -293,6 +293,18 @@ def _launch_profile(orchestrator, running, name):
     return result
 
 
+def _sign_out_profile(orchestrator, running, name):
+    """Exit the Riot Client and clear the live login; the profile is kept.
+
+    ``running.clear`` publishes the transition at once instead of waiting for
+    the watcher's miss grace, so the card leaves the RUNNING state immediately.
+    """
+    result = orchestrator.sign_out(name)
+    if result.get("ok"):
+        running.clear()
+    return result
+
+
 def _create_profile_with_capture(profiles, protocol, capture_session, params):
     """Create a profile and immediately back up the live Riot session.
 
@@ -482,6 +494,10 @@ def _build_handlers(ctx):
             orchestrator, running, p.get("name") or ""
         ),
         "stop_profile": lambda p: orchestrator.stop(),
+        "sign_out_profile": lambda p: _sign_out_profile(
+            orchestrator, running, p.get("name") or ""
+        ),
+        "quit_valorant": lambda p: orchestrator.quit_valorant(),
         "read_live_account": lambda p: rad.read_live_account(),
         "check_current_account": lambda p: helpers.check_current_account(),
         "capture_current_account": lambda p: helpers.capture_current_account(),

@@ -14,6 +14,7 @@ interface Props {
   onLaunch: (name: string) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
+  onSignOut?: (name: string) => void;
   /** Called with the full new order after a drag (or Alt+Arrow) finishes. */
   onReorder?: (names: string[]) => void;
 }
@@ -29,6 +30,7 @@ interface SortableItemProps {
   onLaunch: (name: string) => void;
   onDelete: (p: Profile) => void;
   onModifyCard?: (p: Profile) => void;
+  onSignOut?: (name: string) => void;
 }
 
 function SortableItem({
@@ -42,6 +44,7 @@ function SortableItem({
   onLaunch,
   onDelete,
   onModifyCard,
+  onSignOut,
 }: Readonly<SortableItemProps>) {
   // Stable per card: a new callback identity would make React detach and
   // reattach the node, wiping the card's spring state mid-drag.
@@ -81,6 +84,7 @@ function SortableItem({
         onLaunch={onLaunch}
         onDelete={onDelete}
         onModifyCard={onModifyCard}
+        onSignOut={onSignOut}
       />
     </div>
   );
@@ -94,6 +98,7 @@ export default function ProfileGrid({
   onLaunch,
   onDelete,
   onModifyCard,
+  onSignOut,
   onReorder,
 }: Readonly<Props>) {
   const activeProfileName = profiles.find((p) => p.is_running)?.profile_name ?? null;
@@ -192,6 +197,7 @@ export default function ProfileGrid({
                 onLaunch={onLaunch}
                 onDelete={onDelete}
                 onModifyCard={onModifyCard}
+                onSignOut={onSignOut}
               />
             );
           })}

@@ -1135,3 +1135,28 @@
   - `RiotSwitcher.exe` version info: FileVersion 3.1.2, CompanyName `Yassine`,
     copyright `Copyright c 2026 RiotSwitcher Contributors`.
 - Next: none.
+
+### 2026-11-06 — Quit-VALORANT dialog + per-profile sign out
+
+- Goal: finish the last To-DO line (ask before closing VALORANT instead of the
+  refusal toast) and add a sign-out button left of the RUNNING button that
+  exits the Riot Client and drops the live login while keeping the profile.
+- Done:
+  - `riot_processes.terminate_valorant` is the only game-killing path and is
+    reached only from the dialog's confirm; Vanguard is never targeted.
+  - `LaunchOrchestrator` returns `code: "valorant_running"` when the game
+    blocks a switch or a sign-out, plus `quit_valorant` and `sign_out`.
+  - `SessionManager.clear_live_session` deletes only the LOCALAPPDATA login
+    files; `RunningProfileWatcher.clear` publishes the sign-out at once.
+  - Backend methods `quit_valorant` and `sign_out_profile`.
+  - `QuitValorantModal` + HomeView retry flow; `ProfileCard` renders the
+    sign-out button beside the RUNNING button; `.lobby-ctl` row in CSS.
+  - AGENTS.md invariant updated; To-DO line checked.
+- Verified:
+  - `npm run typecheck`: clean. `npm run lint`: 0 errors.
+  - `npm run test`: 14 files, 60 tests passed.
+  - `python -m pytest tests/ -q`: 172 passed.
+  - `python -m ruff check src/backend tests/`: clean.
+  - `python -m compileall -q src/backend tests`: clean.
+  - `npm run check:api-leaks`: clean. `npm run build`: succeeded.
+- Next: eyeball the new row in the running card; commit when Yassine says so.

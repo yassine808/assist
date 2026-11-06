@@ -68,6 +68,20 @@ class RunningProfileWatcher:
             self._publish(name)
         return name
 
+    def clear(self):
+        """Drop the running profile immediately (used after an explicit sign-out).
+
+        ``refresh`` clears on its own only after ``miss_grace`` empty reads, so
+        the UI would keep showing the card as running for a few seconds after
+        the user signed out. This publishes the transition at once.
+        """
+        with self._lock:
+            changed = bool(self._name)
+            self._name = ""
+            self._misses = 0
+        if changed:
+            self._publish("")
+
     def start(self):
         if self._thread and self._thread.is_alive():
             return

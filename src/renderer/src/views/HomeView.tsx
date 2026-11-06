@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import ProfileGrid from "../components/ProfileGrid";
 import PlayerCardPicker from "../components/PlayerCardPicker";
 import DeleteProfileModal from "../components/DeleteProfileModal";
+import QuitValorantModal from "../components/QuitValorantModal";
 import AddAccountModal from "../components/AddAccountModal";
 import { useIPC } from "../hooks/useIPC";
 import { useProfileLaunch } from "../hooks/useProfileLaunch";
@@ -21,6 +22,11 @@ export default function HomeView() {
   const [deleting, setDeleting] = useState(false);
   const [editingCard, setEditingCard] = useState<Profile | null>(null);
   const [showAddAccount, setShowAddAccount] = useState(false);
+  // VALORANT blocked a launch or a sign-out: offer to quit the game, then
+  // retry whatever was pending.
+  const [pendingValorant, setPendingValorant] = useState<{ kind: "launch" | "sign-out"; name: string } | null>(null);
+  const [quitting, setQuitting] = useState(false);
+  const [quitError, setQuitError] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -102,6 +108,67 @@ export default function HomeView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress]);
 
+  // A launch that VALORANT blocks is not an error toast: it opens the
+  // "Quit VALORANT?" dialog and retries once the game is gone.
+  const handleLaunch = useCallback(
+    async (name: string) => {
+      const result = await launch(name);
+      if (result?.ok === false && result.code === "valorant_running") {
+        toast.dismiss("launch");
+        setQuitError("");
+        setPendingValorant({ kind: "launch", name });
+      }
+    },
+    [launch, toast]
+  );
+
+  // Exit the Riot Client and clear the live login. The profile itself is kept,
+  // so the card stays and switching back signs in again.
+  const signOut = useCallback(
+    async (name: string) => {
+      try {
+        const res = await call<{ ok?: boolean; code?: string; error?: string }>("sign_out_profile", { name });
+        if (res?.ok === false) {
+          if (res.code === "valorant_running") {
+            setQuitError("");
+            setPendingValorant({ kind: "sign-out", name });
+            return;
+          }
+          toast.show({ kind: "error", title: "Sign out failed", message: res.error || "Something went wrong" });
+          return;
+        }
+        toast.show({ kind: "success", title: "Signed out", message: `${name} is still saved` });
+        void load();
+      } catch (e) {
+        console.error("sign out failed", e);
+        toast.show({ kind: "error", title: "Sign out failed", message: String(e) });
+      }
+    },
+    [call, load, toast]
+  );
+
+  const doQuitValorant = useCallback(async () => {
+    if (!pendingValorant) return;
+    setQuitError("");
+    setQuitting(true);
+    try {
+      const res = await call<{ ok?: boolean; error?: string }>("quit_valorant");
+      if (res?.ok === false) {
+        setQuitError(res.error || "VALORANT is still running");
+        return;
+      }
+      const pending = pendingValorant;
+      setPendingValorant(null);
+      if (pending.kind === "launch") void launch(pending.name);
+      else void signOut(pending.name);
+    } catch (e) {
+      console.error("quit VALORANT failed", e);
+      setQuitError(String(e));
+    } finally {
+      setQuitting(false);
+    }
+  }, [pendingValorant, call, launch, signOut]);
+
   const handleReorder = useCallback(
     async (names: string[]) => {
       // optimistic: show the new order immediately, then persist it
@@ -150,9 +217,10 @@ export default function HomeView() {
         loading={loading}
         launchState={launchState}
         launchingProfile={launchingProfile}
-        onLaunch={launch}
+        onLaunch={handleLaunch}
         onDelete={handleDelete}
         onModifyCard={handleModifyCard}
+        onSignOut={signOut}
         onReorder={(names) => void handleReorder(names)}
       />
 
@@ -177,6 +245,16 @@ export default function HomeView() {
         error={deleteError}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => void doDelete()}
+      />
+
+      <QuitValorantModal
+        open={!!pendingValorant}
+        busy={quitting}
+        error={quitError}
+        action={pendingValorant?.kind ?? "launch"}
+        profileName={pendingValorant?.name ?? ""}
+        onCancel={() => { setPendingValorant(null); setQuitError(""); }}
+        onConfirm={() => void doQuitValorant()}
       />
 
       {editingCard && (

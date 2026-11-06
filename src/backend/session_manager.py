@@ -75,6 +75,11 @@ FILES_TO_SWITCH = [
 DIR_TMP_SUFFIX = "_tmp"
 FILE_TMP_SUFFIX = ".tmp"
 
+# The subset of FILES_TO_SWITCH that actually carries the live login. Clearing
+# these signs the Riot Client out on its next start; the client's own Config
+# files are left alone because they hold preferences, not the session.
+LIVE_LOGIN_FILES = ("private_settings", "sessions_dir")
+
 
 def sanitize_directory_name(name):
     """Produce a filesystem-safe directory name from a profile name.
@@ -175,6 +180,31 @@ class SessionManager:
         if os.path.isfile(dest):
             return self._remove_file(dest)
         return True
+
+    def clear_live_session(self, riot_install_dir):
+        """Delete the live Riot Client login so the next start is signed out.
+
+        Used by the "sign out" action: only the LOCALAPPDATA login files are
+        removed, never a game install and never the per-profile backups, so the
+        account stays in the switcher and restoring it logs back in. The Riot
+        Client must be stopped first, otherwise the files are locked.
+
+        Returns True when every live login file is gone.
+        """
+        with self._lock:
+            all_removed = True
+            for file_def in FILES_TO_SWITCH:
+                if file_def["id"] not in LIVE_LOGIN_FILES:
+                    continue
+                dest = self._resolve_path(file_def, riot_install_dir)
+                if not dest:
+                    continue
+                if file_def.get("is_dir"):
+                    if os.path.isdir(dest) and self._remove_dir_recursive(dest) != 0:
+                        all_removed = False
+                elif os.path.isfile(dest) and not self._remove_file(dest):
+                    all_removed = False
+        return all_removed
 
     def seal_existing_backups(self):
         """Encrypt any profile backup still stored as plaintext.

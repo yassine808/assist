@@ -10,11 +10,20 @@ export interface LaunchProgress {
   pid?: number;
 }
 
+/** Backend result of `launch_profile`. `code` is machine-readable ("valorant_running"). */
+export interface LaunchResult {
+  ok?: boolean;
+  error?: string;
+  step?: string;
+  code?: string;
+  pid?: number;
+}
+
 export interface UseProfileLaunch {
   launchState: LaunchState;
   launchingProfile: string | null;
   progress: LaunchProgress | null;
-  launch: (name: string) => Promise<void>;
+  launch: (name: string) => Promise<LaunchResult | undefined>;
 }
 
 export function useProfileLaunch(): UseProfileLaunch {
@@ -54,7 +63,7 @@ export function useProfileLaunch(): UseProfileLaunch {
 
   const launch = useCallback(
     async (name: string) => {
-      if (launchState !== "idle") return;
+      if (launchState !== "idle") return undefined;
       setLaunchState("launching");
       setLaunchingProfile(name);
       setProgress({ step: "start", status: "pending", message: "Killing processes…" });
@@ -65,14 +74,18 @@ export function useProfileLaunch(): UseProfileLaunch {
         setProgress({ step: "launch", status: "failed", message: "Launch timed out" });
       }, 30_000);
       try {
-        const result = await call<{
-          ok?: boolean;
-          error?: string;
-          step?: string;
-          pid?: number;
-        }>("launch_profile", { name });
+        const result = await call<LaunchResult>("launch_profile", { name });
         if (result?.ok === false) {
           const msg = result.error || "Launch failed";
+          if (result.code === "valorant_running") {
+            // Not a failure to report: the caller opens the "Quit VALORANT?"
+            // dialog instead of a toast. Clear the loading state silently.
+            if (launchTimeoutRef.current) clearTimeout(launchTimeoutRef.current);
+            setLaunchState("idle");
+            setLaunchingProfile(null);
+            setProgress(null);
+            return result;
+          }
           setProgress({
             step: result.step || "launch",
             status: "failed",
@@ -80,9 +93,11 @@ export function useProfileLaunch(): UseProfileLaunch {
           });
           setLaunchState("idle");
         }
+        return result;
       } catch (e) {
         setProgress({ step: "launch", status: "failed", message: String(e) });
         setLaunchState("idle");
+        return { ok: false, error: String(e) };
       }
     },
     [call, launchState]
