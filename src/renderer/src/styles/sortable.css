@@ -8,6 +8,42 @@
   transition: filter 0.3s ease;
 }
 
+/* Native focusable handle: the card itself cannot be a button (it contains
+   buttons), so drag and keyboard reordering live here. */
+.sortable-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 8px 8px;
+  color: rgba(200, 220, 245, 0.55);
+  background: rgba(7, 12, 20, 0.55);
+  cursor: grab;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+.sortable-item:hover .sortable-handle,
+.sortable-handle:focus-visible {
+  opacity: 1;
+  color: #fff;
+}
+.sortable-handle:active {
+  cursor: grabbing;
+}
+.sortable-handle:focus-visible {
+  outline: 2px solid rgba(130, 205, 255, 0.8);
+  outline-offset: -2px;
+}
+
 /* the lifted card: floats above everything with a deep, soft shadow */
 .sortable-item.is-lifted {
   z-index: 50;

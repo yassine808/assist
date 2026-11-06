@@ -163,7 +163,7 @@ function setupIpc(): void {
     } catch {
       throw new Error("Invalid URL");
     }
-    const path = parsed.pathname.replace(/\/+$/, "");
+    const path = parsed.pathname.endsWith("/") ? parsed.pathname.slice(0, -1) : parsed.pathname;
     const onProjectGithub =
       parsed.protocol === "https:" &&
       parsed.hostname === "github.com" &&

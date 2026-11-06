@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { GripVertical } from "lucide-react";
 import type { Profile } from "../types/profile";
 import type { LaunchState } from "../hooks/useProfileLaunch";
 import { SortableEngine } from "../lib/sortable";
@@ -50,31 +51,34 @@ function SortableItem({
   // reattach the node, wiping the card's spring state mid-drag.
   const setRef = useCallback((el: HTMLDivElement | null) => engine.register(name, el), [engine, name]);
 
-  // The drag container cannot be a native <button>: the card inside has its own
-  // buttons and nested native buttons are invalid HTML. It is a labelled group
-  // that only handles Alt+Arrow reordering, not activation.
+  // The card cannot be a native <button>: it contains its own buttons and
+  // nested native buttons are invalid HTML. Reordering therefore gets its own
+  // native drag handle, which is focusable and carries the pointer/keyboard
+  // interaction instead of the non-interactive wrapper.
   return (
-    <div
-      ref={setRef}
-      className="sortable-item"
-      style={{ order }}
-      role="group"
-      tabIndex={0}
-      aria-label={`Reorder ${profile.profile_name}`}
-      onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
-      onDragStart={(e) => e.preventDefault()}
-      onClickCapture={(e) => {
-        if (engine.consumeSuppressedClick()) {
-          e.stopPropagation();
+    <div ref={setRef} className="sortable-item" style={{ order }}>
+      <button
+        type="button"
+        className="sortable-handle"
+        data-drag-handle
+        aria-label={`Reorder ${profile.profile_name}`}
+        title="Drag, or press Alt+Left/Right, to reorder"
+        onPointerDown={(e) => engine.pointerDown(name, e.nativeEvent)}
+        onDragStart={(e) => e.preventDefault()}
+        onClick={(e) => {
+          if (engine.consumeSuppressedClick()) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }}
+        onKeyDown={(e) => {
+          if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
           e.preventDefault();
-        }
-      }}
-      onKeyDown={(e) => {
-        if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-        e.preventDefault();
-        engine.move(name, e.key === "ArrowLeft" ? -1 : 1);
-      }}
-    >
+          engine.move(name, e.key === "ArrowLeft" ? -1 : 1);
+        }}
+      >
+        <GripVertical size={12} strokeWidth={2.4} aria-hidden />
+      </button>
       <ProfileCard
         index={index}
         profile={profile}

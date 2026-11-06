@@ -216,7 +216,13 @@ export class SortableEngine {
     // used to leave `this.drag` set forever, which made every later press a
     // no-op and kept the stuck card following the cursor. Clear it first.
     if (this.drag) this.finish(false);
-    if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [data-no-drag]")) return;
+    if (
+      (e.target as HTMLElement | null)?.closest(
+        "button:not([data-drag-handle]), a, input, select, textarea, [data-no-drag]",
+      )
+    ) {
+      return;
+    }
     this.drag = {
       id,
       pointerId: e.pointerId,

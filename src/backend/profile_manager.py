@@ -274,6 +274,25 @@ class ProfileManager:
         """
         if not passkey:
             raise ValueError("passkey is required")
+        imported_profiles = self._decode_export(passkey, encrypted_data)
+
+        with self._lock:
+            if not merge:
+                old_names = [p.get("profile_name", "") for p in self._profiles]
+                self._profiles = imported_profiles
+                self._write()
+                return {
+                    "imported": len(imported_profiles),
+                    "skipped": 0,
+                    "total": len(imported_profiles),
+                    "replaced_names": old_names,
+                }
+            result = self._merge_profiles(imported_profiles)
+            self._write()
+            return result
+
+    def _decode_export(self, passkey, encrypted_data):
+        """Decrypt and validate one export blob, across all supported versions."""
         import base64
         import hashlib
 
@@ -285,6 +304,24 @@ class ProfileManager:
         if len(encrypted_data) > _MAX_EXPORT_BYTES:
             raise ValueError("Export file is too large")
 
+        salt, token, iterations = self._export_parts(encrypted_data)
+        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, iterations)
+        key = base64.urlsafe_b64encode(dk)
+        fernet = Fernet(key)
+
+        try:
+            decrypted = fernet.decrypt(token)
+        except InvalidToken:
+            raise ValueError("Wrong passkey or corrupted data")
+
+        imported_profiles = json.loads(decrypted.decode("utf-8"))
+        if not isinstance(imported_profiles, list):
+            raise ValueError("Invalid profile data format")
+        return [self._validate_profile(p) for p in imported_profiles]
+
+    @staticmethod
+    def _export_parts(encrypted_data):
+        """Return (salt, ciphertext, KDF iterations) for an export header."""
         # Newest format carries a random salt and the current KDF cost; the V2
         # format carries the same header at the older cost; legacy files used a
         # fixed salt and no header. All three stay readable.
@@ -304,50 +341,23 @@ class ProfileManager:
             iterations = _LEGACY_V2_ITERATIONS
         if len(salt) != _EXPORT_SALT_BYTES:
             raise ValueError("Wrong passkey or corrupted data")
-        dk = hashlib.pbkdf2_hmac("sha256", passkey.encode("utf-8"), salt, iterations)
-        key = base64.urlsafe_b64encode(dk)
-        fernet = Fernet(key)
+        return salt, token, iterations
 
-        try:
-            decrypted = fernet.decrypt(token)
-        except InvalidToken:
-            raise ValueError("Wrong passkey or corrupted data")
-
-        imported_profiles = json.loads(decrypted.decode("utf-8"))
-        if not isinstance(imported_profiles, list):
-            raise ValueError("Invalid profile data format")
-        imported_profiles = [self._validate_profile(p) for p in imported_profiles]
-
-        with self._lock:
-            if not merge:
-                old_names = [p.get("profile_name", "") for p in self._profiles]
-                self._profiles = imported_profiles
-                self._write()
-                return {"imported": len(imported_profiles), "skipped": 0, "total": len(imported_profiles), "replaced_names": old_names}
-
-            existing_puuids = {
-                str(p.get("valorant_puuid", ""))
-                for p in self._profiles
-                if p.get("valorant_puuid")
-            }
-            existing_names = {p.get("profile_name", "") for p in self._profiles}
-
-            imported = 0
-            skipped = 0
-            for profile in imported_profiles:
-                puuid = str(profile.get("valorant_puuid", ""))
-                name = profile.get("profile_name", "")
-
-                # Skip if already exists by PUUID or name
-                if (puuid and puuid in existing_puuids) or name in existing_names:
-                    skipped += 1
-                    continue
-
-                self._profiles.append(profile)
-                if puuid:
-                    existing_puuids.add(puuid)
-                existing_names.add(name)
-                imported += 1
-
-            self._write()
-            return {"imported": imported, "skipped": skipped, "total": len(imported_profiles)}
+    def _merge_profiles(self, imported_profiles):
+        """Append imports that are new by PUUID or name; return merge counts."""
+        existing_puuids = {str(p.get("valorant_puuid", "")) for p in self._profiles if p.get("valorant_puuid")}
+        existing_names = {p.get("profile_name", "") for p in self._profiles}
+        imported = 0
+        skipped = 0
+        for profile in imported_profiles:
+            puuid = str(profile.get("valorant_puuid", ""))
+            name = profile.get("profile_name", "")
+            if (puuid and puuid in existing_puuids) or name in existing_names:
+                skipped += 1
+                continue
+            self._profiles.append(profile)
+            if puuid:
+                existing_puuids.add(puuid)
+            existing_names.add(name)
+            imported += 1
+        return {"imported": imported, "skipped": skipped, "total": len(imported_profiles)}
