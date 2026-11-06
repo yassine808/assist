@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 /**
@@ -16,6 +17,22 @@ function envKeyShard(): string {
     // Not sealed yet (fresh clone, CI without .env): ship without a key.
     return "";
   }
+}
+
+/**
+ * Vite's dev server injects CSS through inline <style> tags, which the strict
+ * production CSP forbids. Relax only the dev server's policy; the built app
+ * keeps `style-src 'self'` because its CSS is emitted as a linked stylesheet
+ * and React writes style properties through the CSSOM, not inline attributes.
+ */
+function devCspPlugin(): Plugin {
+  return {
+    name: "dev-csp-unsafe-inline",
+    apply: "serve",
+    transformIndexHtml(html) {
+      return html.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'");
+    },
+  };
 }
 
 export default defineConfig({
@@ -44,7 +61,7 @@ export default defineConfig({
         input: { index: resolve(__dirname, "src/renderer/index.html") },
       },
     },
-    plugins: [react()],
+    plugins: [react(), devCspPlugin()],
     resolve: {
       alias: {
         "@": resolve(__dirname, "src/renderer/src"),
