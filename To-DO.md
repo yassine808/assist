@@ -31,3 +31,5 @@
 - [x] export should carry the saved playercard for profiles aswell
 
 - [x] instead of "Close VALORANT before switching accounts" show a windows with a question "quit valorant" or no, just like delete confirmation
+- [] bug where when adding an account, (not already logged in to riot) it keeps re-opening empty riot client evern tho it already saved it
+- [] app only launches riot, it doesnt launch valorant at all (launch product in settings is 'VALORANT')
