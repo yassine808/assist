@@ -48,6 +48,9 @@ tools/dotnet-install.ps1
 build/env.bin
 build/env-shard-a.bin
 
+# Dev code-signing material (private key, cert, password) — never commit
+build/signing/
+
 # OS
 .DS_Store
 Thumbs.db

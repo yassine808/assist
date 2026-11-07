@@ -42,6 +42,15 @@ win:
 
 portable:
   artifactName: "${productName}-${version}-portable.exe"
+  # Extract into the per-launch $PLUGINSDIR instead of one fixed %TEMP% folder.
+  # With the default (a per-build KSUID folder) a second double-click reuses the
+  # same folder: the new stub runs `RMDir /r $INSTDIR` and wipes the files of the
+  # instance already running, whose window then goes blank (the renderer's
+  # index.html is gone). A per-launch folder cannot touch another instance.
+  #
+  # Must be a truthy non-string: electron-builder 26 treats `false` as "unset"
+  # and generates the KSUID anyway, despite what its option docs claim.
+  unpackDirName: true
 
 nsis:
   oneClick: false

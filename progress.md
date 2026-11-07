@@ -1517,3 +1517,84 @@
   - CI run 42277768558 on `e5d299d`: success, all jobs.
 - Next: submit the SignPath Foundation application, then set the four
   secrets/variables and flip the trigger per SIGNING.md section 5.
+
+### 2026-11-06 — Local dev cert + seed the packaged data dir
+- Goal: stop the AV prompt on the portable build, and make the packaged exe
+  show the same 9 accounts as `npm run dev`.
+- Done:
+  - Self-signed code-signing cert `CN=RiotSwitcher Contributors (dev)`
+    (RSA 3072, SHA-256, EKU 1.3.6.1.5.5.7.3.3, expires 2029-11-06), exported to
+    `build/signing/` (gitignored): `.pfx`, `.cer`, `password.txt`.
+  - Signed `release/python/main.exe`, `release/win-unpacked/resources/python/main.exe`
+    and `release/RiotSwitcher-3.1.4-portable.exe` with
+    `Set-AuthenticodeSignature`. Originals kept as `*.unsigned.bak`.
+  - Replaced `C:\ProgramData\RiotSwitcher` with a copy of the dev data dir and
+    re-applied the backend's ACL (`inheritance:r`, user + SYSTEM +
+    Administrators). The old folder is preserved as
+    `C:\ProgramData\RiotSwitcher.bak-20261106-195710`.
+- Verified:
+  - `Get-AuthenticodeSignature` shows the signer on all three files with
+    `Status=UnknownError` (expected: the dev root is not trusted by anything).
+  - Ran the packaged `main.exe` with no `--dev` and issued `get_profiles` over
+    stdin: 9 profiles returned from `C:\ProgramData\RiotSwitcher`.
+- Next: this does not stop Defender or SmartScreen on any other machine; the
+  real fix is the SignPath pipeline in `docs/SIGNING.md` plus the per-release
+  Microsoft FP submission.
+
+### 2026-11-07 — Portable exe blank window on a second launch
+
+- Goal: the portable exe showed an empty dark window (screenshot); find and fix
+  the real cause, rebuild the artifact, and explain the "pushayna" empty-login
+  case.
+- Cause: electron-builder's portable target unpacks once into a fixed
+  `%TEMP%\3L<ksuid>` folder. A second double-click of the same exe reuses that
+  folder, runs `RMDir /r $INSTDIR`, and deletes `resources\app.asar` while the
+  first instance is still running. Its renderer then loses `index.html`:
+  `Renderer failed to load: Error: ERR_FAILED (-2) ... app.asar\out\renderer\index.html`,
+  and the window stays blank. Reproduced deterministically; the same build run
+  from an extracted folder rendered normally (9 profiles, `electronAPI` object).
+- Done: `electron-builder.yml` sets `portable.unpackDirName: true`, so every
+  launch extracts into its own `$PLUGINSDIR\app`. A truthy non-string is used
+  because electron-builder 26.18.1 treats `false` as unset and still generates
+  the shared KSUID folder (its docs say otherwise).
+- Verified: rebuilt `npm run build` + `npx electron-builder --win`.
+  `release\RiotSwitcher-3.1.5-portable.exe` (126,763,449 B) launches from
+  `%TEMP%\nsr80D2.tmp\app`, CDP reads `root.innerHTML length: 56189` with the
+  profile list rendered; a second launch leaves the first instance's extracted
+  files (`app.asar`, `app-update.yml`, `env.bin`, ...) intact, its window still
+  renders (`56256` chars), and `main.log` has no `Renderer failed to load` /
+  `ENOENT` entries. The broken artifact is kept as
+  `release\RiotSwitcher-3.1.5-portable.broken-backup.exe`.
+- Note: the blank-window fix needs the rebuilt exe; the already-installed
+  3.1.5 build still has the old portable stub.
+- pushayna finding: the Riot Client log shows a restore of the saved session
+  followed by `POST /token` -> 401 `invalid_grant`
+  (`HandleAuthorizationCreate: Failed to create RSO authorization`), so the
+  client falls back to the login screen. The saved `pushayna#psps` backup holds
+  a 1-hour `id_token` (iat 01:14:55, exp 02:14:55) and a refresh token written
+  once (`refresh_token_write_count: 1`); when restoring later, the refresh token
+  the app stored is no longer the one Riot accepts, because the client rotates
+  it during the live session and the app only re-saves a profile when switching
+  away from it.
+- Next: decide whether to persist the backend log, and whether to re-save the
+  active profile on a timer / at client exit so refresh tokens stay fresh.
+
+### 2026-11-07 — Dummy demo profiles removed
+
+- Goal: remove the six `Dummy …#TEST` demo accounts from the app.
+- Done:
+  - Explained the GitHub point: replacing a release asset does not change
+    `published_at`; the v3.1.5 portable asset now has `updated_at`
+    2026-11-07T02:08:35Z and the CDN serves 126,763,449 bytes.
+  - Stopped only RiotSwitcher (VALORANT and Riot Client untouched), then
+    removed the six dummy entries from the top-level profile array in
+    `C:\ProgramData\RiotSwitcher\profiles_data.json` and the dev copy
+    `data/profiles_data.json`.
+  - A round-trip check proved the files serialise byte-for-byte with
+    `json.dumps(indent=2)` + CRLF + no BOM + no trailing newline before writing;
+    originals kept as `profiles_data.json.bak-dummy-removal`.
+- Verified: both files now list only `pushayna#psps`, `Ereeeeeeen#9999` and
+  `I spread Love#23522`; the packaged backend (`release\python\main.exe`,
+  `get_profiles`) returns `count=3` with those names; no dummy profile
+  directories exist. RiotSwitcher was relaunched from the fixed portable.
+- Next: none.
